@@ -690,7 +690,7 @@
                 <svg viewBox="0 0 100 100">
                     <circle class="timer-ring-bg" cx="50" cy="50" r="45"></circle>
                     <circle class="timer-ring-progress" id="timerProgress" cx="50" cy="50" r="45"
-                        stroke-dasharray="282.7" stroke-dashoffset="0"></circle>
+                        stroke-dasharray="283" stroke-dashoffset="0"></circle>
                 </svg>
                 <div class="timer-display">
                     <div class="time" id="timeDisplay">00:00</div>
@@ -854,29 +854,38 @@
         };
 
         // ===== Audio =====
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
 
         function playBeep(freq = 800, duration = 0.1, type = 'sine') {
             if (!state.settings.soundEnabled) return;
 
+            const ctx = getAudioContext();
+
             // Resume audio context if suspended (mobile browsers)
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
+            if (ctx.state === 'suspended') {
+                ctx.resume();
             }
 
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
 
             osc.type = type;
             osc.frequency.value = freq;
             gain.gain.value = 0.3;
 
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(ctx.destination);
 
             osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            osc.stop(audioCtx.currentTime + duration);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+            osc.stop(ctx.currentTime + duration);
         }
 
         function playCountdownBeep() {
@@ -895,6 +904,8 @@
         }
 
         // ===== Timer Logic =====
+        const RING_RADIUS = 45;
+        const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         let animationFrameId = null;
         let lastCountdownBeep = -1;
 
@@ -912,7 +923,8 @@
 
         function getPhaseTotal() {
             if (state.mode === 'countdown') {
-                return (state.settings.countdownMin * 60 + state.settings.countdownSec) * 1000;
+                const total = (state.settings.countdownMin * 60 + state.settings.countdownSec) * 1000;
+                return Math.max(1000, total); // At least 1 second
             }
             if (state.mode === 'intervals') {
                 return state.phase === 'work'
@@ -948,9 +960,8 @@
             elements.timeDisplay.textContent = formatted.time;
             elements.timeMsDisplay.textContent = isStopwatch ? formatted.ms : '';
 
-            // Progress ring (circumference = 2 * PI * 45 ≈ 282.7)
-            const circumference = 282.7;
-            const offset = isStopwatch ? 0 : circumference * (1 - progress);
+            // Progress ring
+            const offset = isStopwatch ? 0 : RING_CIRCUMFERENCE * (1 - progress);
             elements.timerProgress.style.strokeDashoffset = offset;
 
             // Phase label
@@ -1230,7 +1241,9 @@
             if (saved) {
                 try {
                     Object.assign(state.settings, JSON.parse(saved));
-                } catch (e) {}
+                } catch (e) {
+                    console.warn('Failed to load settings from localStorage:', e);
+                }
             }
 
             // Apply to inputs
@@ -1273,7 +1286,9 @@
             if ('wakeLock' in navigator) {
                 try {
                     state.wakeLock = await navigator.wakeLock.request('screen');
-                } catch (e) {}
+                } catch (e) {
+                    console.warn('Wake lock request failed:', e);
+                }
             }
         }
 
@@ -1366,6 +1381,23 @@
             // Presets
             $$('.preset-btn').forEach(btn => {
                 btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Ignore if typing in an input
+                if (e.target.tagName === 'INPUT') return;
+                // Ignore if settings panel is open
+                if (elements.settingsPanel.classList.contains('show')) return;
+
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    startTimer();
+                } else if (e.code === 'KeyR') {
+                    resetTimer();
+                } else if (e.code === 'KeyL' && state.mode === 'stopwatch') {
+                    recordLap();
+                }
             });
 
             // Initial display
