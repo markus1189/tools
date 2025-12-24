@@ -963,6 +963,18 @@
                         </label>
                     </div>
                 </div>
+                <div class="setting-row">
+                    <span class="setting-label">
+                        Notifications
+                        <span id="notificationStatus" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+                    </span>
+                    <div class="setting-input">
+                        <label class="toggle">
+                            <input type="checkbox" id="notificationsEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -990,10 +1002,13 @@
                 pauseBetweenSets: false,
                 soundEnabled: true,
                 vibrationEnabled: true,
+                notificationsEnabled: true,
                 countdownMin: 5,
                 countdownSec: 0,
                 autoRestart: false
-            }
+            },
+            
+            notificationPermission: 'default' // 'default', 'granted', 'denied', 'unsupported'
         };
 
         // ===== DOM Elements =====
@@ -1029,6 +1044,7 @@
             pauseBetweenSets: $('pauseBetweenSets'),
             soundEnabled: $('soundEnabled'),
             vibrationEnabled: $('vibrationEnabled'),
+            notificationsEnabled: $('notificationsEnabled'),
             countdownMinDisplay: $('countdownMinDisplay'),
             countdownSecDisplay: $('countdownSecDisplay'),
             autoRestartToggle: $('autoRestartToggle')
@@ -1092,6 +1108,94 @@
             setTimeout(() => playBeep(1100, 0.15), 150);
             setTimeout(() => playBeep(1320, 0.3), 300);
             vibrate([200, 100, 200, 100, 200]); // Triple pulse
+        }
+
+        // ===== Notifications =====
+        async function checkNotificationSupport() {
+            if (!('Notification' in window)) {
+                state.notificationPermission = 'unsupported';
+                return;
+            }
+            
+            state.notificationPermission = Notification.permission;
+            
+            // Request permission early if not yet determined
+            if (Notification.permission === 'default') {
+                try {
+                    const permission = await Notification.requestPermission();
+                    state.notificationPermission = permission;
+                } catch (e) {
+                    console.warn('Notification permission request failed:', e);
+                }
+            }
+        }
+
+        function showCountdownCompleteNotification() {
+            // Only notify if permission granted and notifications enabled
+            if (!('Notification' in window) || Notification.permission !== 'granted') {
+                return;
+            }
+            
+            if (!state.settings.notificationsEnabled) return;
+            
+            const totalSeconds = state.settings.countdownMin * 60 + state.settings.countdownSec;
+            let duration;
+            if (state.settings.countdownMin > 0 && state.settings.countdownSec > 0) {
+                duration = `${state.settings.countdownMin}:${state.settings.countdownSec.toString().padStart(2, '0')} minute`;
+            } else if (state.settings.countdownMin > 0) {
+                duration = `${state.settings.countdownMin} minute`;
+            } else {
+                duration = `${state.settings.countdownSec} second`;
+            }
+            
+            const notification = new Notification('Timer Complete! ⏰', {
+                body: `Your ${duration} countdown has finished`,
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle fill="%23f97316" cx="50" cy="50" r="45"/><text x="50" y="70" font-size="60" text-anchor="middle" fill="white">⏰</text></svg>',
+                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle fill="%23f97316" cx="50" cy="50" r="45"/></svg>',
+                tag: 'countdown-complete',
+                requireInteraction: false,
+                silent: !state.settings.soundEnabled
+            });
+            
+            // Bring app to foreground when notification clicked
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+        }
+
+        function updateNotificationStatus() {
+            const statusEl = document.getElementById('notificationStatus');
+            if (!statusEl) return;
+            
+            if (!('Notification' in window)) {
+                statusEl.textContent = ' (not supported)';
+                statusEl.style.color = 'var(--text-muted)';
+                if (elements.notificationsEnabled) {
+                    elements.notificationsEnabled.disabled = true;
+                    elements.notificationsEnabled.checked = false;
+                }
+                return;
+            }
+            
+            const permission = Notification.permission;
+            
+            if (permission === 'granted' && state.settings.notificationsEnabled) {
+                statusEl.textContent = ' ✓';
+                statusEl.style.color = 'var(--work)';
+            } else if (permission === 'denied') {
+                statusEl.textContent = ' (blocked by browser)';
+                statusEl.style.color = 'var(--danger)';
+                if (elements.notificationsEnabled) {
+                    elements.notificationsEnabled.disabled = true;
+                    elements.notificationsEnabled.checked = false;
+                }
+            } else if (permission === 'default') {
+                statusEl.textContent = ' (permission needed)';
+                statusEl.style.color = 'var(--text-muted)';
+            } else {
+                statusEl.textContent = '';
+            }
         }
 
         // ===== Timer Logic =====
@@ -1284,6 +1388,11 @@
             state.phase = 'finished';
             cancelAnimationFrame(animationFrameId);
             playFinishSound();
+            
+            // Show notification for countdown completion
+            if (state.mode === 'countdown') {
+                showCountdownCompleteNotification();
+            }
             
             // Auto-restart for countdown mode
             if (state.mode === 'countdown' && state.settings.autoRestart) {
@@ -1545,9 +1654,12 @@
             elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
             elements.soundEnabled.checked = state.settings.soundEnabled;
             elements.vibrationEnabled.checked = state.settings.vibrationEnabled;
+            elements.notificationsEnabled.checked = state.settings.notificationsEnabled;
             elements.autoRestartToggle.checked = state.settings.autoRestart;
             elements.countdownMinDisplay.textContent = state.settings.countdownMin.toString().padStart(2, '0');
             elements.countdownSecDisplay.textContent = state.settings.countdownSec.toString().padStart(2, '0');
+            
+            updateNotificationStatus();
         }
 
         function saveSettings() {
@@ -1615,6 +1727,9 @@
         // ===== Event Listeners =====
         function init() {
             loadSettings();
+            
+            // Check notification support and request permission early
+            checkNotificationSupport();
 
             // Mode tabs
             $$('.mode-tab').forEach(tab => {
@@ -1628,6 +1743,18 @@
 
             // Tap to continue
             elements.tapContinue.addEventListener('click', continueFromPause);
+
+            // Click on timer ring to start/stop
+            const timerRing = document.querySelector('.timer-ring');
+            if (timerRing) {
+                timerRing.addEventListener('click', (e) => {
+                    // Don't trigger if clicking on tap-continue overlay
+                    if (elements.tapContinue.classList.contains('show')) return;
+                    startTimer();
+                });
+                // Add cursor pointer style
+                timerRing.style.cursor = 'pointer';
+            }
 
             // Settings panel
             $('openSettings').addEventListener('click', () => {
@@ -1668,6 +1795,19 @@
                 if (e.target.checked) {
                     vibrate(50);
                 }
+            });
+            elements.notificationsEnabled.addEventListener('change', (e) => {
+                state.settings.notificationsEnabled = e.target.checked;
+                saveSettings();
+                
+                // If enabling, check/request permission
+                if (e.target.checked && Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        state.notificationPermission = permission;
+                        updateNotificationStatus();
+                    });
+                }
+                updateNotificationStatus();
             });
             elements.autoRestartToggle.addEventListener('change', (e) => {
                 state.settings.autoRestart = e.target.checked;
