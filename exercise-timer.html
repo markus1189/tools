@@ -202,12 +202,15 @@
             font-weight: 300;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.02em;
+            display: inline;
         }
 
         .time-ms {
             font-size: min(1.5rem, 5vw);
             color: var(--text-muted);
             font-weight: 400;
+            display: inline;
+            vertical-align: baseline;
         }
 
         .set-info {
@@ -220,6 +223,23 @@
             font-size: 0.85rem;
             color: var(--text-muted);
             margin-top: 1rem;
+        }
+
+        .lap-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0.5rem;
+            font-weight: 500;
+        }
+
+        .lap-time {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            font-variant-numeric: tabular-nums;
+            margin-top: 0.1rem;
         }
 
         /* Tap to continue overlay */
@@ -835,8 +855,11 @@
                         stroke-dasharray="283" stroke-dashoffset="0"></circle>
                 </svg>
                 <div class="timer-display">
-                    <div class="time" id="timeDisplay">00:00</div>
-                    <div class="time-ms" id="timeMsDisplay">.00</div>
+                    <div>
+                        <span class="time" id="timeDisplay">00:00</span><span class="time-ms" id="timeMsDisplay">.00</span>
+                    </div>
+                    <div class="lap-label" id="lapLabel"></div>
+                    <div class="lap-time" id="lapTime"></div>
                 </div>
             </div>
             <div class="set-info" id="setInfo"></div>
@@ -986,6 +1009,8 @@
             timerProgress: $('timerProgress'),
             setInfo: $('setInfo'),
             totalTime: $('totalTime'),
+            lapLabel: $('lapLabel'),
+            lapTime: $('lapTime'),
             startBtn: $('startBtn'),
             resetBtn: $('resetBtn'),
             lapBtn: $('lapBtn'),
@@ -1080,10 +1105,10 @@
             const totalSec = Math.floor(ms / 1000);
             const min = Math.floor(totalSec / 60);
             const sec = totalSec % 60;
-            const msVal = Math.floor((ms % 1000) / 10);
+            const msVal = Math.floor(ms % 1000);
 
             const timeStr = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-            const msStr = `.${msVal.toString().padStart(2, '0')}`;
+            const msStr = `.${msVal.toString().padStart(3, '0')}`;
 
             return showMs ? { time: timeStr, ms: msStr } : { time: timeStr, ms: '' };
         }
@@ -1140,12 +1165,23 @@
                 elements.setInfo.textContent = '';
             }
 
-            // Total time
+            // Total time - keep for intervals/countdown only
             if ((isIntervals || isCountdown) && state.totalElapsed > 0) {
                 const total = formatTime(state.totalElapsed);
                 elements.totalTime.textContent = `Total: ${total.time}`;
             } else {
                 elements.totalTime.textContent = '';
+            }
+
+            // Lap time inside circle - stopwatch only
+            if (isStopwatch && state.laps.length > 0 && (state.running || state.phase === 'paused')) {
+                const currentLapTime = state.elapsed - state.lastLapTime;
+                const lapFormatted = formatTime(currentLapTime);
+                elements.lapLabel.textContent = 'LAP';
+                elements.lapTime.textContent = lapFormatted.time;
+            } else {
+                elements.lapLabel.textContent = '';
+                elements.lapTime.textContent = '';
             }
 
             // Container phase class
@@ -1391,13 +1427,13 @@
                         if (lap.lapTime === best) cls = 'best';
                         else if (lap.lapTime === worst) cls = 'worst';
                     }
-                    const lapFormatted = formatTime(lap.lapTime);
-                    const totalFormatted = formatTime(lap.totalTime);
+                    const lapFormatted = formatTime(lap.lapTime, true);
+                    const totalFormatted = formatTime(lap.totalTime, true);
                     return `
                         <li class="lap-item ${cls}">
                             <span class="lap-number">Lap ${lap.number}</span>
-                            <span>${lapFormatted.time}</span>
-                            <span style="color: var(--text-muted)">${totalFormatted.time}</span>
+                            <span>${lapFormatted.time}${lapFormatted.ms}</span>
+                            <span style="color: var(--text-muted)">${totalFormatted.time}${totalFormatted.ms}</span>
                         </li>
                     `;
                 })
@@ -1699,6 +1735,7 @@
             });
 
             // Initial display
+            setMode('stopwatch'); // Properly initialize the default mode
             updateDisplay();
             updateButtonStates();
         }
