@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Exercise Timer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #f97316;
+            --accent-dim: #c2410c;
+            --work: #22c55e;
+            --work-dim: #166534;
+            --rest: #f97316;
+            --rest-dim: #c2410c;
+            --danger: #ef4444;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.4;
+            touch-action: manipulation;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .settings-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .settings-btn:hover {
+            color: var(--accent);
+        }
+
+        /* Mode Tabs */
+        .mode-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 0.75rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .mode-tab:hover {
+            color: var(--text);
+        }
+
+        .mode-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Main Timer Display */
+        .timer-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            position: relative;
+            transition: background 0.3s;
+            min-height: 0;
+        }
+
+        .timer-container.phase-work {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .timer-container.phase-rest {
+            background: rgba(249, 115, 22, 0.1);
+        }
+
+        .phase-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            min-height: 1.5rem;
+        }
+
+        .phase-work .phase-label {
+            color: var(--work);
+        }
+
+        .phase-rest .phase-label {
+            color: var(--rest);
+        }
+
+        .timer-ring {
+            position: relative;
+            width: min(280px, 60vw);
+            height: min(280px, 60vw);
+        }
+
+        .timer-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .timer-ring-bg {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 8;
+        }
+
+        .timer-ring-progress {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.1s linear;
+        }
+
+        .phase-work .timer-ring-progress {
+            stroke: var(--work);
+        }
+
+        .phase-rest .timer-ring-progress {
+            stroke: var(--rest);
+        }
+
+        .timer-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .time {
+            font-size: min(4rem, 15vw);
+            font-weight: 300;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+
+        .time-ms {
+            font-size: min(1.5rem, 5vw);
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .set-info {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .total-time {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+
+        /* Tap to continue overlay */
+        .tap-continue {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .tap-continue.show {
+            display: flex;
+        }
+
+        .tap-continue-text {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .tap-continue-sub {
+            color: var(--text-muted);
+        }
+
+        /* Controls */
+        .controls {
+            padding: 1rem;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            min-width: 5rem;
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.15s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-dim);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-card-hover);
+            border-color: var(--text-muted);
+        }
+
+        /* Laps List */
+        .laps-container {
+            flex-shrink: 0;
+            max-height: 30vh;
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+        }
+
+        .laps-list {
+            list-style: none;
+        }
+
+        .lap-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .lap-item.best {
+            color: var(--work);
+        }
+
+        .lap-item.worst {
+            color: var(--danger);
+        }
+
+        .lap-number {
+            color: var(--text-muted);
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 100;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .settings-panel.show {
+            display: flex;
+        }
+
+        .settings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+        }
+
+        .settings-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--accent);
+        }
+
+        .settings-content {
+            padding: 1rem;
+        }
+
+        .settings-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .settings-section h3 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .setting-label {
+            font-size: 0.95rem;
+        }
+
+        .setting-input {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .setting-input input[type="number"] {
+            width: 4rem;
+            padding: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .setting-input input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .setting-unit {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 50px;
+            height: 28px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            transition: background 0.2s;
+        }
+
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+            background: var(--accent);
+        }
+
+        /* Presets */
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .preset-btn {
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .preset-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-dim);
+        }
+
+        .preset-btn .preset-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .preset-btn .preset-detail {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Countdown Settings (inline) */
+        .countdown-settings {
+            display: none;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .countdown-settings.show {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .countdown-input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .countdown-input-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .countdown-input-group input {
+            width: 3.5rem;
+            padding: 0.4rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        .countdown-input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Responsive */
+        @media (min-height: 700px) {
+            .timer-ring {
+                width: min(320px, 70vw);
+                height: min(320px, 70vw);
+            }
+
+            .time {
+                font-size: min(5rem, 18vw);
+            }
+        }
+
+        @media (orientation: landscape) and (max-height: 500px) {
+            .app {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            header, .mode-tabs {
+                width: 100%;
+            }
+
+            .timer-container {
+                flex: 1;
+                min-width: 50%;
+            }
+
+            .timer-ring {
+                width: min(180px, 30vh);
+                height: min(180px, 30vh);
+            }
+
+            .controls {
+                flex-direction: column;
+                justify-content: center;
+                padding: 0.5rem;
+            }
+
+            .laps-container {
+                max-height: none;
+                flex: 1;
+                min-width: 30%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <a href="index.html" class="back-link">&larr; Tools</a>
+            <h1>Exercise Timer</h1>
+            <button class="settings-btn" id="openSettings" aria-label="Settings">&#9881;</button>
+        </header>
+
+        <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="stopwatch">Stopwatch</button>
+            <button class="mode-tab" data-mode="countdown">Countdown</button>
+            <button class="mode-tab" data-mode="intervals">Intervals</button>
+        </div>
+
+        <div class="countdown-settings" id="countdownSettings">
+            <div class="countdown-input-group">
+                <label>Min</label>
+                <input type="number" id="countdownMin" value="5" min="0" max="99">
+            </div>
+            <div class="countdown-input-group">
+                <label>Sec</label>
+                <input type="number" id="countdownSec" value="0" min="0" max="59">
+            </div>
+        </div>
+
+        <div class="timer-container" id="timerContainer">
+            <div class="phase-label" id="phaseLabel"></div>
+            <div class="timer-ring">
+                <svg viewBox="0 0 100 100">
+                    <circle class="timer-ring-bg" cx="50" cy="50" r="45"></circle>
+                    <circle class="timer-ring-progress" id="timerProgress" cx="50" cy="50" r="45"
+                        stroke-dasharray="282.7" stroke-dashoffset="0"></circle>
+                </svg>
+                <div class="timer-display">
+                    <div class="time" id="timeDisplay">00:00</div>
+                    <div class="time-ms" id="timeMsDisplay">.00</div>
+                </div>
+            </div>
+            <div class="set-info" id="setInfo"></div>
+            <div class="total-time" id="totalTime"></div>
+
+            <div class="tap-continue" id="tapContinue">
+                <div class="tap-continue-text">Tap to continue</div>
+                <div class="tap-continue-sub" id="nextSetInfo">Next: Set 2</div>
+            </div>
+        </div>
+
+        <div class="controls" id="controls">
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+            <button class="btn btn-primary" id="startBtn">Start</button>
+            <button class="btn btn-secondary" id="lapBtn" style="display: none;">Lap</button>
+        </div>
+
+        <div class="laps-container" id="lapsContainer" style="display: none;">
+            <ul class="laps-list" id="lapsList"></ul>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <button class="close-btn" id="closeSettings">&times;</button>
+        </div>
+        <div class="settings-content">
+            <div class="settings-section">
+                <h3>Interval Timer</h3>
+                <div class="setting-row">
+                    <span class="setting-label">Work Duration</span>
+                    <div class="setting-input">
+                        <input type="number" id="workDuration" value="30" min="5" max="300">
+                        <span class="setting-unit">sec</span>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Rest Duration</span>
+                    <div class="setting-input">
+                        <input type="number" id="restDuration" value="10" min="0" max="300">
+                        <span class="setting-unit">sec</span>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Number of Sets</span>
+                    <div class="setting-input">
+                        <input type="number" id="numSets" value="5" min="1" max="99">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Pause Between Sets</span>
+                    <div class="setting-input">
+                        <label class="toggle">
+                            <input type="checkbox" id="pauseBetweenSets">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Presets</h3>
+                <div class="presets-grid">
+                    <button class="preset-btn" data-preset="tabata">
+                        <div class="preset-name">Tabata</div>
+                        <div class="preset-detail">20s / 10s &times; 8</div>
+                    </button>
+                    <button class="preset-btn" data-preset="3030">
+                        <div class="preset-name">30/30</div>
+                        <div class="preset-detail">30s / 30s &times; 10</div>
+                    </button>
+                    <button class="preset-btn" data-preset="emom">
+                        <div class="preset-name">EMOM</div>
+                        <div class="preset-detail">60s / 0s &times; 10</div>
+                    </button>
+                    <button class="preset-btn" data-preset="hiit">
+                        <div class="preset-name">HIIT</div>
+                        <div class="preset-detail">45s / 15s &times; 8</div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Audio</h3>
+                <div class="setting-row">
+                    <span class="setting-label">Sound Effects</span>
+                    <div class="setting-input">
+                        <label class="toggle">
+                            <input type="checkbox" id="soundEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== State =====
+        const state = {
+            mode: 'stopwatch', // stopwatch, countdown, intervals
+            running: false,
+            startTime: 0,
+            elapsed: 0,
+            totalElapsed: 0,
+            phase: 'ready', // ready, work, rest, paused, finished
+            currentSet: 1,
+            laps: [],
+            lastLapTime: 0,
+            wakeLock: null,
+
+            // Settings (loaded from localStorage)
+            settings: {
+                workDuration: 30,
+                restDuration: 10,
+                numSets: 5,
+                pauseBetweenSets: false,
+                soundEnabled: true,
+                countdownMin: 5,
+                countdownSec: 0
+            }
+        };
+
+        // ===== DOM Elements =====
+        const $ = (id) => document.getElementById(id);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        const elements = {
+            timerContainer: $('timerContainer'),
+            phaseLabel: $('phaseLabel'),
+            timeDisplay: $('timeDisplay'),
+            timeMsDisplay: $('timeMsDisplay'),
+            timerProgress: $('timerProgress'),
+            setInfo: $('setInfo'),
+            totalTime: $('totalTime'),
+            startBtn: $('startBtn'),
+            resetBtn: $('resetBtn'),
+            lapBtn: $('lapBtn'),
+            lapsContainer: $('lapsContainer'),
+            lapsList: $('lapsList'),
+            tapContinue: $('tapContinue'),
+            nextSetInfo: $('nextSetInfo'),
+            settingsPanel: $('settingsPanel'),
+            countdownSettings: $('countdownSettings'),
+
+            // Settings inputs
+            workDuration: $('workDuration'),
+            restDuration: $('restDuration'),
+            numSets: $('numSets'),
+            pauseBetweenSets: $('pauseBetweenSets'),
+            soundEnabled: $('soundEnabled'),
+            countdownMin: $('countdownMin'),
+            countdownSec: $('countdownSec')
+        };
+
+        // ===== Audio =====
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep(freq = 800, duration = 0.1, type = 'sine') {
+            if (!state.settings.soundEnabled) return;
+
+            // Resume audio context if suspended (mobile browsers)
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.value = 0.3;
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playCountdownBeep() {
+            playBeep(600, 0.08);
+        }
+
+        function playTransitionBeep() {
+            playBeep(880, 0.15);
+            setTimeout(() => playBeep(1100, 0.2), 150);
+        }
+
+        function playFinishSound() {
+            playBeep(880, 0.15);
+            setTimeout(() => playBeep(1100, 0.15), 150);
+            setTimeout(() => playBeep(1320, 0.3), 300);
+        }
+
+        // ===== Timer Logic =====
+        let animationFrameId = null;
+        let lastCountdownBeep = -1;
+
+        function formatTime(ms, showMs = false) {
+            const totalSec = Math.floor(ms / 1000);
+            const min = Math.floor(totalSec / 60);
+            const sec = totalSec % 60;
+            const msVal = Math.floor((ms % 1000) / 10);
+
+            const timeStr = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            const msStr = `.${msVal.toString().padStart(2, '0')}`;
+
+            return showMs ? { time: timeStr, ms: msStr } : { time: timeStr, ms: '' };
+        }
+
+        function getPhaseTotal() {
+            if (state.mode === 'countdown') {
+                return (state.settings.countdownMin * 60 + state.settings.countdownSec) * 1000;
+            }
+            if (state.mode === 'intervals') {
+                return state.phase === 'work'
+                    ? state.settings.workDuration * 1000
+                    : state.settings.restDuration * 1000;
+            }
+            return 0;
+        }
+
+        function updateDisplay() {
+            const isStopwatch = state.mode === 'stopwatch';
+            const isCountdown = state.mode === 'countdown';
+            const isIntervals = state.mode === 'intervals';
+
+            let displayTime = state.elapsed;
+            let progress = 0;
+            const phaseTotal = getPhaseTotal();
+
+            if (isCountdown || isIntervals) {
+                const remaining = Math.max(0, phaseTotal - state.elapsed);
+                displayTime = remaining;
+                progress = phaseTotal > 0 ? (state.elapsed / phaseTotal) : 0;
+
+                // Countdown beeps in last 3 seconds
+                const remainingSec = Math.ceil(remaining / 1000);
+                if (remainingSec <= 3 && remainingSec > 0 && remainingSec !== lastCountdownBeep && state.running) {
+                    lastCountdownBeep = remainingSec;
+                    playCountdownBeep();
+                }
+            }
+
+            const formatted = formatTime(displayTime, isStopwatch);
+            elements.timeDisplay.textContent = formatted.time;
+            elements.timeMsDisplay.textContent = isStopwatch ? formatted.ms : '';
+
+            // Progress ring (circumference = 2 * PI * 45 ≈ 282.7)
+            const circumference = 282.7;
+            const offset = isStopwatch ? 0 : circumference * (1 - progress);
+            elements.timerProgress.style.strokeDashoffset = offset;
+
+            // Phase label
+            if (isIntervals) {
+                elements.phaseLabel.textContent = state.phase === 'work' ? 'WORK' : (state.phase === 'rest' ? 'REST' : '');
+                elements.setInfo.textContent = `Set ${state.currentSet} of ${state.settings.numSets}`;
+            } else {
+                elements.phaseLabel.textContent = '';
+                elements.setInfo.textContent = '';
+            }
+
+            // Total time
+            if ((isIntervals || isCountdown) && state.totalElapsed > 0) {
+                const total = formatTime(state.totalElapsed);
+                elements.totalTime.textContent = `Total: ${total.time}`;
+            } else {
+                elements.totalTime.textContent = '';
+            }
+
+            // Container phase class
+            elements.timerContainer.classList.remove('phase-work', 'phase-rest');
+            if (isIntervals && state.running) {
+                elements.timerContainer.classList.add(`phase-${state.phase}`);
+            }
+        }
+
+        function tick(timestamp) {
+            if (!state.running) return;
+
+            const now = performance.now();
+            const delta = now - state.startTime;
+            state.elapsed = delta;
+            state.totalElapsed += now - (state.lastTick || now);
+            state.lastTick = now;
+
+            // Check phase transitions for countdown/intervals
+            if (state.mode === 'countdown') {
+                const phaseTotal = getPhaseTotal();
+                if (state.elapsed >= phaseTotal) {
+                    finishTimer();
+                    return;
+                }
+            } else if (state.mode === 'intervals') {
+                checkIntervalTransition();
+            }
+
+            updateDisplay();
+            animationFrameId = requestAnimationFrame(tick);
+        }
+
+        function checkIntervalTransition() {
+            const phaseTotal = getPhaseTotal();
+            if (state.elapsed >= phaseTotal) {
+                if (state.phase === 'work') {
+                    // Transition to rest (or next set if rest is 0)
+                    if (state.settings.restDuration > 0) {
+                        state.phase = 'rest';
+                        state.startTime = performance.now();
+                        state.elapsed = 0;
+                        lastCountdownBeep = -1;
+                        playTransitionBeep();
+                    } else {
+                        advanceSet();
+                    }
+                } else if (state.phase === 'rest') {
+                    advanceSet();
+                }
+            }
+        }
+
+        function advanceSet() {
+            if (state.currentSet >= state.settings.numSets) {
+                finishTimer();
+                return;
+            }
+
+            state.currentSet++;
+            lastCountdownBeep = -1;
+
+            if (state.settings.pauseBetweenSets) {
+                pauseForNextSet();
+            } else {
+                state.phase = 'work';
+                state.startTime = performance.now();
+                state.elapsed = 0;
+                playTransitionBeep();
+            }
+        }
+
+        function pauseForNextSet() {
+            state.running = false;
+            cancelAnimationFrame(animationFrameId);
+            elements.nextSetInfo.textContent = `Next: Set ${state.currentSet}`;
+            elements.tapContinue.classList.add('show');
+            elements.startBtn.textContent = 'Resume';
+        }
+
+        function continueFromPause() {
+            elements.tapContinue.classList.remove('show');
+            state.phase = 'work';
+            state.startTime = performance.now();
+            state.elapsed = 0;
+            state.running = true;
+            state.lastTick = performance.now();
+            playTransitionBeep();
+            animationFrameId = requestAnimationFrame(tick);
+            elements.startBtn.textContent = 'Pause';
+        }
+
+        function finishTimer() {
+            state.running = false;
+            state.phase = 'finished';
+            cancelAnimationFrame(animationFrameId);
+            playFinishSound();
+            elements.startBtn.textContent = 'Start';
+            elements.phaseLabel.textContent = 'DONE';
+            elements.timerContainer.classList.remove('phase-work', 'phase-rest');
+            releaseWakeLock();
+        }
+
+        function startTimer() {
+            if (elements.tapContinue.classList.contains('show')) {
+                continueFromPause();
+                return;
+            }
+
+            if (state.running) {
+                // Pause
+                state.running = false;
+                cancelAnimationFrame(animationFrameId);
+                elements.startBtn.textContent = 'Resume';
+                releaseWakeLock();
+            } else {
+                // Start/Resume
+                if (state.phase === 'finished' || state.phase === 'ready') {
+                    resetTimer(false);
+                    if (state.mode === 'intervals') {
+                        state.phase = 'work';
+                    }
+                }
+
+                state.running = true;
+                state.startTime = performance.now() - state.elapsed;
+                state.lastTick = performance.now();
+                lastCountdownBeep = -1;
+                animationFrameId = requestAnimationFrame(tick);
+                elements.startBtn.textContent = 'Pause';
+                requestWakeLock();
+
+                // Play start beep
+                if (state.elapsed === 0) {
+                    playBeep(660, 0.1);
+                }
+            }
+        }
+
+        function resetTimer(updateUI = true) {
+            state.running = false;
+            state.elapsed = 0;
+            state.totalElapsed = 0;
+            state.phase = 'ready';
+            state.currentSet = 1;
+            state.laps = [];
+            state.lastLapTime = 0;
+            lastCountdownBeep = -1;
+
+            cancelAnimationFrame(animationFrameId);
+            elements.tapContinue.classList.remove('show');
+            elements.startBtn.textContent = 'Start';
+            elements.timerContainer.classList.remove('phase-work', 'phase-rest');
+
+            if (updateUI) {
+                updateDisplay();
+                renderLaps();
+            }
+
+            releaseWakeLock();
+        }
+
+        function recordLap() {
+            if (!state.running || state.mode !== 'stopwatch') return;
+
+            const lapTime = state.elapsed - state.lastLapTime;
+            state.laps.push({
+                number: state.laps.length + 1,
+                lapTime: lapTime,
+                totalTime: state.elapsed
+            });
+            state.lastLapTime = state.elapsed;
+
+            playBeep(500, 0.05);
+            renderLaps();
+        }
+
+        function renderLaps() {
+            if (state.mode !== 'stopwatch') {
+                elements.lapsContainer.style.display = 'none';
+                return;
+            }
+
+            if (state.laps.length === 0) {
+                elements.lapsContainer.style.display = 'none';
+                return;
+            }
+
+            elements.lapsContainer.style.display = 'block';
+
+            // Find best/worst laps
+            const lapTimes = state.laps.map(l => l.lapTime);
+            const best = Math.min(...lapTimes);
+            const worst = Math.max(...lapTimes);
+
+            elements.lapsList.innerHTML = state.laps
+                .slice()
+                .reverse()
+                .map(lap => {
+                    let cls = '';
+                    if (state.laps.length > 2) {
+                        if (lap.lapTime === best) cls = 'best';
+                        else if (lap.lapTime === worst) cls = 'worst';
+                    }
+                    const lapFormatted = formatTime(lap.lapTime);
+                    const totalFormatted = formatTime(lap.totalTime);
+                    return `
+                        <li class="lap-item ${cls}">
+                            <span class="lap-number">Lap ${lap.number}</span>
+                            <span>${lapFormatted.time}</span>
+                            <span style="color: var(--text-muted)">${totalFormatted.time}</span>
+                        </li>
+                    `;
+                })
+                .join('');
+        }
+
+        // ===== Mode Switching =====
+        function setMode(mode) {
+            if (state.running) {
+                resetTimer();
+            }
+
+            state.mode = mode;
+
+            // Update tabs
+            $$('.mode-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.mode === mode);
+            });
+
+            // Show/hide elements based on mode
+            elements.lapBtn.style.display = mode === 'stopwatch' ? 'block' : 'none';
+            elements.countdownSettings.classList.toggle('show', mode === 'countdown');
+            elements.lapsContainer.style.display = 'none';
+
+            // Reset and update display
+            resetTimer();
+        }
+
+        // ===== Settings =====
+        function loadSettings() {
+            const saved = localStorage.getItem('exerciseTimerSettings');
+            if (saved) {
+                try {
+                    Object.assign(state.settings, JSON.parse(saved));
+                } catch (e) {}
+            }
+
+            // Apply to inputs
+            elements.workDuration.value = state.settings.workDuration;
+            elements.restDuration.value = state.settings.restDuration;
+            elements.numSets.value = state.settings.numSets;
+            elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
+            elements.soundEnabled.checked = state.settings.soundEnabled;
+            elements.countdownMin.value = state.settings.countdownMin;
+            elements.countdownSec.value = state.settings.countdownSec;
+        }
+
+        function saveSettings() {
+            localStorage.setItem('exerciseTimerSettings', JSON.stringify(state.settings));
+        }
+
+        function applyPreset(preset) {
+            const presets = {
+                tabata: { workDuration: 20, restDuration: 10, numSets: 8 },
+                '3030': { workDuration: 30, restDuration: 30, numSets: 10 },
+                emom: { workDuration: 60, restDuration: 0, numSets: 10 },
+                hiit: { workDuration: 45, restDuration: 15, numSets: 8 }
+            };
+
+            if (presets[preset]) {
+                Object.assign(state.settings, presets[preset]);
+                elements.workDuration.value = state.settings.workDuration;
+                elements.restDuration.value = state.settings.restDuration;
+                elements.numSets.value = state.settings.numSets;
+                saveSettings();
+
+                // Switch to intervals mode
+                elements.settingsPanel.classList.remove('show');
+                setMode('intervals');
+            }
+        }
+
+        // ===== Wake Lock =====
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    state.wakeLock = await navigator.wakeLock.request('screen');
+                } catch (e) {}
+            }
+        }
+
+        function releaseWakeLock() {
+            if (state.wakeLock) {
+                state.wakeLock.release();
+                state.wakeLock = null;
+            }
+        }
+
+        // Re-acquire wake lock if page becomes visible again
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && state.running) {
+                requestWakeLock();
+            }
+        });
+
+        // ===== Event Listeners =====
+        function init() {
+            loadSettings();
+
+            // Mode tabs
+            $$('.mode-tab').forEach(tab => {
+                tab.addEventListener('click', () => setMode(tab.dataset.mode));
+            });
+
+            // Control buttons
+            elements.startBtn.addEventListener('click', startTimer);
+            elements.resetBtn.addEventListener('click', () => resetTimer());
+            elements.lapBtn.addEventListener('click', recordLap);
+
+            // Tap to continue
+            elements.tapContinue.addEventListener('click', continueFromPause);
+
+            // Settings panel
+            $('openSettings').addEventListener('click', () => {
+                elements.settingsPanel.classList.add('show');
+            });
+            $('closeSettings').addEventListener('click', () => {
+                elements.settingsPanel.classList.remove('show');
+            });
+
+            // Settings inputs
+            elements.workDuration.addEventListener('change', (e) => {
+                state.settings.workDuration = Math.max(5, parseInt(e.target.value) || 30);
+                e.target.value = state.settings.workDuration;
+                saveSettings();
+            });
+            elements.restDuration.addEventListener('change', (e) => {
+                state.settings.restDuration = Math.max(0, parseInt(e.target.value) || 10);
+                e.target.value = state.settings.restDuration;
+                saveSettings();
+            });
+            elements.numSets.addEventListener('change', (e) => {
+                state.settings.numSets = Math.max(1, parseInt(e.target.value) || 5);
+                e.target.value = state.settings.numSets;
+                saveSettings();
+            });
+            elements.pauseBetweenSets.addEventListener('change', (e) => {
+                state.settings.pauseBetweenSets = e.target.checked;
+                saveSettings();
+            });
+            elements.soundEnabled.addEventListener('change', (e) => {
+                state.settings.soundEnabled = e.target.checked;
+                saveSettings();
+            });
+
+            // Countdown settings
+            elements.countdownMin.addEventListener('change', (e) => {
+                state.settings.countdownMin = Math.max(0, parseInt(e.target.value) || 0);
+                e.target.value = state.settings.countdownMin;
+                saveSettings();
+                if (!state.running) updateDisplay();
+            });
+            elements.countdownSec.addEventListener('change', (e) => {
+                state.settings.countdownSec = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
+                e.target.value = state.settings.countdownSec;
+                saveSettings();
+                if (!state.running) updateDisplay();
+            });
+
+            // Presets
+            $$('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+            });
+
+            // Initial display
+            updateDisplay();
+        }
+
+        init();
+    </script>
+</body>
+</html>
