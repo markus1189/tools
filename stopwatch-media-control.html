@@ -83,12 +83,12 @@
             width: 80%;
             max-width: 300px;
         }
-
+        
         #btn-reset { background: #333; color: #fff; }
         #btn-toggle { background: var(--accent); color: #000; }
 
         audio { display: none; }
-
+        
         .hidden { display: none !important; }
         .visible { display: flex !important; }
 
@@ -178,17 +178,17 @@
         function addDebugLog(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
             const entry = document.createElement('div');
-
+            
             let className = '';
             if (type === 'play') className = 'action-play';
             else if (type === 'pause') className = 'action-pause';
             else if (type === 'other') className = 'action-other';
             else if (type === 'audio') className = 'event-audio';
-
+            
             entry.innerHTML = `<span class="timestamp">[${timestamp}]</span><span class="${className}">${message}</span>`;
-
+            
             debugLog.insertBefore(entry, debugLog.firstChild);
-
+            
             // Keep only last N entries
             while (debugLog.children.length > maxLogEntries) {
                 debugLog.removeChild(debugLog.lastChild);
@@ -204,7 +204,7 @@
             const byteRate = sampleRate * blockAlign;
             const dataSize = seconds * sampleRate * blockAlign;
             const chunkSize = 36 + dataSize;
-
+            
             const buffer = new ArrayBuffer(44 + dataSize);
             const view = new DataView(buffer);
 
@@ -255,23 +255,23 @@
         // Initialize Audio
         ui.initBtn.addEventListener('click', async () => {
             addDebugLog('🎬 Initializing media session...', 'info');
-
+            
             const silentUrl = createSilentAudioUrl(3600); // 1 hour
             ui.audio.src = silentUrl;
-
+            
             try {
                 await ui.audio.play();
                 addDebugLog('✅ Audio started playing', 'audio');
-
+                
                 ui.initView.classList.add('hidden');
                 ui.controlView.classList.add('visible');
                 ui.controlView.style.display = 'flex';
-
+                
                 setupMediaSession();
                 updateMediaMetadata("paused");
-
+                
                 addDebugLog('✅ Media session ready', 'info');
-
+                
             } catch (err) {
                 addDebugLog('❌ Error: ' + err.message, 'audio');
                 alert("Error: " + err.message);
@@ -297,22 +297,22 @@
             if (!isRunning) return;
             const now = Date.now();
             const total = elapsed + (now - startTime);
-
+            
             const m = Math.floor(total / 60000);
             const s = Math.floor((total % 60000) / 1000);
             const mil = Math.floor((total % 1000) / 10);
-
+            
             ui.timer.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
             ui.ms.textContent = String(mil).padStart(2,'0');
-
+            
             rafId = requestAnimationFrame(tick);
         }
 
         async function start() {
             if (isRunning) return;
-
+            
             addDebugLog('▶️ start() function called', 'play');
-
+            
             // Always restart audio when playing
             if (ui.audio.paused || isOSPause) {
                 addDebugLog('🔄 Attempting to restart audio...', 'play');
@@ -325,33 +325,33 @@
                     return;
                 }
             }
-
+            
             startTime = Date.now();
             isRunning = true;
-
+            
             ui.toggleBtn.textContent = "Stop";
             ui.status.innerHTML = "<strong>Running...</strong>Prev Track = Reset | Next Track = Toggle";
             ui.status.classList.add('success');
-
+            
             updateMediaMetadata("playing");
             addDebugLog('⏱️ Timer started', 'play');
-
+            
             tick();
         }
 
         function pause() {
             if (!isRunning) return;
-
+            
             addDebugLog('⏸️ pause() function called', 'pause');
-
+            
             elapsed += Date.now() - startTime;
             isRunning = false;
             cancelAnimationFrame(rafId);
-
+            
             ui.toggleBtn.textContent = "Start";
             ui.status.innerHTML = "<strong>Paused</strong>Prev Track = Reset | Next Track = Toggle";
             ui.status.classList.remove('success');
-
+            
             updateMediaMetadata("paused");
             addDebugLog('⏱️ Timer paused', 'pause');
         }
@@ -379,22 +379,22 @@
         function setupMediaSession() {
             if ('mediaSession' in navigator) {
                 addDebugLog('📱 Setting up Media Session handlers', 'info');
-
+                
                 navigator.mediaSession.setActionHandler('play', async () => {
                     addDebugLog('🎮 MEDIA ACTION: play', 'play');
                     await start();
                 });
-
+                
                 navigator.mediaSession.setActionHandler('pause', () => {
                     addDebugLog('🎮 MEDIA ACTION: pause', 'pause');
                     pause();
                 });
-
+                
                 navigator.mediaSession.setActionHandler('previoustrack', () => {
                     addDebugLog('🎮 MEDIA ACTION: previoustrack → RESET', 'other');
                     reset();
                 });
-
+                
                 navigator.mediaSession.setActionHandler('nexttrack', async () => {
                     addDebugLog('🎮 MEDIA ACTION: nexttrack → TOGGLE', 'other');
                     await toggle();
@@ -412,7 +412,7 @@
                 navigator.mediaSession.setActionHandler('seekforward', () => {
                     addDebugLog('🎮 MEDIA ACTION: seekforward', 'other');
                 });
-
+                
                 addDebugLog('✅ Media Session handlers registered', 'info');
             } else {
                 addDebugLog('❌ Media Session API not supported', 'info');
