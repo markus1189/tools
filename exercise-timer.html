@@ -548,10 +548,16 @@
 
         .duration-picker-row {
             display: flex;
-            gap: 0.375rem;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .duration-picker-time-row {
+            display: flex;
+            gap: 0.5rem;
             align-items: center;
             justify-content: center;
-            flex-wrap: wrap;
         }
 
         .countdown-presets {
@@ -677,14 +683,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .duration-picker-separator {
-            font-size: 1.5rem;
-            font-weight: 300;
-            color: var(--text-muted);
-            padding: 0 0.25rem;
             flex-shrink: 0;
         }
 
@@ -821,17 +819,18 @@
                 <button class="countdown-preset-btn" data-duration="600">10min</button>
             </div>
             <div class="duration-picker-row">
-                <span class="duration-picker-label">Min</span>
-                <button class="duration-picker-btn" data-target="countdownMin" data-delta="-1">-</button>
-                <div class="duration-picker-value" id="countdownMinDisplay">05</div>
-                <button class="duration-picker-btn" data-target="countdownMin" data-delta="1">+</button>
-                
-                <span class="duration-picker-separator">:</span>
-                
-                <span class="duration-picker-label">Sec</span>
-                <button class="duration-picker-btn" data-target="countdownSec" data-delta="-10">-</button>
-                <div class="duration-picker-value" id="countdownSecDisplay">00</div>
-                <button class="duration-picker-btn" data-target="countdownSec" data-delta="10">+</button>
+                <div class="duration-picker-time-row">
+                    <span class="duration-picker-label">Min</span>
+                    <button class="duration-picker-btn" data-target="countdownMin" data-delta="-1">-</button>
+                    <div class="duration-picker-value" id="countdownMinDisplay">05</div>
+                    <button class="duration-picker-btn" data-target="countdownMin" data-delta="1">+</button>
+                </div>
+                <div class="duration-picker-time-row">
+                    <span class="duration-picker-label">Sec</span>
+                    <button class="duration-picker-btn" data-target="countdownSec" data-delta="-10">-</button>
+                    <div class="duration-picker-value" id="countdownSecDisplay">00</div>
+                    <button class="duration-picker-btn" data-target="countdownSec" data-delta="10">+</button>
+                </div>
             </div>
             <div class="auto-restart-toggle">
                 <label class="toggle">
@@ -1177,7 +1176,8 @@
             if (isStopwatch && state.laps.length > 0 && (state.running || state.phase === 'paused')) {
                 const currentLapTime = state.elapsed - state.lastLapTime;
                 const lapFormatted = formatTime(currentLapTime);
-                elements.lapLabel.textContent = 'LAP';
+                const currentLapNumber = state.laps.length + 1;
+                elements.lapLabel.textContent = `LAP ${currentLapNumber}`;
                 elements.lapTime.textContent = lapFormatted.time;
             } else {
                 elements.lapLabel.textContent = '';
