@@ -195,8 +195,8 @@
             }
         }
 
-        // Generate silent WAV file in memory (minimal duration since it loops)
-        function createSilentAudioUrl(seconds = 1) {
+        // Generate silent WAV file in memory
+        function createSilentAudioUrl(seconds = 300) {
             const sampleRate = 44100;
             const numChannels = 1;
             const bitsPerSample = 16;
@@ -256,7 +256,7 @@
         ui.initBtn.addEventListener('click', async () => {
             addDebugLog('🎬 Initializing media session...', 'info');
 
-            const silentUrl = createSilentAudioUrl(1); // 1 second, loops automatically
+            const silentUrl = createSilentAudioUrl(3600); // 1 hour
             ui.audio.src = silentUrl;
 
             try {
