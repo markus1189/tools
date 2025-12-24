@@ -518,13 +518,54 @@
             padding: 1rem;
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
+            flex-direction: column;
+            gap: 1rem;
         }
 
         .duration-picker.show {
             display: flex;
+        }
+
+        .duration-picker-row {
+            display: flex;
             gap: 0.5rem;
             align-items: center;
             justify-content: center;
+        }
+
+        .countdown-presets {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .countdown-preset-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .countdown-preset-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-dim);
+        }
+
+        .countdown-preset-btn:active {
+            background: var(--accent-dim);
+        }
+
+        .auto-restart-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
 
         .duration-picker-group {
@@ -604,6 +645,70 @@
             margin-top: 1rem;
         }
 
+        /* Interval Structure Display */
+        .interval-structure {
+            display: none;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .interval-structure.show {
+            display: block;
+        }
+
+        .interval-sets {
+            display: flex;
+            gap: 0.5rem;
+            min-width: min-content;
+        }
+
+        .interval-set {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 40px;
+        }
+
+        .interval-segment {
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .interval-segment.work {
+            background: var(--work-dim);
+            color: var(--work);
+        }
+
+        .interval-segment.rest {
+            background: var(--rest-dim);
+            color: var(--rest);
+        }
+
+        .interval-segment.completed {
+            opacity: 0.4;
+        }
+
+        .interval-segment.active {
+            border-color: var(--text);
+            box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 3px var(--text);
+        }
+
+        .interval-set-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 0.25rem;
+        }
+
         /* Responsive */
         @media (min-height: 700px) {
             .timer-ring {
@@ -665,23 +770,43 @@
         </div>
 
         <div class="duration-picker" id="countdownSettings">
-            <div class="duration-picker-group">
-                <span class="duration-picker-label">Min</span>
-                <div class="duration-picker-controls">
-                    <button class="duration-picker-btn" data-target="countdownMin" data-delta="1">+</button>
-                    <div class="duration-picker-value" id="countdownMinDisplay">05</div>
-                    <button class="duration-picker-btn" data-target="countdownMin" data-delta="-1">-</button>
+            <div class="countdown-presets">
+                <button class="countdown-preset-btn" data-duration="30">30s</button>
+                <button class="countdown-preset-btn" data-duration="60">1min</button>
+                <button class="countdown-preset-btn" data-duration="120">2min</button>
+                <button class="countdown-preset-btn" data-duration="300">5min</button>
+                <button class="countdown-preset-btn" data-duration="600">10min</button>
+            </div>
+            <div class="duration-picker-row">
+                <div class="duration-picker-group">
+                    <span class="duration-picker-label">Min</span>
+                    <div class="duration-picker-controls">
+                        <button class="duration-picker-btn" data-target="countdownMin" data-delta="1">+</button>
+                        <div class="duration-picker-value" id="countdownMinDisplay">05</div>
+                        <button class="duration-picker-btn" data-target="countdownMin" data-delta="-1">-</button>
+                    </div>
+                </div>
+                <span class="duration-picker-separator">:</span>
+                <div class="duration-picker-group">
+                    <span class="duration-picker-label">Sec</span>
+                    <div class="duration-picker-controls">
+                        <button class="duration-picker-btn" data-target="countdownSec" data-delta="10">+</button>
+                        <div class="duration-picker-value" id="countdownSecDisplay">00</div>
+                        <button class="duration-picker-btn" data-target="countdownSec" data-delta="-10">-</button>
+                    </div>
                 </div>
             </div>
-            <span class="duration-picker-separator">:</span>
-            <div class="duration-picker-group">
-                <span class="duration-picker-label">Sec</span>
-                <div class="duration-picker-controls">
-                    <button class="duration-picker-btn" data-target="countdownSec" data-delta="10">+</button>
-                    <div class="duration-picker-value" id="countdownSecDisplay">00</div>
-                    <button class="duration-picker-btn" data-target="countdownSec" data-delta="-10">-</button>
-                </div>
+            <div class="auto-restart-toggle">
+                <label class="toggle">
+                    <input type="checkbox" id="autoRestartToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span>Auto-restart</span>
             </div>
+        </div>
+
+        <div class="interval-structure" id="intervalStructure">
+            <div class="interval-sets" id="intervalSets"></div>
         </div>
 
         <div class="timer-container" id="timerContainer">
@@ -817,7 +942,8 @@
                 pauseBetweenSets: false,
                 soundEnabled: true,
                 countdownMin: 5,
-                countdownSec: 0
+                countdownSec: 0,
+                autoRestart: false
             }
         };
 
@@ -842,6 +968,8 @@
             nextSetInfo: $('nextSetInfo'),
             settingsPanel: $('settingsPanel'),
             countdownSettings: $('countdownSettings'),
+            intervalStructure: $('intervalStructure'),
+            intervalSets: $('intervalSets'),
 
             // Settings inputs
             workDuration: $('workDuration'),
@@ -850,7 +978,8 @@
             pauseBetweenSets: $('pauseBetweenSets'),
             soundEnabled: $('soundEnabled'),
             countdownMinDisplay: $('countdownMinDisplay'),
-            countdownSecDisplay: $('countdownSecDisplay')
+            countdownSecDisplay: $('countdownSecDisplay'),
+            autoRestartToggle: $('autoRestartToggle')
         };
 
         // ===== Audio =====
@@ -927,7 +1056,7 @@
                 return Math.max(1000, total); // At least 1 second
             }
             if (state.mode === 'intervals') {
-                return state.phase === 'work'
+                return (state.phase === 'work' || state.phase === 'ready')
                     ? state.settings.workDuration * 1000
                     : state.settings.restDuration * 1000;
             }
@@ -985,6 +1114,11 @@
             elements.timerContainer.classList.remove('phase-work', 'phase-rest');
             if (isIntervals && state.running) {
                 elements.timerContainer.classList.add(`phase-${state.phase}`);
+            }
+
+            // Update interval structure
+            if (isIntervals) {
+                renderIntervalStructure();
             }
         }
 
@@ -1076,10 +1210,21 @@
             state.phase = 'finished';
             cancelAnimationFrame(animationFrameId);
             playFinishSound();
+            
+            // Auto-restart for countdown mode
+            if (state.mode === 'countdown' && state.settings.autoRestart) {
+                setTimeout(() => {
+                    resetTimer(false);
+                    startTimer();
+                }, 1000);
+                return;
+            }
+            
             elements.startBtn.textContent = 'Start';
             elements.phaseLabel.textContent = 'DONE';
             elements.timerContainer.classList.remove('phase-work', 'phase-rest');
             releaseWakeLock();
+            renderIntervalStructure();
         }
 
         function startTimer() {
@@ -1213,6 +1358,64 @@
                 .join('');
         }
 
+        // ===== Interval Structure =====
+        function renderIntervalStructure() {
+            if (state.mode !== 'intervals') {
+                elements.intervalStructure.classList.remove('show');
+                return;
+            }
+
+            elements.intervalStructure.classList.add('show');
+
+            const sets = [];
+            for (let i = 1; i <= state.settings.numSets; i++) {
+                const segments = [];
+                
+                // Work segment
+                const workCompleted = i < state.currentSet || (i === state.currentSet && state.phase === 'rest');
+                const workActive = i === state.currentSet && state.phase === 'work';
+                segments.push({
+                    type: 'work',
+                    duration: state.settings.workDuration,
+                    completed: workCompleted,
+                    active: workActive
+                });
+                
+                // Rest segment (if rest duration > 0)
+                if (state.settings.restDuration > 0) {
+                    const restCompleted = i < state.currentSet;
+                    const restActive = i === state.currentSet && state.phase === 'rest';
+                    segments.push({
+                        type: 'rest',
+                        duration: state.settings.restDuration,
+                        completed: restCompleted,
+                        active: restActive
+                    });
+                }
+                
+                sets.push({ number: i, segments });
+            }
+
+            elements.intervalSets.innerHTML = sets.map(set => `
+                <div class="interval-set">
+                    ${set.segments.map(seg => `
+                        <div class="interval-segment ${seg.type} ${seg.completed ? 'completed' : ''} ${seg.active ? 'active' : ''}">
+                            ${seg.duration}s
+                        </div>
+                    `).join('')}
+                    <div class="interval-set-label">${set.number}</div>
+                </div>
+            `).join('');
+
+            // Scroll active segment into view
+            setTimeout(() => {
+                const activeSegment = elements.intervalSets.querySelector('.interval-segment.active');
+                if (activeSegment) {
+                    activeSegment.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }, 100);
+        }
+
         // ===== Mode Switching =====
         function setMode(mode) {
             if (state.running) {
@@ -1229,10 +1432,15 @@
             // Show/hide elements based on mode
             elements.lapBtn.style.display = mode === 'stopwatch' ? 'block' : 'none';
             elements.countdownSettings.classList.toggle('show', mode === 'countdown');
+            elements.intervalStructure.classList.toggle('show', mode === 'intervals');
             elements.lapsContainer.style.display = 'none';
 
             // Reset and update display
             resetTimer();
+            
+            if (mode === 'intervals') {
+                renderIntervalStructure();
+            }
         }
 
         // ===== Settings =====
@@ -1252,6 +1460,7 @@
             elements.numSets.value = state.settings.numSets;
             elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
             elements.soundEnabled.checked = state.settings.soundEnabled;
+            elements.autoRestartToggle.checked = state.settings.autoRestart;
             elements.countdownMinDisplay.textContent = state.settings.countdownMin.toString().padStart(2, '0');
             elements.countdownSecDisplay.textContent = state.settings.countdownSec.toString().padStart(2, '0');
         }
@@ -1354,6 +1563,26 @@
             elements.soundEnabled.addEventListener('change', (e) => {
                 state.settings.soundEnabled = e.target.checked;
                 saveSettings();
+            });
+            elements.autoRestartToggle.addEventListener('change', (e) => {
+                state.settings.autoRestart = e.target.checked;
+                saveSettings();
+            });
+
+            // Countdown preset buttons
+            $$('.countdown-preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const totalSeconds = parseInt(btn.dataset.duration);
+                    state.settings.countdownMin = Math.floor(totalSeconds / 60);
+                    state.settings.countdownSec = totalSeconds % 60;
+                    elements.countdownMinDisplay.textContent = state.settings.countdownMin.toString().padStart(2, '0');
+                    elements.countdownSecDisplay.textContent = state.settings.countdownSec.toString().padStart(2, '0');
+                    saveSettings();
+                    if (!state.running && state.phase !== 'paused') {
+                        resetTimer(false);
+                        updateDisplay();
+                    }
+                });
             });
 
             // Countdown duration picker buttons
