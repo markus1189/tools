@@ -4,6 +4,11 @@
       "id": "exercise-timer",
       "title": "Exercise Timer",
       "description": "Stopwatch, countdown, and interval timer for workouts with audio cues"
+    },
+    {
+      "id": "video-delay",
+      "title": "Video Delay",
+      "description": "Compare live and delayed video side-by-side for form checking and movement analysis"
     }
   ]
 }

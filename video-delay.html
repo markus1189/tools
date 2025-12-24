@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Delay</title>
+    <style>
+        :root {
+            --bg: #1a1a1a;
+            --bg-card: #2d2d2d;
+            --border: #404040;
+            --text: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent: #4a9eff;
+            --accent-hover: #6ab0ff;
+            --success: #4caf50;
+            --warning: #ff9800;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-card);
+        }
+
+        .back-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 1.5rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            gap: 0;
+            background: #000;
+            position: relative;
+            min-height: 0;
+        }
+
+        /* Portrait mode - horizontal split (top/bottom) */
+        @media (orientation: portrait) {
+            .video-container {
+                flex-direction: column;
+            }
+        }
+
+        /* Landscape mode - vertical split (side-by-side) */
+        @media (orientation: landscape) {
+            .video-container {
+                flex-direction: row;
+            }
+        }
+
+        .video-view {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            min-height: 0;
+            min-width: 0;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .view-label {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--text);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        .countdown-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--text);
+            padding: 1.5rem 2rem;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            z-index: 10;
+            display: none;
+        }
+
+        .countdown-overlay.active {
+            display: block;
+        }
+
+        .controls {
+            padding: 1rem;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.active {
+            background: var(--success);
+        }
+
+        .icon-button {
+            padding: 0.75rem;
+            font-size: 1.25rem;
+            min-width: 3rem;
+        }
+
+        .delay-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .delay-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 120px;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: none;
+        }
+
+        .delay-value {
+            font-weight: 600;
+            min-width: 2rem;
+            text-align: center;
+        }
+
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: var(--text);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 80%;
+            z-index: 100;
+        }
+
+        .error-message h3 {
+            color: var(--warning);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 1.25rem;
+            }
+
+            .controls {
+                padding: 0.75rem;
+                gap: 0.5rem;
+            }
+
+            button {
+                padding: 0.625rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .icon-button {
+                padding: 0.625rem;
+                min-width: 2.5rem;
+            }
+
+            input[type="range"] {
+                width: 80px;
+            }
+
+            .delay-control {
+                padding: 0.375rem 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <a href="index.html" class="back-link">←</a>
+            <h1>Video Delay</h1>
+        </header>
+
+        <div class="video-container">
+            <div class="video-view">
+                <canvas id="liveCanvas"></canvas>
+                <span class="view-label">LIVE</span>
+            </div>
+            <div class="video-view">
+                <canvas id="delayedCanvas"></canvas>
+                <span class="view-label">DELAYED (<span id="delayAmount">5</span>s)</span>
+                <div id="countdown" class="countdown-overlay"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn">Start Camera</button>
+            <div class="delay-control">
+                <span class="delay-label">Delay:</span>
+                <input type="range" id="delaySlider" min="3" max="10" value="5" step="1">
+                <span class="delay-value"><span id="delayValue">5</span>s</span>
+            </div>
+            <button id="flipCamera" class="icon-button" title="Flip Camera">⟲</button>
+        </div>
+    </div>
+
+    <video id="hiddenVideo" style="display: none;" playsinline autoplay muted></video>
+
+    <script>
+        // Elements
+        const liveCanvas = document.getElementById('liveCanvas');
+        const delayedCanvas = document.getElementById('delayedCanvas');
+        const liveCtx = liveCanvas.getContext('2d', { willReadFrequently: true });
+        const delayedCtx = delayedCanvas.getContext('2d', { willReadFrequently: true });
+        const hiddenVideo = document.getElementById('hiddenVideo');
+        const startBtn = document.getElementById('startBtn');
+        const flipCameraBtn = document.getElementById('flipCamera');
+        const delaySlider = document.getElementById('delaySlider');
+        const delayAmount = document.getElementById('delayAmount');
+        const delayValue = document.getElementById('delayValue');
+        const countdown = document.getElementById('countdown');
+
+        // State
+        let stream = null;
+        let isRunning = false;
+        let isPaused = false;
+        let animationId = null;
+        let frameBuffer = [];
+        let currentFacingMode = 'user'; // 'user' = front, 'environment' = back
+        let delaySec = 5;
+        let fps = 30;
+        let frameInterval = 1000 / fps;
+        let lastFrameTime = 0;
+        let bufferReady = false;
+        let wakeLock = null;
+
+        // Initialize
+        function init() {
+            updateCanvasSizes();
+            window.addEventListener('resize', updateCanvasSizes);
+            window.addEventListener('orientationchange', updateCanvasSizes);
+
+            startBtn.addEventListener('click', toggleCamera);
+            flipCameraBtn.addEventListener('click', flipCamera);
+            delaySlider.addEventListener('input', updateDelay);
+            delaySlider.addEventListener('change', onDelayChange);
+        }
+
+        function updateCanvasSizes() {
+            const container = document.querySelector('.video-container');
+            const rect = container.getBoundingClientRect();
+
+            // Set canvas sizes based on container
+            const width = Math.floor(rect.width / 2);
+            const height = Math.floor(rect.height);
+
+            if (window.matchMedia("(orientation: portrait)").matches) {
+                // Portrait: stack vertically
+                const halfHeight = Math.floor(height / 2);
+                liveCanvas.width = rect.width;
+                liveCanvas.height = halfHeight;
+                delayedCanvas.width = rect.width;
+                delayedCanvas.height = halfHeight;
+            } else {
+                // Landscape: side by side
+                liveCanvas.width = width;
+                liveCanvas.height = height;
+                delayedCanvas.width = width;
+                delayedCanvas.height = height;
+            }
+        }
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+
+                hiddenVideo.srcObject = stream;
+                await hiddenVideo.play();
+
+                isRunning = true;
+                isPaused = false;
+                bufferReady = false;
+                frameBuffer = [];
+
+                startBtn.textContent = 'Pause';
+                startBtn.classList.add('active');
+
+                // Request wake lock to keep screen on
+                requestWakeLock();
+
+                // Show countdown
+                showCountdown();
+
+                // Start render loop
+                render();
+            } catch (error) {
+                console.error('Camera error:', error);
+                showError('Camera access denied or not available. Please check permissions.');
+            }
+        }
+
+        function stopCamera() {
+            isRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+
+            hiddenVideo.srcObject = null;
+            frameBuffer = [];
+            bufferReady = false;
+
+            startBtn.textContent = 'Start Camera';
+            startBtn.classList.remove('active');
+
+            // Release wake lock
+            releaseWakeLock();
+
+            // Clear canvases
+            liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
+            delayedCtx.clearRect(0, 0, delayedCanvas.width, delayedCanvas.height);
+        }
+
+        function toggleCamera() {
+            if (!isRunning) {
+                startCamera();
+            } else if (isPaused) {
+                isPaused = false;
+                startBtn.textContent = 'Pause';
+                render();
+            } else {
+                isPaused = true;
+                startBtn.textContent = 'Resume';
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+            }
+        }
+
+        async function flipCamera() {
+            if (!isRunning) return;
+
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+            // Stop current stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Start new stream
+            await startCamera();
+        }
+
+        function updateDelay(e) {
+            const newDelay = parseInt(e.target.value);
+            delayAmount.textContent = newDelay;
+            delayValue.textContent = newDelay;
+        }
+
+        function onDelayChange(e) {
+            delaySec = parseInt(e.target.value);
+
+            if (isRunning) {
+                // Reset buffer
+                frameBuffer = [];
+                bufferReady = false;
+                showCountdown();
+            }
+        }
+
+        function showCountdown() {
+            const maxFrames = delaySec * fps;
+            countdown.classList.add('active');
+
+            const updateCountdown = () => {
+                const remaining = Math.ceil((maxFrames - frameBuffer.length) / fps);
+                if (remaining > 0) {
+                    countdown.textContent = `Buffering... ${remaining}s`;
+                } else {
+                    countdown.textContent = 'Ready!';
+                    setTimeout(() => {
+                        countdown.classList.remove('active');
+                        bufferReady = true;
+                    }, 500);
+                }
+            };
+
+            updateCountdown();
+
+            // Update countdown periodically
+            const countdownInterval = setInterval(() => {
+                if (!isRunning || bufferReady) {
+                    clearInterval(countdownInterval);
+                    return;
+                }
+                updateCountdown();
+            }, 100);
+        }
+
+        function render(timestamp = 0) {
+            if (!isRunning || isPaused) return;
+
+            const elapsed = timestamp - lastFrameTime;
+
+            if (elapsed >= frameInterval) {
+                lastFrameTime = timestamp;
+
+                if (hiddenVideo.readyState === hiddenVideo.HAVE_ENOUGH_DATA) {
+                    // Determine if mirror mode should be active
+                    const shouldMirror = currentFacingMode === 'user';
+
+                    // Draw live view
+                    drawFrame(liveCtx, liveCanvas, shouldMirror);
+
+                    // Capture frame for buffer (create a copy)
+                    const frameCanvas = document.createElement('canvas');
+                    frameCanvas.width = 320; // Smaller size for buffer
+                    frameCanvas.height = 240;
+                    const frameCtx = frameCanvas.getContext('2d');
+
+                    if (shouldMirror) {
+                        frameCtx.translate(frameCanvas.width, 0);
+                        frameCtx.scale(-1, 1);
+                    }
+
+                    frameCtx.drawImage(
+                        hiddenVideo,
+                        0, 0,
+                        frameCanvas.width,
+                        frameCanvas.height
+                    );
+
+                    // Add to buffer
+                    frameBuffer.push(frameCanvas);
+
+                    // Limit buffer size
+                    const maxFrames = delaySec * fps;
+                    if (frameBuffer.length > maxFrames) {
+                        frameBuffer.shift();
+                    }
+
+                    // Draw delayed view if buffer is ready
+                    if (bufferReady && frameBuffer.length > 0) {
+                        const delayedFrame = frameBuffer[0];
+                        delayedCtx.clearRect(0, 0, delayedCanvas.width, delayedCanvas.height);
+                        delayedCtx.drawImage(
+                            delayedFrame,
+                            0, 0,
+                            delayedCanvas.width,
+                            delayedCanvas.height
+                        );
+                    }
+                }
+            }
+
+            animationId = requestAnimationFrame(render);
+        }
+
+        function drawFrame(ctx, canvas, mirror) {
+            ctx.save();
+
+            if (mirror) {
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+            }
+
+            // Calculate aspect ratio and draw
+            const videoAspect = hiddenVideo.videoWidth / hiddenVideo.videoHeight;
+            const canvasAspect = canvas.width / canvas.height;
+
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (videoAspect > canvasAspect) {
+                // Video is wider
+                drawHeight = canvas.height;
+                drawWidth = drawHeight * videoAspect;
+                offsetX = (canvas.width - drawWidth) / 2;
+                offsetY = 0;
+            } else {
+                // Video is taller
+                drawWidth = canvas.width;
+                drawHeight = drawWidth / videoAspect;
+                offsetX = 0;
+                offsetY = (canvas.height - drawHeight) / 2;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(
+                hiddenVideo,
+                mirror ? -offsetX - drawWidth : offsetX,
+                offsetY,
+                drawWidth,
+                drawHeight
+            );
+
+            ctx.restore();
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `
+                <h3>Error</h3>
+                <p>${message}</p>
+            `;
+            document.body.appendChild(errorDiv);
+
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.log('Wake lock error:', err);
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
+        // Handle visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isRunning) {
+                releaseWakeLock();
+            } else if (!document.hidden && isRunning) {
+                requestWakeLock();
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+        });
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
