@@ -9,6 +9,11 @@
       "id": "video-delay",
       "title": "Video Delay",
       "description": "Compare live and delayed video side-by-side for form checking and movement analysis"
+    },
+    {
+      "id": "stopwatch-media-control",
+      "title": "Stopwatch Media Control",
+      "description": "Control stopwatch using media controls on smartwatch or device (POC)"
     }
   ]
 }

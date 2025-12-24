@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Watch Control Stopwatch</title>
+    <style>
+        :root {
+            --bg: #000;
+            --text: #fff;
+            --accent: #FF9500;
+            --gray: #333;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .time-wrapper { margin-bottom: 2rem; }
+        #timer {
+            font-size: 22vw;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            line-height: 0.9;
+        }
+        @media (min-width: 600px) { #timer { font-size: 8rem; } }
+
+        #ms {
+            font-size: 6vw;
+            color: #888;
+            font-variant-numeric: tabular-nums;
+            display: block;
+            margin-top: 10px;
+        }
+
+        .status-box {
+            background: #1c1c1e;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            max-width: 80%;
+            font-size: 0.9rem;
+            color: #aaa;
+            border: 1px solid #333;
+        }
+        .status-box strong { color: #fff; display: block; margin-bottom: 5px; }
+        .status-box.success { border-color: #32d74b; color: #32d74b; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            max-width: 320px;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        button {
+            flex: 1;
+            padding: 20px;
+            border-radius: 16px;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.96); }
+
+        #btn-init {
+            background: var(--accent);
+            color: #000;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        #btn-reset { background: #333; color: #fff; }
+        #btn-toggle { background: var(--accent); color: #000; }
+
+        audio { display: none; }
+
+        .hidden { display: none !important; }
+        .visible { display: flex !important; }
+
+        /* Debug section */
+        .debug-section {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1a1a1a;
+            border-top: 2px solid #333;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .debug-title {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .debug-log {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #0f0;
+            text-align: left;
+        }
+
+        .debug-log div {
+            padding: 2px 0;
+            border-bottom: 1px solid #222;
+        }
+
+        .debug-log .timestamp {
+            color: #666;
+            margin-right: 8px;
+        }
+
+        .debug-log .action-play { color: #32d74b; }
+        .debug-log .action-pause { color: #ff9500; }
+        .debug-log .action-other { color: #0a84ff; }
+        .debug-log .event-audio { color: #ff453a; }
+
+    </style>
+</head>
+<body>
+
+    <div class="time-wrapper">
+        <div id="timer">00:00</div>
+        <div id="ms">00</div>
+    </div>
+
+    <div id="init-view">
+        <div class="status-box">
+            <strong>Step 1: Activate Watch Control</strong>
+            Tap below to enable media controls on your Felix watch
+        </div>
+        <button id="btn-init">Initialize Media Session</button>
+    </div>
+
+    <div id="control-view" class="hidden" style="flex-direction: column; align-items: center; width: 100%;">
+        <div class="status-box" id="active-status">
+            <strong>Ready for Watch</strong>
+            Previous Track = Reset | Next Track = Toggle Start/Stop
+        </div>
+        <div class="controls">
+            <button id="btn-reset">Reset</button>
+            <button id="btn-toggle">Start</button>
+        </div>
+    </div>
+
+    <audio id="silent-player" loop playsinline></audio>
+
+    <!-- Debug Section -->
+    <div class="debug-section">
+        <div class="debug-title">🔍 DEBUG LOG (Media Controls & Audio Events)</div>
+        <div class="debug-log" id="debugLog"></div>
+    </div>
+
+    <script>
+        // Debug logging
+        const debugLog = document.getElementById('debugLog');
+        const maxLogEntries = 20;
+
+        function addDebugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const entry = document.createElement('div');
+
+            let className = '';
+            if (type === 'play') className = 'action-play';
+            else if (type === 'pause') className = 'action-pause';
+            else if (type === 'other') className = 'action-other';
+            else if (type === 'audio') className = 'event-audio';
+
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span><span class="${className}">${message}</span>`;
+
+            debugLog.insertBefore(entry, debugLog.firstChild);
+
+            // Keep only last N entries
+            while (debugLog.children.length > maxLogEntries) {
+                debugLog.removeChild(debugLog.lastChild);
+            }
+        }
+
+        // Generate silent WAV file in memory
+        function createSilentAudioUrl(seconds = 300) {
+            const sampleRate = 44100;
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const blockAlign = numChannels * bitsPerSample / 8;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = seconds * sampleRate * blockAlign;
+            const chunkSize = 36 + dataSize;
+
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            // RIFF chunk descriptor
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, chunkSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            const blob = new Blob([view], { type: 'audio/wav' });
+            return URL.createObjectURL(blob);
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        // UI References
+        const ui = {
+            initView: document.getElementById('init-view'),
+            controlView: document.getElementById('control-view'),
+            initBtn: document.getElementById('btn-init'),
+            toggleBtn: document.getElementById('btn-toggle'),
+            resetBtn: document.getElementById('btn-reset'),
+            timer: document.getElementById('timer'),
+            ms: document.getElementById('ms'),
+            status: document.getElementById('active-status'),
+            audio: document.getElementById('silent-player')
+        };
+
+        let startTime = 0;
+        let elapsed = 0;
+        let isRunning = false;
+        let rafId;
+        let isOSPause = false;
+
+        // Initialize Audio
+        ui.initBtn.addEventListener('click', async () => {
+            addDebugLog('🎬 Initializing media session...', 'info');
+
+            const silentUrl = createSilentAudioUrl(3600); // 1 hour
+            ui.audio.src = silentUrl;
+
+            try {
+                await ui.audio.play();
+                addDebugLog('✅ Audio started playing', 'audio');
+
+                ui.initView.classList.add('hidden');
+                ui.controlView.classList.add('visible');
+                ui.controlView.style.display = 'flex';
+
+                setupMediaSession();
+                updateMediaMetadata("paused");
+
+                addDebugLog('✅ Media session ready', 'info');
+
+            } catch (err) {
+                addDebugLog('❌ Error: ' + err.message, 'audio');
+                alert("Error: " + err.message);
+            }
+        });
+
+        // Listen to audio element events
+        ui.audio.addEventListener('play', () => {
+            addDebugLog('🔊 AUDIO EVENT: play', 'audio');
+        });
+
+        ui.audio.addEventListener('pause', () => {
+            addDebugLog('🔇 AUDIO EVENT: pause (OS paused audio)', 'audio');
+            isOSPause = true;
+        });
+
+        ui.audio.addEventListener('ended', () => {
+            addDebugLog('⏹️ AUDIO EVENT: ended', 'audio');
+        });
+
+        // Stopwatch Logic
+        function tick() {
+            if (!isRunning) return;
+            const now = Date.now();
+            const total = elapsed + (now - startTime);
+
+            const m = Math.floor(total / 60000);
+            const s = Math.floor((total % 60000) / 1000);
+            const mil = Math.floor((total % 1000) / 10);
+
+            ui.timer.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            ui.ms.textContent = String(mil).padStart(2,'0');
+
+            rafId = requestAnimationFrame(tick);
+        }
+
+        async function start() {
+            if (isRunning) return;
+
+            addDebugLog('▶️ start() function called', 'play');
+
+            // Always restart audio when playing
+            if (ui.audio.paused || isOSPause) {
+                addDebugLog('🔄 Attempting to restart audio...', 'play');
+                try {
+                    await ui.audio.play();
+                    isOSPause = false;
+                    addDebugLog('✅ Audio restarted successfully', 'play');
+                } catch (err) {
+                    addDebugLog('❌ Failed to restart audio: ' + err.message, 'audio');
+                    return;
+                }
+            }
+
+            startTime = Date.now();
+            isRunning = true;
+
+            ui.toggleBtn.textContent = "Stop";
+            ui.status.innerHTML = "<strong>Running...</strong>Prev Track = Reset | Next Track = Toggle";
+            ui.status.classList.add('success');
+
+            updateMediaMetadata("playing");
+            addDebugLog('⏱️ Timer started', 'play');
+
+            tick();
+        }
+
+        function pause() {
+            if (!isRunning) return;
+
+            addDebugLog('⏸️ pause() function called', 'pause');
+
+            elapsed += Date.now() - startTime;
+            isRunning = false;
+            cancelAnimationFrame(rafId);
+
+            ui.toggleBtn.textContent = "Start";
+            ui.status.innerHTML = "<strong>Paused</strong>Prev Track = Reset | Next Track = Toggle";
+            ui.status.classList.remove('success');
+
+            updateMediaMetadata("paused");
+            addDebugLog('⏱️ Timer paused', 'pause');
+        }
+
+        function reset() {
+            addDebugLog('🔄 reset() function called', 'other');
+            pause();
+            elapsed = 0;
+            ui.timer.textContent = "00:00";
+            ui.ms.textContent = "00";
+            ui.toggleBtn.textContent = "Start";
+            addDebugLog('⏱️ Timer reset', 'other');
+        }
+
+        async function toggle() {
+            addDebugLog('🔘 toggle() called - current state: ' + (isRunning ? 'running' : 'paused'), 'other');
+            if (isRunning) {
+                pause();
+            } else {
+                await start();
+            }
+        }
+
+        // Media Session
+        function setupMediaSession() {
+            if ('mediaSession' in navigator) {
+                addDebugLog('📱 Setting up Media Session handlers', 'info');
+
+                navigator.mediaSession.setActionHandler('play', async () => {
+                    addDebugLog('🎮 MEDIA ACTION: play', 'play');
+                    await start();
+                });
+
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    addDebugLog('🎮 MEDIA ACTION: pause', 'pause');
+                    pause();
+                });
+
+                navigator.mediaSession.setActionHandler('previoustrack', () => {
+                    addDebugLog('🎮 MEDIA ACTION: previoustrack → RESET', 'other');
+                    reset();
+                });
+
+                navigator.mediaSession.setActionHandler('nexttrack', async () => {
+                    addDebugLog('🎮 MEDIA ACTION: nexttrack → TOGGLE', 'other');
+                    await toggle();
+                });
+
+                navigator.mediaSession.setActionHandler('stop', () => {
+                    addDebugLog('🎮 MEDIA ACTION: stop', 'other');
+                    pause();
+                });
+
+                navigator.mediaSession.setActionHandler('seekbackward', () => {
+                    addDebugLog('🎮 MEDIA ACTION: seekbackward', 'other');
+                });
+
+                navigator.mediaSession.setActionHandler('seekforward', () => {
+                    addDebugLog('🎮 MEDIA ACTION: seekforward', 'other');
+                });
+
+                addDebugLog('✅ Media Session handlers registered', 'info');
+            } else {
+                addDebugLog('❌ Media Session API not supported', 'info');
+            }
+        }
+
+        function updateMediaMetadata(state) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = state;
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: state === 'playing' ? 'Running' : 'Paused',
+                    artist: ui.timer.textContent,
+                    album: 'Stopwatch',
+                    artwork: [
+                        { src: 'https://via.placeholder.com/512/FF9500/000000?text=⏱️', sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+                addDebugLog(`📊 Metadata updated: playbackState=${state}`, 'info');
+            }
+        }
+
+        // Event Listeners
+        ui.toggleBtn.addEventListener('click', toggle);
+        ui.resetBtn.addEventListener('click', reset);
+
+        // Initial log
+        addDebugLog('🚀 App loaded - waiting for initialization', 'info');
+
+    </script>
+</body>
+</html>
