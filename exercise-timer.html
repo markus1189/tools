@@ -1263,6 +1263,7 @@
                 state.phase = 'paused';
                 cancelAnimationFrame(animationFrameId);
                 elements.startBtn.textContent = 'Resume';
+                updateButtonStates();
                 releaseWakeLock();
             } else {
                 // Start or Resume
@@ -1291,6 +1292,7 @@
                 lastCountdownBeep = -1;
                 animationFrameId = requestAnimationFrame(tick);
                 elements.startBtn.textContent = 'Pause';
+                updateButtonStates();
                 requestWakeLock();
 
                 // Play start beep only on fresh start
@@ -1321,7 +1323,8 @@
                 updateDisplay();
                 renderLaps();
             }
-
+            
+            updateButtonStates();
             releaseWakeLock();
         }
 
@@ -1344,27 +1347,30 @@
         function renderLaps() {
             if (state.mode !== 'stopwatch') {
                 elements.lapsContainer.style.display = 'none';
+                elements.lapsList.innerHTML = '';
                 return;
             }
 
             if (state.laps.length === 0) {
                 elements.lapsContainer.style.display = 'none';
+                elements.lapsList.innerHTML = '';
                 return;
             }
 
             elements.lapsContainer.style.display = 'block';
 
-            // Find best/worst laps
+            // Find best/worst laps (only if more than 1 lap)
             const lapTimes = state.laps.map(l => l.lapTime);
-            const best = Math.min(...lapTimes);
-            const worst = Math.max(...lapTimes);
+            const best = state.laps.length > 1 ? Math.min(...lapTimes) : null;
+            const worst = state.laps.length > 1 ? Math.max(...lapTimes) : null;
 
             elements.lapsList.innerHTML = state.laps
                 .slice()
                 .reverse()
                 .map(lap => {
                     let cls = '';
-                    if (state.laps.length > 2) {
+                    // Only highlight best/worst if there are more than 2 laps
+                    if (state.laps.length > 2 && best !== worst) {
                         if (lap.lapTime === best) cls = 'best';
                         else if (lap.lapTime === worst) cls = 'worst';
                     }
@@ -1456,7 +1462,6 @@
             elements.lapBtn.style.display = mode === 'stopwatch' ? 'block' : 'none';
             elements.countdownSettings.classList.toggle('show', mode === 'countdown');
             elements.intervalStructure.classList.toggle('show', mode === 'intervals');
-            elements.lapsContainer.style.display = 'none';
 
             // Reset and update display
             resetTimer();
@@ -1464,6 +1469,9 @@
             if (mode === 'intervals') {
                 renderIntervalStructure();
             }
+            
+            // Update button states
+            updateButtonStates();
         }
 
         // ===== Settings =====
@@ -1512,6 +1520,18 @@
                 elements.settingsPanel.classList.remove('show');
                 setMode('intervals');
             }
+        }
+
+        // ===== Button State Management =====
+        function updateButtonStates() {
+            // Lap button: only enabled in stopwatch mode when timer is running
+            const canLap = state.mode === 'stopwatch' && state.running;
+            elements.lapBtn.disabled = !canLap;
+            elements.lapBtn.style.opacity = canLap ? '1' : '0.4';
+            
+            // Reset button: disabled when timer is running in intervals/countdown modes
+            const canReset = !state.running || state.mode === 'stopwatch';
+            elements.resetBtn.disabled = !canReset;
         }
 
         // ===== Wake Lock =====
@@ -1663,6 +1683,7 @@
 
             // Initial display
             updateDisplay();
+            updateButtonStates();
         }
 
         init();
