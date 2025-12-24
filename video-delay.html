@@ -535,8 +535,9 @@
 
                     // Capture frame for buffer (create a copy)
                     const frameCanvas = document.createElement('canvas');
+                    const videoAspect = hiddenVideo.videoWidth / hiddenVideo.videoHeight;
                     frameCanvas.width = 320; // Smaller size for buffer
-                    frameCanvas.height = 240;
+                    frameCanvas.height = Math.round(320 / videoAspect);
                     const frameCtx = frameCanvas.getContext('2d');
 
                     if (shouldMirror) {
@@ -564,11 +565,31 @@
                     if (bufferReady && frameBuffer.length > 0) {
                         const delayedFrame = frameBuffer[0];
                         delayedCtx.clearRect(0, 0, delayedCanvas.width, delayedCanvas.height);
+
+                        // Calculate aspect-preserving fit
+                        const frameAspect = delayedFrame.width / delayedFrame.height;
+                        const canvasAspect = delayedCanvas.width / delayedCanvas.height;
+
+                        let drawWidth, drawHeight, offsetX, offsetY;
+
+                        if (frameAspect > canvasAspect) {
+                            drawHeight = delayedCanvas.height;
+                            drawWidth = drawHeight * frameAspect;
+                            offsetX = (delayedCanvas.width - drawWidth) / 2;
+                            offsetY = 0;
+                        } else {
+                            drawWidth = delayedCanvas.width;
+                            drawHeight = drawWidth / frameAspect;
+                            offsetX = 0;
+                            offsetY = (delayedCanvas.height - drawHeight) / 2;
+                        }
+
                         delayedCtx.drawImage(
                             delayedFrame,
-                            0, 0,
-                            delayedCanvas.width,
-                            delayedCanvas.height
+                            offsetX,
+                            offsetY,
+                            drawWidth,
+                            drawHeight
                         );
                     }
                 }
@@ -579,6 +600,7 @@
 
         function drawFrame(ctx, canvas, mirror) {
             ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (mirror) {
                 ctx.translate(canvas.width, 0);
@@ -605,10 +627,9 @@
                 offsetY = (canvas.height - drawHeight) / 2;
             }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(
                 hiddenVideo,
-                mirror ? -offsetX - drawWidth : offsetX,
+                offsetX,
                 offsetY,
                 drawWidth,
                 drawHeight
