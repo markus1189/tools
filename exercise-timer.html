@@ -905,12 +905,21 @@
             </div>
 
             <div class="settings-section">
-                <h3>Audio</h3>
+                <h3>Audio & Haptics</h3>
                 <div class="setting-row">
                     <span class="setting-label">Sound Effects</span>
                     <div class="setting-input">
                         <label class="toggle">
                             <input type="checkbox" id="soundEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Vibration</span>
+                    <div class="setting-input">
+                        <label class="toggle">
+                            <input type="checkbox" id="vibrationEnabled" checked>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -941,6 +950,7 @@
                 numSets: 5,
                 pauseBetweenSets: false,
                 soundEnabled: true,
+                vibrationEnabled: true,
                 countdownMin: 5,
                 countdownSec: 0,
                 autoRestart: false
@@ -977,12 +987,13 @@
             numSets: $('numSets'),
             pauseBetweenSets: $('pauseBetweenSets'),
             soundEnabled: $('soundEnabled'),
+            vibrationEnabled: $('vibrationEnabled'),
             countdownMinDisplay: $('countdownMinDisplay'),
             countdownSecDisplay: $('countdownSecDisplay'),
             autoRestartToggle: $('autoRestartToggle')
         };
 
-        // ===== Audio =====
+        // ===== Audio & Vibration =====
         let audioCtx = null;
 
         function getAudioContext() {
@@ -990,6 +1001,13 @@
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
             return audioCtx;
+        }
+
+        function vibrate(pattern) {
+            if (!state.settings.vibrationEnabled) return;
+            if ('vibrate' in navigator) {
+                navigator.vibrate(pattern);
+            }
         }
 
         function playBeep(freq = 800, duration = 0.1, type = 'sine') {
@@ -1019,17 +1037,20 @@
 
         function playCountdownBeep() {
             playBeep(600, 0.08);
+            vibrate(50); // Short vibration
         }
 
         function playTransitionBeep() {
             playBeep(880, 0.15);
             setTimeout(() => playBeep(1100, 0.2), 150);
+            vibrate([100, 50, 100]); // Double pulse
         }
 
         function playFinishSound() {
             playBeep(880, 0.15);
             setTimeout(() => playBeep(1100, 0.15), 150);
             setTimeout(() => playBeep(1320, 0.3), 300);
+            vibrate([200, 100, 200, 100, 200]); // Triple pulse
         }
 
         // ===== Timer Logic =====
@@ -1275,6 +1296,7 @@
                 // Play start beep only on fresh start
                 if (!isResume && state.elapsed === 0) {
                     playBeep(660, 0.1);
+                    vibrate(50); // Start vibration
                 }
             }
         }
@@ -1315,6 +1337,7 @@
             state.lastLapTime = state.elapsed;
 
             playBeep(500, 0.05);
+            vibrate(30); // Quick tap
             renderLaps();
         }
 
@@ -1460,6 +1483,7 @@
             elements.numSets.value = state.settings.numSets;
             elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
             elements.soundEnabled.checked = state.settings.soundEnabled;
+            elements.vibrationEnabled.checked = state.settings.vibrationEnabled;
             elements.autoRestartToggle.checked = state.settings.autoRestart;
             elements.countdownMinDisplay.textContent = state.settings.countdownMin.toString().padStart(2, '0');
             elements.countdownSecDisplay.textContent = state.settings.countdownSec.toString().padStart(2, '0');
@@ -1563,6 +1587,14 @@
             elements.soundEnabled.addEventListener('change', (e) => {
                 state.settings.soundEnabled = e.target.checked;
                 saveSettings();
+            });
+            elements.vibrationEnabled.addEventListener('change', (e) => {
+                state.settings.vibrationEnabled = e.target.checked;
+                saveSettings();
+                // Test vibration when toggled on
+                if (e.target.checked) {
+                    vibrate(50);
+                }
             });
             elements.autoRestartToggle.addEventListener('change', (e) => {
                 state.settings.autoRestart = e.target.checked;
