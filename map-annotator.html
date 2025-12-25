@@ -575,9 +575,11 @@
                 overlay.appendChild(line);
 
                 // Arrow head
+                const ARROW_HEAD_LENGTH_MULTIPLIER = 3;
+                const ARROW_HEAD_ANGLE_RADIANS = Math.PI / 6;
                 const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                const headLength = width * 3;
-                const headAngle = Math.PI / 6;
+                const headLength = width * ARROW_HEAD_LENGTH_MULTIPLIER;
+                const headAngle = ARROW_HEAD_ANGLE_RADIANS;
 
                 const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 const x1 = end.x - headLength * Math.cos(angle - headAngle);
