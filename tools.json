@@ -14,6 +14,11 @@
       "id": "stopwatch-media-control",
       "title": "Stopwatch Media Control",
       "description": "Control stopwatch using media controls on smartwatch or device (POC)"
+    },
+    {
+      "id": "map-annotator",
+      "title": "Map Annotator",
+      "description": "Annotate maps with drawings, shapes, and markers, shareable via link"
     }
   ]
 }

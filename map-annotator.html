@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Map Annotator</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Leaflet-Geoman CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #f97316;
+            --accent-dim: #c2410c;
+            --danger: #ef4444;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            z-index: 1000;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .menu-btn:hover {
+            color: var(--accent);
+        }
+
+        /* Map Container */
+        #map {
+            flex: 1;
+            position: relative;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 280px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-close-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .sidebar-close-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text);
+        }
+
+        .item-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .item-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: background 0.2s ease;
+            position: relative;
+        }
+
+        .item-item:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .item-item.active {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+        }
+
+        .item-item-title {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-item-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .item-item-actions {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .item-item:hover .item-item-actions,
+        .item-item.active .item-item-actions {
+            opacity: 1;
+        }
+
+        .delete-item-btn {
+            background: var(--danger);
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .delete-item-btn:hover {
+            opacity: 0.8;
+        }
+
+        .sidebar-footer {
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .new-item-btn {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        .new-item-btn:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            display: none;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Floating Controls */
+        .controls {
+            position: absolute;
+            bottom: 2rem;
+            right: 1rem;
+            z-index: 400;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .control-group {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* Basemap Switcher */
+        .basemap-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .basemap-btn {
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            border-radius: 0.25rem;
+            font-size: 0.85rem;
+            transition: background 0.2s ease;
+        }
+
+        .basemap-btn:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .basemap-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* Locate Button */
+        .locate-btn {
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            border-radius: 0.25rem;
+            font-size: 0.85rem;
+            transition: background 0.2s ease;
+            width: 100%;
+        }
+
+        .locate-btn:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .locate-btn.locating {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            cursor: wait;
+        }
+
+        .locate-btn.success {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: white;
+        }
+
+        .locate-btn.error {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+
+        /* Color Picker */
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .color-btn {
+            width: 2rem;
+            height: 2rem;
+            border: 2px solid var(--border);
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: var(--text);
+            box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--accent);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            border-radius: 0.25rem;
+            font-size: 0.85rem;
+            transition: background 0.2s ease;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: var(--bg-card-hover);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .action-btn.danger {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .action-btn.danger:hover:not(:disabled) {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Share Footer */
+        .share-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: center;
+            z-index: 500;
+            gap: 0.75rem;
+        }
+
+        .share-box {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .share-box-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .share-box-input {
+            flex: 1;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            border-radius: 0.25rem;
+            padding: 0.5rem 0.75rem;
+            font-family: ui-monospace, monospace;
+            font-size: 0.8rem;
+        }
+
+        .share-box-copy-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            border: 1px solid var(--border);
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .share-box-copy-btn:hover {
+            background: var(--accent-dim);
+        }
+
+        .share-box-copy-btn.copied {
+            background: #22c55e;
+        }
+
+        /* Leaflet overrides for dark theme */
+        .leaflet-container {
+            background: #1a1a1a;
+        }
+
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            background: var(--bg-card);
+            color: var(--text);
+        }
+
+        .leaflet-control-layers {
+            background: var(--bg-card);
+            color: var(--text);
+        }
+
+        /* Geoman toolbar dark theme */
+        .leaflet-pm-toolbar {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        .leaflet-pm-action {
+            background: var(--bg) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text) !important;
+        }
+
+        .leaflet-pm-action:hover {
+            background: var(--bg-card-hover) !important;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 640px) {
+            .controls {
+                bottom: 5rem;
+                right: 0.5rem;
+            }
+
+            .control-group {
+                padding: 0.5rem;
+            }
+
+            .color-palette {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .share-box {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <a href="index.html" class="back-link">← Back</a>
+            <h1 id="pageTitle">Map Annotator</h1>
+            <div class="header-right">
+                <button class="menu-btn" id="menuBtn">☰</button>
+            </div>
+        </header>
+
+        <div id="map"></div>
+
+        <!-- Floating Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-label">Basemap</div>
+                <div class="basemap-buttons">
+                    <button class="basemap-btn active" data-basemap="osm">Street Map</button>
+                    <button class="basemap-btn" data-basemap="satellite">Satellite</button>
+                    <button class="basemap-btn" data-basemap="terrain">Terrain</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">Location</div>
+                <button class="locate-btn" id="locateBtn">📍 Locate Me</button>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">Colors</div>
+                <div class="color-palette">
+                    <div class="color-btn active" style="background: #ef4444;" data-color="#ef4444"></div>
+                    <div class="color-btn" style="background: #f97316;" data-color="#f97316"></div>
+                    <div class="color-btn" style="background: #eab308;" data-color="#eab308"></div>
+                    <div class="color-btn" style="background: #22c55e;" data-color="#22c55e"></div>
+                    <div class="color-btn" style="background: #3b82f6;" data-color="#3b82f6"></div>
+                    <div class="color-btn" style="background: #a855f7;" data-color="#a855f7"></div>
+                    <div class="color-btn" style="background: #ffffff;" data-color="#ffffff"></div>
+                    <div class="color-btn" style="background: #000000;" data-color="#000000"></div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">Actions</div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="undoBtn" disabled>↶ Undo</button>
+                    <button class="action-btn" id="redoBtn" disabled>↷ Redo</button>
+                    <button class="action-btn danger" id="clearBtn">Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span>Maps</span>
+                <button class="sidebar-close-btn" id="sidebarCloseBtn">×</button>
+            </div>
+            <div class="item-list" id="itemList"></div>
+            <div class="sidebar-footer">
+                <button class="new-item-btn" id="newItemBtn">+ New Map</button>
+            </div>
+        </div>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Share Footer -->
+        <div class="share-footer">
+            <div class="share-box">
+                <span class="share-box-label">Share:</span>
+                <input type="text" class="share-box-input" id="shareInput" readonly>
+                <button class="share-box-copy-btn" id="shareCopyBtn">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Leaflet-Geoman JS -->
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js"></script>
+
+    <script type="module">
+// Inlined lost.js library (ES6 module)
+class Lost extends EventTarget {
+  constructor(config) {
+    super();
+    this.storageKey = config.storageKey || 'lost-store-v1';
+    this.currentKey = config.currentKey || 'lost-current-v1';
+    this.defaultData = config.defaultData || {};
+    this.validator = config.validator || (() => true);
+    this.filter = config.filter || Lost.defaultFilter;
+    this.compressionMethod = config.compressionMethod || 'deflate';
+
+    this.download = config.download || 'auto';
+    this.fileExtension = config.fileExtension || 'lost';
+    this.downloadFormat = config.downloadFormat || 'binary';
+    this.maxUrlSize = config.maxUrlSize || 8192;
+    this.urlShare = config.urlShare || 'auto';
+
+    this.items = {};
+    this.currentId = null;
+
+    this.currentHash = '';
+    this.pendingHashCheck = false;
+    this.ignoreHashes = new Set();
+  }
+
+  static generateId() {
+    return 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  static deepEqual(obj1, obj2) {
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null) return false;
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
+
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (const key of keys1) {
+      if (!keys2.includes(key)) return false;
+      if (!Lost.deepEqual(obj1[key], obj2[key])) return false;
+    }
+
+    return true;
+  }
+
+  static defaultFilter(obj) {
+    if (typeof obj !== 'object' || obj === null) return obj;
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => Lost.defaultFilter(item));
+    }
+
+    const result = {};
+    for (const key of Object.keys(obj)) {
+      if (!key.startsWith('_')) {
+        result[key] = Lost.defaultFilter(obj[key]);
+      }
+    }
+    return result;
+  }
+
+  static async compress(string, encoding = 'gzip') {
+    const byteArray = new TextEncoder().encode(string);
+    const cs = new CompressionStream(encoding);
+    const writer = cs.writable.getWriter();
+    writer.write(byteArray);
+    writer.close();
+    return new Response(cs.readable).arrayBuffer();
+  }
+
+  static async decompress(byteArray, encoding = 'gzip') {
+    const cs = new DecompressionStream(encoding);
+    const writer = cs.writable.getWriter();
+    writer.write(byteArray);
+    writer.close();
+    return new Response(cs.readable).arrayBuffer().then(function (arrayBuffer) {
+      return new TextDecoder().decode(arrayBuffer);
+    });
+  }
+
+  static arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  }
+
+  async encode(data) {
+    try {
+      const filteredData = this.filter(data);
+      const json = JSON.stringify(filteredData);
+      let base64;
+
+      if(this.compressionMethod === 'none'){
+        base64 = btoa(unescape(encodeURIComponent(json)));
+      }
+      else {
+        const compressed = await Lost.compress(json, this.compressionMethod);
+        base64 = Lost.arrayBufferToBase64(compressed);
+      }
+
+      let prefix = '';
+      if (this.compressionMethod == 'gzip') prefix = '$';
+      if (this.compressionMethod == 'deflate') prefix = '!';
+
+      return prefix + base64;
+    } catch (e) {
+      console.error('Failed to encode data:', e);
+      return null;
+    }
+  }
+
+  async decode(base64) {
+    try {
+      let json;
+      if (base64.startsWith('$') || base64.startsWith('!')) {
+        const method = base64.startsWith('$') ? 'gzip' : 'deflate';
+        const compressedBase64 = base64.slice(1);
+        const binaryString = atob(compressedBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        json = await Lost.decompress(bytes, method);
+      } else {
+        json = decodeURIComponent(escape(atob(base64)));
+      }
+
+      const data = JSON.parse(json);
+      if (!this.validator(data)) return null;
+      return data;
+    } catch (e) {
+      console.error('Failed to decode data:', e);
+      return null;
+    }
+  }
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) {
+        const id = Lost.generateId();
+        this.items = {
+            [id]: { id, ...this.defaultData }
+        };
+        this.currentId = id;
+        this.save();
+        return;
+      }
+
+      this.items = JSON.parse(raw);
+
+      let currentId = this.getQueryKey();
+      if (!currentId) {
+        currentId = localStorage.getItem(this.currentKey);
+      }
+
+      if (currentId && this.items[currentId]) {
+        this.currentId = currentId;
+      } else {
+        const ids = Object.keys(this.items);
+        this.currentId = ids.length > 0 ? ids[0] : null;
+        if (!this.currentId) {
+            const id = Lost.generateId();
+            this.items[id] = { id, ...this.defaultData };
+            this.currentId = id;
+        }
+      }
+    } catch (e) {
+      console.error('Error loading state:', e);
+      const id = Lost.generateId();
+      this.items = { [id]: { id, ...this.defaultData } };
+      this.currentId = id;
+    }
+
+    this.initUrlHandling();
+    this.notify();
+  }
+
+  save() {
+    localStorage.setItem(this.storageKey, JSON.stringify(this.items));
+    localStorage.setItem(this.currentKey, this.currentId);
+  }
+
+  notify() {
+    this.dispatchEvent(new CustomEvent('update', { detail: this.getCurrent() }));
+    if (this.currentHash !== undefined) {
+      this.updateURL();
+    }
+  }
+
+  getAll() {
+    return this.items;
+  }
+
+  getItem(id) {
+    return this.items[id] || null;
+  }
+
+  getCurrent() {
+    return this.items[this.currentId] || null;
+  }
+
+  setCurrent(id) {
+    if (this.items[id] && id !== this.currentId) {
+      this.currentId = id;
+      this.save();
+      this.notify();
+    }
+  }
+
+  create(data) {
+    let id = Lost.generateId();
+    if(data.id) {
+      id = data.id;
+      delete data.id;
+    }
+
+    this.items[id] = { id, ...data };
+    this.setCurrent(id);
+    return id;
+  }
+
+  update(id, data, notify = true) {
+    if (this.items[id]) {
+      this.items[id] = { ...this.items[id], ...data };
+      this.save();
+      if (notify) this.notify();
+      else if (this.currentHash !== undefined) {
+        this.updateURL();
+      }
+    }
+  }
+
+  delete(id) {
+    const ids = Object.keys(this.items);
+    if (ids.length <= 1) {
+      return false;
+    }
+
+    delete this.items[id];
+
+    if (id === this.currentId) {
+      const remainingIds = Object.keys(this.items);
+      this.setCurrent(remainingIds[0]);
+    } else {
+      this.save();
+      this.notify();
+    }
+    return true;
+  }
+
+  getShareStatus(length) {
+    let canShare = true;
+    if (this.urlShare === 'no') canShare = false;
+    else if (this.urlShare === 'auto') canShare = length <= this.maxUrlSize;
+
+    let offerDownload = false;
+    if (this.download === 'yes') offerDownload = true;
+    else if (this.download === 'no') offerDownload = false;
+    else if (this.download === 'auto') offerDownload = length > this.maxUrlSize;
+
+    if (!canShare && this.download !== 'no') {
+        offerDownload = true;
+    }
+
+    return { canShare, offerDownload };
+  }
+
+  getQueryKey() {
+    const query = window.location.search.slice(1);
+    if (!query) return null;
+
+    const ids = Object.keys(this.items);
+    for (const id of ids) {
+      const token = id.split('_').pop();
+      if (token === query) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  buildShareUrl(id, hash, tokenStr = null) {
+    const token = tokenStr || (id ? id.split('_').pop() : '');
+    const baseUrl = window.location.origin + window.location.pathname;
+    const query = token ? '?' + token : '';
+    return {
+      url: baseUrl + query + '#' + hash,
+      token
+    };
+  }
+
+  async importFromHash(hash) {
+    if (!hash) return null;
+
+    const data = await this.decode(hash);
+    if (!data || !data.id) return null;
+
+    const existing = this.items[data.id];
+    if (existing && Lost.deepEqual(this.filter(existing), this.filter(data))) {
+        this.setCurrent(data.id);
+        return { status: 'exists_identical', id: data.id };
+    }
+
+    if (existing) {
+        return { status: 'exists_diff', data, existing };
+    }
+
+    return { status: 'new', data };
+  }
+
+  async importAndConfirm(hash) {
+      const result = await this.importFromHash(hash);
+      if (!result) return false;
+
+      if (result.status === 'exists_identical') {
+          return true;
+      }
+
+      const message = result.existing
+        ? `"${result.data.title}" already exists. Do you want to update it?`
+        : `Do you want to import: "${result.data.title}"`;
+      const shouldImport = confirm(message);
+
+      if (shouldImport) {
+          if (result.existing) {
+            this.update(result.data.id, result.data);
+          } else {
+            this.create(result.data);
+          }
+          this.setCurrent(result.data.id);
+          return true;
+      }
+      return false;
+  }
+
+  async getShareUrl(id) {
+    const item = this.getItem(id);
+    if (!item) return null;
+
+    const encoded = await this.encode(item);
+    if (!encoded) return null;
+
+    const { url } = this.buildShareUrl(item.id, encoded);
+    return url;
+  }
+
+  initUrlHandling() {
+    this.pendingHashCheck = !!window.location.hash;
+
+    window.addEventListener('load', () => {
+      setTimeout(async () => {
+        await this.checkAndImportFromUrl();
+        await this.updateURL();
+      }, 100);
+    });
+
+    window.addEventListener('hashchange', () => this.checkAndImportFromUrl());
+  }
+
+  async checkAndImportFromUrl() {
+    this.pendingHashCheck = false;
+    const hash = window.location.hash.slice(1);
+
+    if (!hash) {
+      if (!this.currentHash) await this.updateURL();
+      return;
+    }
+
+    if (this.ignoreHashes.has(hash)) return;
+
+    if (hash === this.currentHash) return;
+
+    const current = this.getCurrent();
+    if (current) {
+      const currentEncoded = await this.encode(current);
+      if (hash === currentEncoded) {
+        this.currentHash = hash;
+        return;
+      }
+    }
+
+    await this.importAndConfirm(hash);
+    await this.updateURL();
+  }
+
+  async updateURL() {
+    const item = this.getCurrent();
+    if (!item) return;
+
+    const encoded = await this.encode(item);
+    if (!encoded) {
+      this.dispatchEvent(new CustomEvent('updateUrl', {
+        detail: { url: '', hash: '', canShare: false, offerDownload: false }
+      }));
+      return;
+    }
+
+    const len = encoded.length;
+    const { canShare: shouldUpdateUrl, offerDownload } = this.getShareStatus(len);
+
+    const { url, token } = this.buildShareUrl(item.id, encoded);
+
+    this.dispatchEvent(new CustomEvent('updateUrl', { detail: {
+        url: shouldUpdateUrl ? url : null,
+        fullUrl: url,
+        hash: encoded,
+        canShare: shouldUpdateUrl,
+        offerDownload: offerDownload,
+        fileExtension: this.fileExtension
+    }}));
+
+    if (!shouldUpdateUrl) {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const query = token ? '?' + token : '';
+        const cleanUrl = baseUrl + query;
+
+        if (window.location.hash) {
+             window.history.replaceState(null, '', cleanUrl);
+             this.currentHash = '';
+        }
+        return;
+    }
+
+    if (this.pendingHashCheck && window.location.hash.slice(1) !== encoded) {
+      return;
+    }
+
+    this.currentHash = encoded;
+    const currentSearch = window.location.search.slice(1);
+    const needsUpdate = window.location.hash.slice(1) !== encoded || currentSearch !== (token || '');
+
+    if (needsUpdate) {
+      this.ignoreHashes.add(encoded);
+      setTimeout(() => this.ignoreHashes.delete(encoded), 2000);
+
+      if (window.location.hash.slice(1) !== encoded) {
+        window.location.hash = encoded;
+      }
+      setTimeout(() => {
+        window.history.replaceState(null, '', url);
+      }, 0);
+    }
+  }
+}
+
+// Application state
+let map;
+let lost;
+let currentColor = '#ef4444';
+let currentBasemap = 'osm';
+let basemapLayers = {};
+let locationMarkerLayer = null;
+
+// History management for undo/redo
+let annotationHistory = [];
+let historyIndex = -1;
+let isRestoringFromHistory = false;
+const MAX_HISTORY = 50;
+
+// Initialize Lost state management
+function initLost() {
+    lost = new Lost({
+        storageKey: 'map-annotator-v1',
+        defaultData: {
+            title: 'Untitled Map',
+            mapState: {
+                center: [51.505, -0.09],
+                zoom: 13,
+                basemap: 'osm'
+            },
+            annotations: [],
+            createdAt: Date.now()
+        }
+    });
+
+    lost.addEventListener('update', (e) => {
+        const item = e.detail;
+        if (item) {
+            updateFromState(item);
+            updateSidebar();
+        }
+    });
+
+    lost.addEventListener('updateUrl', (e) => {
+        const { url, canShare } = e.detail;
+        const shareInput = document.getElementById('shareInput');
+        if (canShare && url) {
+            shareInput.value = url;
+        } else {
+            shareInput.value = 'Map too large for URL sharing';
+        }
+    });
+
+    lost.load();
+}
+
+// Initialize Leaflet map
+function initMap() {
+    map = L.map('map').setView([51.505, -0.09], 13);
+
+    // Initialize basemap layers
+    basemapLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    });
+
+    basemapLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri',
+        maxZoom: 19
+    });
+
+    basemapLayers.terrain = L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg', {
+        attribution: '© Stamen Design, © OpenStreetMap contributors',
+        maxZoom: 18
+    });
+
+    basemapLayers.osm.addTo(map);
+
+    // Initialize Geoman drawing tools
+    map.pm.addControls({
+        position: 'topleft',
+        drawMarker: true,
+        drawCircle: true,
+        drawCircleMarker: true,
+        drawPolygon: true,
+        drawPolyline: true,
+        drawRectangle: true,
+        editMode: true,
+        dragMode: false,
+        cutPolygon: false,
+        removalMode: true
+    });
+
+    // Listen to map movements
+    map.on('moveend', saveMapState);
+    map.on('zoomend', saveMapState);
+
+    // Listen to Geoman events
+    map.on('pm:create', (e) => {
+        const layer = e.layer;
+
+        // Apply current color
+        if (layer.setStyle) {
+            layer.setStyle({ color: currentColor, fillColor: currentColor });
+        }
+
+        // Add to annotations
+        saveAnnotations();
+    });
+
+    map.on('pm:edit', () => saveAnnotations());
+    map.on('pm:remove', () => saveAnnotations());
+
+    // Set default Geoman style
+    map.pm.setGlobalOptions({
+        pathOptions: {
+            color: currentColor,
+            fillColor: currentColor,
+            fillOpacity: 0.4
+        }
+    });
+}
+
+// Save map state (center, zoom, basemap)
+function saveMapState() {
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const current = lost.getCurrent();
+
+    if (current) {
+        lost.update(current.id, {
+            mapState: {
+                center: [center.lat, center.lng],
+                zoom: zoom,
+                basemap: currentBasemap
+            }
+        }, false);
+    }
+}
+
+// Save annotations to state
+function saveAnnotations() {
+    const layers = [];
+    map.eachLayer((layer) => {
+        if (layer.toGeoJSON && layer.pm) {
+            const geojson = layer.toGeoJSON();
+
+            // Store style info
+            if (layer.options) {
+                geojson.properties = geojson.properties || {};
+                geojson.properties.color = layer.options.color || currentColor;
+                geojson.properties.fillColor = layer.options.fillColor || currentColor;
+            }
+
+            layers.push(geojson);
+        }
+    });
+
+    const current = lost.getCurrent();
+    if (current) {
+        lost.update(current.id, { annotations: layers }, false);
+    }
+
+    // Push to history if not restoring
+    if (!isRestoringFromHistory) {
+        pushToHistory(layers);
+    }
+}
+
+// History management functions
+function pushToHistory(annotations) {
+    // Remove any future history if we're not at the end
+    if (historyIndex < annotationHistory.length - 1) {
+        annotationHistory = annotationHistory.slice(0, historyIndex + 1);
+    }
+
+    // Add new state to history
+    annotationHistory.push(JSON.parse(JSON.stringify(annotations)));
+
+    // Limit history size
+    if (annotationHistory.length > MAX_HISTORY) {
+        annotationHistory.shift();
+    } else {
+        historyIndex++;
+    }
+
+    updateHistoryButtons();
+}
+
+function undo() {
+    if (historyIndex <= 0) return;
+
+    historyIndex--;
+    restoreFromHistory();
+}
+
+function redo() {
+    if (historyIndex >= annotationHistory.length - 1) return;
+
+    historyIndex++;
+    restoreFromHistory();
+}
+
+function restoreFromHistory() {
+    if (historyIndex < 0 || historyIndex >= annotationHistory.length) return;
+
+    isRestoringFromHistory = true;
+
+    const annotations = annotationHistory[historyIndex];
+
+    // Clear existing annotations
+    map.eachLayer((layer) => {
+        if (layer.pm && layer !== locationMarkerLayer) {
+            map.removeLayer(layer);
+        }
+    });
+
+    // Restore annotations from history
+    if (annotations && annotations.length > 0) {
+        annotations.forEach((geojson) => {
+            const layer = L.geoJSON(geojson, {
+                style: (feature) => {
+                    return {
+                        color: feature.properties?.color || '#ef4444',
+                        fillColor: feature.properties?.fillColor || '#ef4444',
+                        fillOpacity: 0.4
+                    };
+                },
+                pointToLayer: (feature, latlng) => {
+                    if (feature.geometry.type === 'Point') {
+                        return L.circleMarker(latlng, {
+                            radius: 8,
+                            color: feature.properties?.color || '#ef4444',
+                            fillColor: feature.properties?.fillColor || '#ef4444',
+                            fillOpacity: 0.4
+                        });
+                    }
+                }
+            });
+
+            layer.addTo(map);
+
+            // Make layer editable with Geoman
+            layer.eachLayer((l) => {
+                if (l.pm) {
+                    l.pm.enable();
+                }
+            });
+        });
+    }
+
+    // Update state
+    const current = lost.getCurrent();
+    if (current) {
+        lost.update(current.id, { annotations: annotations }, false);
+    }
+
+    isRestoringFromHistory = false;
+    updateHistoryButtons();
+}
+
+function clearAllAnnotations() {
+    if (!confirm('Clear all annotations? This action cannot be undone.')) {
+        return;
+    }
+
+    // Clear all layers with pm (Geoman layers)
+    map.eachLayer((layer) => {
+        if (layer.pm && layer !== locationMarkerLayer) {
+            map.removeLayer(layer);
+        }
+    });
+
+    saveAnnotations();
+}
+
+function updateHistoryButtons() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+
+    if (undoBtn) {
+        undoBtn.disabled = historyIndex <= 0;
+        undoBtn.style.opacity = historyIndex <= 0 ? '0.5' : '1';
+        undoBtn.style.cursor = historyIndex <= 0 ? 'not-allowed' : 'pointer';
+    }
+
+    if (redoBtn) {
+        redoBtn.disabled = historyIndex >= annotationHistory.length - 1;
+        redoBtn.style.opacity = historyIndex >= annotationHistory.length - 1 ? '0.5' : '1';
+        redoBtn.style.cursor = historyIndex >= annotationHistory.length - 1 ? 'not-allowed' : 'pointer';
+    }
+}
+
+// Update map from state
+function updateFromState(item) {
+    if (!item) return;
+
+    // Update title
+    document.getElementById('pageTitle').textContent = item.title || 'Untitled Map';
+
+    // Update map view
+    if (item.mapState) {
+        const { center, zoom, basemap } = item.mapState;
+        if (center && zoom) {
+            map.setView(center, zoom);
+        }
+        if (basemap && basemap !== currentBasemap) {
+            switchBasemap(basemap);
+        }
+    }
+
+    // Clear existing annotations
+    map.eachLayer((layer) => {
+        if (layer.pm) {
+            map.removeLayer(layer);
+        }
+    });
+
+    // Restore annotations
+    if (item.annotations && item.annotations.length > 0) {
+        item.annotations.forEach((geojson) => {
+            const layer = L.geoJSON(geojson, {
+                style: (feature) => {
+                    return {
+                        color: feature.properties?.color || '#ef4444',
+                        fillColor: feature.properties?.fillColor || '#ef4444',
+                        fillOpacity: 0.4
+                    };
+                },
+                pointToLayer: (feature, latlng) => {
+                    if (feature.geometry.type === 'Point') {
+                        return L.circleMarker(latlng, {
+                            radius: 8,
+                            color: feature.properties?.color || '#ef4444',
+                            fillColor: feature.properties?.fillColor || '#ef4444',
+                            fillOpacity: 0.4
+                        });
+                    }
+                }
+            });
+
+            layer.addTo(map);
+
+            // Make layer editable with Geoman
+            layer.eachLayer((l) => {
+                if (l.pm) {
+                    l.pm.enable();
+                }
+            });
+        });
+    }
+
+    // Reset and initialize history with current annotations
+    isRestoringFromHistory = true;
+    annotationHistory = [JSON.parse(JSON.stringify(item.annotations || []))];
+    historyIndex = 0;
+    isRestoringFromHistory = false;
+    updateHistoryButtons();
+}
+
+// Switch basemap
+function switchBasemap(basemap) {
+    // Remove current basemap
+    if (basemapLayers[currentBasemap]) {
+        map.removeLayer(basemapLayers[currentBasemap]);
+    }
+
+    // Add new basemap
+    if (basemapLayers[basemap]) {
+        basemapLayers[basemap].addTo(map);
+        currentBasemap = basemap;
+
+        // Update button states
+        document.querySelectorAll('.basemap-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.basemap === basemap);
+        });
+
+        // Save to state
+        saveMapState();
+    }
+}
+
+// Update sidebar
+function updateSidebar() {
+    const itemList = document.getElementById('itemList');
+    itemList.innerHTML = '';
+
+    const items = lost.getAll();
+    const currentId = lost.currentId;
+
+    Object.values(items).forEach((item) => {
+        const div = document.createElement('div');
+        div.className = 'item-item';
+        if (item.id === currentId) {
+            div.classList.add('active');
+        }
+
+        const title = document.createElement('div');
+        title.className = 'item-item-title';
+        title.textContent = item.title || 'Untitled Map';
+
+        const count = document.createElement('div');
+        count.className = 'item-item-count';
+        count.textContent = `${item.annotations?.length || 0} annotations`;
+
+        const actions = document.createElement('div');
+        actions.className = 'item-item-actions';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-item-btn';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete "${item.title}"?`)) {
+                lost.delete(item.id);
+            }
+        };
+
+        actions.appendChild(deleteBtn);
+
+        div.appendChild(title);
+        div.appendChild(count);
+        div.appendChild(actions);
+
+        div.onclick = () => {
+            lost.setCurrent(item.id);
+            toggleSidebar();
+        };
+
+        itemList.appendChild(div);
+    });
+}
+
+// Toggle sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const isOpen = sidebar.classList.contains('open');
+
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+}
+
+// Event listeners
+document.getElementById('menuBtn').addEventListener('click', toggleSidebar);
+document.getElementById('sidebarCloseBtn').addEventListener('click', toggleSidebar);
+document.getElementById('sidebarOverlay').addEventListener('click', toggleSidebar);
+
+document.getElementById('newItemBtn').addEventListener('click', () => {
+    const title = prompt('Enter map title:', 'New Map');
+    if (title) {
+        lost.create({
+            title: title,
+            mapState: {
+                center: [51.505, -0.09],
+                zoom: 13,
+                basemap: 'osm'
+            },
+            annotations: [],
+            createdAt: Date.now()
+        });
+        toggleSidebar();
+    }
+});
+
+// Basemap buttons
+document.querySelectorAll('.basemap-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        switchBasemap(btn.dataset.basemap);
+    });
+});
+
+// Color picker
+document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentColor = btn.dataset.color;
+
+        // Update active state
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update Geoman default style
+        map.pm.setGlobalOptions({
+            pathOptions: {
+                color: currentColor,
+                fillColor: currentColor,
+                fillOpacity: 0.4
+            }
+        });
+    });
+});
+
+// Action buttons
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('redoBtn').addEventListener('click', redo);
+document.getElementById('clearBtn').addEventListener('click', clearAllAnnotations);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    // Ctrl+Z or Cmd+Z for undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+    }
+    // Ctrl+Y or Cmd+Y or Ctrl+Shift+Z or Cmd+Shift+Z for redo
+    else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+    }
+});
+
+// Locate button
+document.getElementById('locateBtn').addEventListener('click', locateUser);
+
+// Share copy button
+document.getElementById('shareCopyBtn').addEventListener('click', async () => {
+    const input = document.getElementById('shareInput');
+    const btn = document.getElementById('shareCopyBtn');
+
+    try {
+        await navigator.clipboard.writeText(input.value);
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+
+        setTimeout(() => {
+            btn.textContent = 'Copy';
+            btn.classList.remove('copied');
+        }, 2000);
+    } catch (err) {
+        console.error('Failed to copy:', err);
+    }
+});
+
+// Make map title editable
+document.getElementById('pageTitle').addEventListener('click', () => {
+    const current = lost.getCurrent();
+    if (!current) return;
+
+    const newTitle = prompt('Enter map title:', current.title);
+    if (newTitle && newTitle !== current.title) {
+        lost.update(current.id, { title: newTitle });
+    }
+});
+
+// Geolocation function
+function locateUser() {
+    const btn = document.getElementById('locateBtn');
+
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+        btn.textContent = '⚠ Not supported';
+        btn.classList.add('error');
+        setTimeout(() => {
+            btn.textContent = '📍 Locate Me';
+            btn.classList.remove('error');
+        }, 3000);
+        return;
+    }
+
+    // Clear existing location marker
+    if (locationMarkerLayer) {
+        map.removeLayer(locationMarkerLayer);
+        locationMarkerLayer = null;
+    }
+
+    // Set loading state
+    btn.textContent = '📍 Locating...';
+    btn.classList.add('locating');
+
+    // Get current position
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude, longitude, accuracy } = position.coords;
+
+            // Create layer group for location marker
+            locationMarkerLayer = L.layerGroup();
+
+            // Add accuracy circle
+            L.circle([latitude, longitude], {
+                radius: accuracy,
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.15,
+                weight: 2
+            }).addTo(locationMarkerLayer);
+
+            // Add position marker
+            L.circleMarker([latitude, longitude], {
+                radius: 8,
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.8,
+                weight: 2
+            }).addTo(locationMarkerLayer);
+
+            // Add to map
+            locationMarkerLayer.addTo(map);
+
+            // Center map on location
+            map.setView([latitude, longitude], 16);
+
+            // Set success state
+            btn.textContent = '✓ Located';
+            btn.classList.remove('locating');
+            btn.classList.add('success');
+
+            setTimeout(() => {
+                btn.textContent = '📍 Locate Me';
+                btn.classList.remove('success');
+            }, 2000);
+        },
+        (error) => {
+            // Handle errors
+            let errorMessage = '⚠ Location failed';
+
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = '⚠ Permission denied';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = '⚠ Position unavailable';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = '⚠ Request timeout';
+                    break;
+            }
+
+            btn.textContent = errorMessage;
+            btn.classList.remove('locating');
+            btn.classList.add('error');
+
+            setTimeout(() => {
+                btn.textContent = '📍 Locate Me';
+                btn.classList.remove('error');
+            }, 3000);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+}
+
+// Initialize application
+initMap();
+initLost();
+    </script>
+</body>
+</html>
