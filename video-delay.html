@@ -305,7 +305,7 @@
             <button id="startBtn">Start Camera</button>
             <div class="delay-control">
                 <span class="delay-label">Delay:</span>
-                <input type="range" id="delaySlider" min="3" max="10" value="5" step="1">
+                <input type="range" id="delaySlider" min="3" max="30" value="5" step="1">
                 <span class="delay-value"><span id="delayValue">5</span>s</span>
             </div>
             <button id="flipCamera" class="icon-button" title="Flip Camera">⟲</button>
@@ -341,6 +341,7 @@
         let lastFrameTime = 0;
         let bufferReady = false;
         let wakeLock = null;
+        let needsRotation = false;
 
         // Initialize
         function init() {
@@ -378,6 +379,20 @@
             }
         }
 
+        function detectRotation() {
+            // Detect if video stream needs 90° rotation
+            // This happens when device is in landscape but video dimensions are portrait (or vice versa)
+            if (!hiddenVideo.videoWidth || !hiddenVideo.videoHeight) {
+                return false;
+            }
+
+            const videoIsPortrait = hiddenVideo.videoHeight > hiddenVideo.videoWidth;
+            const deviceIsLandscape = window.matchMedia("(orientation: landscape)").matches;
+
+            // If device is landscape but video is portrait, we need rotation
+            return deviceIsLandscape && videoIsPortrait;
+        }
+
         async function startCamera() {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
@@ -391,6 +406,9 @@
 
                 hiddenVideo.srcObject = stream;
                 await hiddenVideo.play();
+
+                // Detect if rotation correction is needed
+                needsRotation = detectRotation();
 
                 isRunning = true;
                 isPaused = false;
@@ -535,7 +553,9 @@
 
                     // Capture frame for buffer (create a copy)
                     const frameCanvas = document.createElement('canvas');
-                    const videoAspect = hiddenVideo.videoWidth / hiddenVideo.videoHeight;
+                    const videoWidth = needsRotation ? hiddenVideo.videoHeight : hiddenVideo.videoWidth;
+                    const videoHeight = needsRotation ? hiddenVideo.videoWidth : hiddenVideo.videoHeight;
+                    const videoAspect = videoWidth / videoHeight;
                     frameCanvas.width = 320; // Smaller size for buffer
                     frameCanvas.height = Math.round(320 / videoAspect);
                     const frameCtx = frameCanvas.getContext('2d');
@@ -545,12 +565,26 @@
                         frameCtx.scale(-1, 1);
                     }
 
-                    frameCtx.drawImage(
-                        hiddenVideo,
-                        0, 0,
-                        frameCanvas.width,
-                        frameCanvas.height
-                    );
+                    // If rotation is needed, apply rotation
+                    if (needsRotation) {
+                        frameCtx.translate(frameCanvas.width / 2, frameCanvas.height / 2);
+                        frameCtx.rotate(Math.PI / 2);
+                        frameCtx.translate(-frameCanvas.height / 2, -frameCanvas.width / 2);
+
+                        frameCtx.drawImage(
+                            hiddenVideo,
+                            0, 0,
+                            frameCanvas.height,
+                            frameCanvas.width
+                        );
+                    } else {
+                        frameCtx.drawImage(
+                            hiddenVideo,
+                            0, 0,
+                            frameCanvas.width,
+                            frameCanvas.height
+                        );
+                    }
 
                     // Add to buffer
                     frameBuffer.push(frameCanvas);
@@ -608,7 +642,10 @@
             }
 
             // Calculate aspect ratio and draw
-            const videoAspect = hiddenVideo.videoWidth / hiddenVideo.videoHeight;
+            // If rotation is needed, swap width/height for correct aspect ratio
+            const videoWidth = needsRotation ? hiddenVideo.videoHeight : hiddenVideo.videoWidth;
+            const videoHeight = needsRotation ? hiddenVideo.videoWidth : hiddenVideo.videoHeight;
+            const videoAspect = videoWidth / videoHeight;
             const canvasAspect = canvas.width / canvas.height;
 
             let drawWidth, drawHeight, offsetX, offsetY;
@@ -627,13 +664,29 @@
                 offsetY = (canvas.height - drawHeight) / 2;
             }
 
-            ctx.drawImage(
-                hiddenVideo,
-                offsetX,
-                offsetY,
-                drawWidth,
-                drawHeight
-            );
+            // If rotation is needed, apply rotation transform
+            if (needsRotation) {
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.translate(-drawHeight / 2, -drawWidth / 2);
+
+                // Draw with swapped dimensions since we rotated
+                ctx.drawImage(
+                    hiddenVideo,
+                    0,
+                    0,
+                    drawHeight,
+                    drawWidth
+                );
+            } else {
+                ctx.drawImage(
+                    hiddenVideo,
+                    offsetX,
+                    offsetY,
+                    drawWidth,
+                    drawHeight
+                );
+            }
 
             ctx.restore();
         }
