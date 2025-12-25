@@ -64,11 +64,20 @@
             background: white;
             cursor: pointer;
             border-radius: 4px;
-            font-size: 1.2rem;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
+        }
+
+        .tool-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: #333;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .tool-btn:hover {
@@ -77,7 +86,10 @@
 
         .tool-btn.active {
             background: #2563eb;
-            color: white;
+        }
+
+        .tool-btn.active svg {
+            stroke: white;
         }
 
         .tool-separator {
@@ -253,11 +265,21 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             cursor: pointer;
-            font-size: 1.2rem;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .location-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: #333;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .location-btn:hover {
@@ -266,7 +288,10 @@
 
         .location-btn.active {
             background: #2563eb;
-            color: white;
+        }
+
+        .location-btn.active svg {
+            stroke: white;
         }
 
         /* Mobile responsive */
@@ -297,23 +322,81 @@
 
     <!-- Location controls -->
     <div class="location-controls" role="navigation" aria-label="Map navigation controls">
-        <button class="location-btn" id="locateBtn" title="Locate me">📍</button>
-        <a href="index.html" class="location-btn" title="Back to tools" aria-label="Back to tools" style="text-decoration: none;">←</a>
+        <button class="location-btn" id="locateBtn" title="Locate me">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3"/>
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="2" x2="12" y2="6"/>
+                <line x1="12" y1="18" x2="12" y2="22"/>
+                <line x1="2" y1="12" x2="6" y2="12"/>
+                <line x1="18" y1="12" x2="22" y2="12"/>
+            </svg>
+        </button>
+        <a href="index.html" class="location-btn" title="Back to tools" aria-label="Back to tools">
+            <svg viewBox="0 0 24 24">
+                <line x1="19" y1="12" x2="5" y2="12"/>
+                <polyline points="12 19 5 12 12 5"/>
+            </svg>
+        </a>
     </div>
 
     <!-- Toolbar -->
     <div class="toolbar">
-        <button class="tool-btn" id="freehandBtn" title="Freehand">✏️</button>
-        <button class="tool-btn" id="lineBtn" title="Line">📏</button>
-        <button class="tool-btn" id="circleBtn" title="Circle">⭕</button>
-        <button class="tool-btn" id="arrowBtn" title="Arrow">➡️</button>
+        <button class="tool-btn" id="freehandBtn" title="Freehand">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                <path d="M2 2l7.586 7.586"/>
+            </svg>
+        </button>
+        <button class="tool-btn" id="lineBtn" title="Line">
+            <svg viewBox="0 0 24 24">
+                <line x1="5" y1="19" x2="19" y2="5"/>
+            </svg>
+        </button>
+        <button class="tool-btn" id="circleBtn" title="Circle">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+            </svg>
+        </button>
+        <button class="tool-btn" id="arrowBtn" title="Arrow">
+            <svg viewBox="0 0 24 24">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+            </svg>
+        </button>
         <div class="tool-separator"></div>
-        <button class="tool-btn" id="colorBtn" title="Color">🎨</button>
-        <button class="tool-btn" id="strokeBtn" title="Stroke width">📐</button>
+        <button class="tool-btn" id="colorBtn" title="Color">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+        </button>
+        <button class="tool-btn" id="strokeBtn" title="Stroke width">
+            <svg viewBox="0 0 24 24">
+                <line x1="4" y1="6" x2="20" y2="6"/>
+                <line x1="4" y1="12" x2="20" y2="12" stroke-width="3"/>
+                <line x1="4" y1="18" x2="20" y2="18" stroke-width="4"/>
+            </svg>
+        </button>
         <div class="tool-separator"></div>
-        <button class="tool-btn" id="undoBtn" title="Undo">↶</button>
-        <button class="tool-btn" id="redoBtn" title="Redo">↷</button>
-        <button class="tool-btn" id="clearBtn" title="Clear all">🗑️</button>
+        <button class="tool-btn" id="undoBtn" title="Undo">
+            <svg viewBox="0 0 24 24">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+            </svg>
+        </button>
+        <button class="tool-btn" id="redoBtn" title="Redo">
+            <svg viewBox="0 0 24 24">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+        </button>
+        <button class="tool-btn" id="clearBtn" title="Clear all">
+            <svg viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+        </button>
     </div>
 
     <!-- Color picker -->
@@ -429,7 +512,7 @@
         // Get mouse/touch position
         function getEventPosition(e) {
             const rect = overlay.getBoundingClientRect();
-            if (e.touches) {
+            if (e.touches && e.touches.length > 0) {
                 return {
                     x: e.touches[0].clientX - rect.left,
                     y: e.touches[0].clientY - rect.top
@@ -443,6 +526,11 @@
 
         // Drawing functions
         function startDrawing(e) {
+            // Allow multi-touch for map zoom/pan
+            if (e.touches && e.touches.length > 1) {
+                return;
+            }
+
             e.preventDefault();
             isDrawing = true;
             const pos = getEventPosition(e);
@@ -463,6 +551,13 @@
 
         function continueDrawing(e) {
             if (!isDrawing) return;
+
+            // Allow multi-touch for map zoom/pan
+            if (e.touches && e.touches.length > 1) {
+                stopDrawing(e);
+                return;
+            }
+
             e.preventDefault();
 
             const pos = getEventPosition(e);
@@ -483,7 +578,7 @@
 
         function stopDrawing(e) {
             if (!isDrawing) return;
-            e.preventDefault();
+            if (e && e.cancelable) e.preventDefault();
 
             isDrawing = false;
             map.dragging.enable();
@@ -611,9 +706,10 @@
         overlay.addEventListener('mouseup', stopDrawing);
         overlay.addEventListener('mouseleave', stopDrawing);
 
-        overlay.addEventListener('touchstart', startDrawing);
-        overlay.addEventListener('touchmove', continueDrawing);
-        overlay.addEventListener('touchend', stopDrawing);
+        overlay.addEventListener('touchstart', startDrawing, { passive: false });
+        overlay.addEventListener('touchmove', continueDrawing, { passive: false });
+        overlay.addEventListener('touchend', stopDrawing, { passive: false });
+        overlay.addEventListener('touchcancel', stopDrawing, { passive: false });
 
         // Tool selection
         function selectTool(tool) {
