@@ -342,6 +342,12 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
+        <button class="tool-btn" id="panBtn" title="Pan/Move Map">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2v7.5M12 14.5V22M2 12h7.5M14.5 12H22"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+        </button>
         <button class="tool-btn" id="freehandBtn" title="Freehand">
             <svg viewBox="0 0 24 24">
                 <path d="M12 19l7-7 3 3-7 7-3-3z"/>
@@ -526,6 +532,11 @@
 
         // Drawing functions
         function startDrawing(e) {
+            // Don't draw in pan mode
+            if (currentTool === 'pan') {
+                return;
+            }
+
             // Allow multi-touch for map zoom/pan
             if (e.touches && e.touches.length > 1) {
                 return;
@@ -714,7 +725,11 @@
         // Tool selection
         function selectTool(tool) {
             currentTool = tool;
-            overlay.classList.toggle('drawing', tool !== null);
+
+            // Enable/disable drawing overlay based on tool
+            // 'pan' mode: disable overlay so map can be fully interacted with
+            // Other tools: enable overlay for drawing
+            overlay.classList.toggle('drawing', tool !== null && tool !== 'pan');
 
             document.querySelectorAll('.tool-btn').forEach(btn => {
                 btn.classList.remove('active');
@@ -729,6 +744,7 @@
             document.getElementById('strokePicker').classList.remove('show');
         }
 
+        document.getElementById('panBtn').addEventListener('click', () => selectTool('pan'));
         document.getElementById('freehandBtn').addEventListener('click', () => selectTool('freehand'));
         document.getElementById('lineBtn').addEventListener('click', () => selectTool('line'));
         document.getElementById('circleBtn').addEventListener('click', () => selectTool('circle'));
@@ -984,7 +1000,7 @@
         });
 
         // Initialize
-        selectTool('freehand');
+        selectTool('pan');
         loadFromURL();
         updateURL();
 
