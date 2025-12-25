@@ -277,6 +277,38 @@
             margin-bottom: 0.5rem;
             text-transform: uppercase;
             font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: color 0.2s ease;
+        }
+
+        .control-label:hover {
+            color: var(--text);
+        }
+
+        .control-label::after {
+            content: '▼';
+            font-size: 0.6rem;
+            transition: transform 0.3s ease;
+        }
+
+        .control-group.collapsed .control-label::after {
+            transform: rotate(-90deg);
+        }
+
+        .control-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 500px;
+            opacity: 1;
+        }
+
+        .control-group.collapsed .control-content {
+            max-height: 0;
+            opacity: 0;
         }
 
         /* Basemap Switcher */
@@ -533,40 +565,48 @@
 
         <!-- Floating Controls -->
         <div class="controls">
-            <div class="control-group">
+            <div class="control-group" data-control="basemap">
                 <div class="control-label">Basemap</div>
-                <div class="basemap-buttons">
-                    <button class="basemap-btn active" data-basemap="osm">Street Map</button>
-                    <button class="basemap-btn" data-basemap="satellite">Satellite</button>
-                    <button class="basemap-btn" data-basemap="terrain">Terrain</button>
+                <div class="control-content">
+                    <div class="basemap-buttons">
+                        <button class="basemap-btn active" data-basemap="osm">Street Map</button>
+                        <button class="basemap-btn" data-basemap="satellite">Satellite</button>
+                        <button class="basemap-btn" data-basemap="terrain">Terrain</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="control-group">
+            <div class="control-group" data-control="location">
                 <div class="control-label">Location</div>
-                <button class="locate-btn" id="locateBtn">📍 Locate Me</button>
-            </div>
-
-            <div class="control-group">
-                <div class="control-label">Colors</div>
-                <div class="color-palette">
-                    <div class="color-btn active" style="background: #ef4444;" data-color="#ef4444"></div>
-                    <div class="color-btn" style="background: #f97316;" data-color="#f97316"></div>
-                    <div class="color-btn" style="background: #eab308;" data-color="#eab308"></div>
-                    <div class="color-btn" style="background: #22c55e;" data-color="#22c55e"></div>
-                    <div class="color-btn" style="background: #3b82f6;" data-color="#3b82f6"></div>
-                    <div class="color-btn" style="background: #a855f7;" data-color="#a855f7"></div>
-                    <div class="color-btn" style="background: #ffffff;" data-color="#ffffff"></div>
-                    <div class="color-btn" style="background: #000000;" data-color="#000000"></div>
+                <div class="control-content">
+                    <button class="locate-btn" id="locateBtn">📍 Locate Me</button>
                 </div>
             </div>
 
-            <div class="control-group">
+            <div class="control-group" data-control="colors">
+                <div class="control-label">Colors</div>
+                <div class="control-content">
+                    <div class="color-palette">
+                        <div class="color-btn active" style="background: #ef4444;" data-color="#ef4444"></div>
+                        <div class="color-btn" style="background: #f97316;" data-color="#f97316"></div>
+                        <div class="color-btn" style="background: #eab308;" data-color="#eab308"></div>
+                        <div class="color-btn" style="background: #22c55e;" data-color="#22c55e"></div>
+                        <div class="color-btn" style="background: #3b82f6;" data-color="#3b82f6"></div>
+                        <div class="color-btn" style="background: #a855f7;" data-color="#a855f7"></div>
+                        <div class="color-btn" style="background: #ffffff;" data-color="#ffffff"></div>
+                        <div class="color-btn" style="background: #000000;" data-color="#000000"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group" data-control="actions">
                 <div class="control-label">Actions</div>
-                <div class="action-buttons">
-                    <button class="action-btn" id="undoBtn" disabled>↶ Undo</button>
-                    <button class="action-btn" id="redoBtn" disabled>↷ Redo</button>
-                    <button class="action-btn danger" id="clearBtn">Clear All</button>
+                <div class="control-content">
+                    <div class="action-buttons">
+                        <button class="action-btn" id="undoBtn" disabled>↶ Undo</button>
+                        <button class="action-btn" id="redoBtn" disabled>↷ Redo</button>
+                        <button class="action-btn danger" id="clearBtn">Clear All</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1161,6 +1201,9 @@ function initMap() {
 
     map.on('pm:edit', () => saveAnnotations());
     map.on('pm:remove', () => saveAnnotations());
+    map.on('pm:markerdragend', () => saveAnnotations());
+    map.on('pm:vertexadded', () => saveAnnotations());
+    map.on('pm:vertexremoved', () => saveAnnotations());
 
     // Set default Geoman style
     map.pm.setGlobalOptions({
@@ -1193,6 +1236,16 @@ function saveMapState() {
 function saveAnnotations() {
     const layers = [];
     map.eachLayer((layer) => {
+        // Skip basemap layers and location marker
+        if (layer === basemapLayers.osm ||
+            layer === basemapLayers.satellite ||
+            layer === basemapLayers.terrain ||
+            layer === locationMarkerLayer ||
+            locationMarkerLayer?.hasLayer(layer)) {
+            return;
+        }
+
+        // Only save Geoman-managed annotation layers
         if (layer.toGeoJSON && layer.pm) {
             const geojson = layer.toGeoJSON();
 
@@ -1589,6 +1642,51 @@ document.getElementById('pageTitle').addEventListener('click', () => {
     }
 });
 
+// Control group collapse functionality
+const COLLAPSED_CONTROLS_KEY = 'map-annotator-collapsed-controls-v1';
+
+function loadCollapsedState() {
+    try {
+        const saved = localStorage.getItem(COLLAPSED_CONTROLS_KEY);
+        return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveCollapsedState(state) {
+    localStorage.setItem(COLLAPSED_CONTROLS_KEY, JSON.stringify(state));
+}
+
+function initControlCollapse() {
+    const collapsedState = loadCollapsedState();
+
+    document.querySelectorAll('.control-group').forEach(group => {
+        const label = group.querySelector('.control-label');
+        const controlName = group.dataset.control;
+
+        if (!controlName) return; // Skip groups without data-control
+
+        // Restore collapsed state
+        if (collapsedState[controlName]) {
+            group.classList.add('collapsed');
+        }
+
+        // Add click handler to toggle
+        label.addEventListener('click', () => {
+            const isCollapsed = group.classList.toggle('collapsed');
+
+            const state = loadCollapsedState();
+            if (isCollapsed) {
+                state[controlName] = true;
+            } else {
+                delete state[controlName];
+            }
+            saveCollapsedState(state);
+        });
+    });
+}
+
 // Geolocation function
 function locateUser() {
     const btn = document.getElementById('locateBtn');
@@ -1692,6 +1790,7 @@ function locateUser() {
 // Initialize application
 initMap();
 initLost();
+initControlCollapse();
     </script>
 </body>
 </html>
