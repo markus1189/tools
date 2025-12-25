@@ -862,9 +862,11 @@
             }
         }
 
+        const AUTO_SAVE_DELAY = 1000;
+
         function scheduleSave() {
             if (autoSaveTimer) clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(updateURL, 1000);
+            autoSaveTimer = setTimeout(updateURL, AUTO_SAVE_DELAY);
         }
 
         // Share button
