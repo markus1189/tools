@@ -776,7 +776,7 @@
             const compressed = await stream.arrayBuffer();
             const base64 = btoa(String.fromCharCode(...new Uint8Array(compressed)));
 
-            // URL-safe base64
+            // URL-safe base64: map '+' → '-', '/' → '_' and remove '=' padding (RFC 4648 §5)
             return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
         }
 
