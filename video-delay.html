@@ -568,7 +568,7 @@
                     // If rotation is needed, apply rotation
                     if (needsRotation) {
                         frameCtx.translate(frameCanvas.width / 2, frameCanvas.height / 2);
-                        frameCtx.rotate(Math.PI / 2);
+                        frameCtx.rotate(-Math.PI / 2);
                         frameCtx.translate(-frameCanvas.height / 2, -frameCanvas.width / 2);
 
                         frameCtx.drawImage(
@@ -667,7 +667,7 @@
             // If rotation is needed, apply rotation transform
             if (needsRotation) {
                 ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.rotate(Math.PI / 2);
+                ctx.rotate(-Math.PI / 2);
                 ctx.translate(-drawHeight / 2, -drawWidth / 2);
 
                 // Draw with swapped dimensions since we rotated
