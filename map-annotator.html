@@ -1218,6 +1218,48 @@ function saveAnnotations() {
     }
 }
 
+// Create Geoman-compatible layer from GeoJSON
+// This ensures layers emit proper pm:edit and pm:remove events
+function createGeomanLayer(geojson) {
+    const { geometry, properties } = geojson;
+    const color = properties?.color || '#ef4444';
+    const fillColor = properties?.fillColor || '#ef4444';
+    const styleOptions = {
+        color: color,
+        fillColor: fillColor,
+        fillOpacity: 0.4,
+        weight: 3
+    };
+
+    let layer = null;
+
+    switch (geometry.type) {
+        case 'Point':
+            const [lng, lat] = geometry.coordinates;
+            layer = L.circleMarker([lat, lng], {
+                radius: 8,
+                ...styleOptions
+            });
+            break;
+        case 'LineString':
+            const lineCoords = geometry.coordinates.map(c => [c[1], c[0]]);
+            layer = L.polyline(lineCoords, styleOptions);
+            break;
+        case 'Polygon':
+            const polyCoords = geometry.coordinates[0].map(c => [c[1], c[0]]);
+            layer = L.polygon(polyCoords, styleOptions);
+            break;
+        case 'MultiPolygon':
+            const multiPolyCoords = geometry.coordinates.map(poly =>
+                poly[0].map(c => [c[1], c[0]])
+            );
+            layer = L.polygon(multiPolyCoords, styleOptions);
+            break;
+    }
+
+    return layer;
+}
+
 // History management functions
 function pushToHistory(annotations) {
     // Remove any future history if we're not at the end
@@ -1269,34 +1311,11 @@ function restoreFromHistory() {
     // Restore annotations from history
     if (annotations && annotations.length > 0) {
         annotations.forEach((geojson) => {
-            const layer = L.geoJSON(geojson, {
-                style: (feature) => {
-                    return {
-                        color: feature.properties?.color || '#ef4444',
-                        fillColor: feature.properties?.fillColor || '#ef4444',
-                        fillOpacity: 0.4
-                    };
-                },
-                pointToLayer: (feature, latlng) => {
-                    if (feature.geometry.type === 'Point') {
-                        return L.circleMarker(latlng, {
-                            radius: 8,
-                            color: feature.properties?.color || '#ef4444',
-                            fillColor: feature.properties?.fillColor || '#ef4444',
-                            fillOpacity: 0.4
-                        });
-                    }
-                }
-            });
-
-            layer.addTo(map);
-
-            // Make layer editable with Geoman
-            layer.eachLayer((l) => {
-                if (l.pm) {
-                    l.pm.enable();
-                }
-            });
+            const layer = createGeomanLayer(geojson);
+            if (layer) {
+                layer.addTo(map);
+                // Geoman automatically manages the layer and enables editing
+            }
         });
     }
 
@@ -1370,34 +1389,11 @@ function updateFromState(item) {
     // Restore annotations
     if (item.annotations && item.annotations.length > 0) {
         item.annotations.forEach((geojson) => {
-            const layer = L.geoJSON(geojson, {
-                style: (feature) => {
-                    return {
-                        color: feature.properties?.color || '#ef4444',
-                        fillColor: feature.properties?.fillColor || '#ef4444',
-                        fillOpacity: 0.4
-                    };
-                },
-                pointToLayer: (feature, latlng) => {
-                    if (feature.geometry.type === 'Point') {
-                        return L.circleMarker(latlng, {
-                            radius: 8,
-                            color: feature.properties?.color || '#ef4444',
-                            fillColor: feature.properties?.fillColor || '#ef4444',
-                            fillOpacity: 0.4
-                        });
-                    }
-                }
-            });
-
-            layer.addTo(map);
-
-            // Make layer editable with Geoman
-            layer.eachLayer((l) => {
-                if (l.pm) {
-                    l.pm.enable();
-                }
-            });
+            const layer = createGeomanLayer(geojson);
+            if (layer) {
+                layer.addTo(map);
+                // Geoman automatically manages the layer and enables editing
+            }
         });
     }
 
