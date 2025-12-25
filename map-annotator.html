@@ -42,6 +42,18 @@
             pointer-events: auto;
         }
 
+        #drawingOverlay.drawing {
+            cursor: crosshair;
+        }
+
+        #drawingOverlay.drawing.select-mode {
+            cursor: move;
+        }
+
+        #drawingOverlay.drawing.eraser-mode {
+            cursor: not-allowed;
+        }
+
         /* Toolbar */
         .toolbar {
             position: absolute;
@@ -371,6 +383,17 @@
                 <polyline points="12 5 19 12 12 19"/>
             </svg>
         </button>
+        <button class="tool-btn" id="selectBtn" title="Select/Move">
+            <svg viewBox="0 0 24 24">
+                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+            </svg>
+        </button>
+        <button class="tool-btn" id="eraserBtn" title="Eraser">
+            <svg viewBox="0 0 24 24">
+                <path d="M20 20H7L3 16l10-10 8 8-1 6z"/>
+                <path d="M16 6l4 4"/>
+            </svg>
+        </button>
         <div class="tool-separator"></div>
         <button class="tool-btn" id="colorBtn" title="Color">
             <svg viewBox="0 0 24 24">
@@ -471,6 +494,7 @@
         let startPoint = null;
         let locationMarker = null;
         let autoSaveTimer = null;
+        let selectedPathIndex = null;
 
         const colors = [
             '#ef4444', '#f97316', '#f59e0b', '#eab308',
@@ -543,8 +567,48 @@
             }
 
             e.preventDefault();
-            isDrawing = true;
             const pos = getEventPosition(e);
+
+            // Handle eraser tool
+            if (currentTool === 'eraser') {
+                const pathIndex = findPathAtPoint(pos.x, pos.y);
+                if (pathIndex !== null) {
+                    // Save to undo stack
+                    undoStack.push(JSON.parse(JSON.stringify(paths)));
+                    if (undoStack.length > 20) undoStack.shift();
+                    redoStack = [];
+
+                    // Remove the path
+                    paths.splice(pathIndex, 1);
+                    renderPaths();
+                    updateButtons();
+                    scheduleSave();
+                }
+                return;
+            }
+
+            // Handle select tool
+            if (currentTool === 'select') {
+                const pathIndex = findPathAtPoint(pos.x, pos.y);
+                selectedPathIndex = pathIndex;
+
+                if (pathIndex !== null) {
+                    // Save to undo stack before moving
+                    undoStack.push(JSON.parse(JSON.stringify(paths)));
+                    if (undoStack.length > 20) undoStack.shift();
+                    redoStack = [];
+
+                    isDrawing = true;
+                    const latLng = pointToLatLng(pos.x, pos.y);
+                    startPoint = latLng;
+                    map.dragging.disable();
+                    renderPaths(); // Re-render to show selection
+                }
+                return;
+            }
+
+            // Normal drawing tools
+            isDrawing = true;
             const latLng = pointToLatLng(pos.x, pos.y);
 
             startPoint = latLng;
@@ -574,6 +638,23 @@
             const pos = getEventPosition(e);
             const latLng = pointToLatLng(pos.x, pos.y);
 
+            // Handle select tool dragging
+            if (currentTool === 'select' && selectedPathIndex !== null) {
+                const path = paths[selectedPathIndex];
+                const deltaLat = latLng.lat - startPoint.lat;
+                const deltaLng = latLng.lng - startPoint.lng;
+
+                // Move all points in the path
+                path.points = path.points.map(point => [
+                    point[0] + deltaLat,
+                    point[1] + deltaLng
+                ]);
+
+                startPoint = latLng;
+                renderPaths();
+                return;
+            }
+
             if (currentTool === 'freehand') {
                 currentPath.points.push([latLng.lat, latLng.lng]);
             } else {
@@ -590,6 +671,11 @@
         function stopDrawing(e) {
             if (!isDrawing) return;
             if (e && e.cancelable) e.preventDefault();
+
+            // Handle select tool - just schedule save (undo already saved in startDrawing)
+            if (currentTool === 'select' && selectedPathIndex !== null) {
+                scheduleSave();
+            }
 
             isDrawing = false;
             map.dragging.enable();
@@ -615,29 +701,44 @@
             overlay.innerHTML = '';
 
             // Render saved paths
-            paths.forEach(path => renderPath(path));
+            paths.forEach((path, index) => {
+                const isSelected = (currentTool === 'select' && selectedPathIndex === index);
+                renderPath(path, false, isSelected);
+            });
 
             // Render current path being drawn
             if (currentPath) {
-                renderPath(currentPath, true);
+                renderPath(currentPath, true, false);
             }
         }
 
-        function renderPath(path, isCurrent = false) {
+        function renderPath(path, isCurrent = false, isSelected = false) {
             const color = colors[path.color];
             const width = path.width;
 
             if (path.points.length < 2) return;
 
             if (path.type === 'freehand' || path.type === 'line') {
-                const svgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
                 const points = path.points.map(p => latLngToPoint(p[0], p[1]));
                 let d = `M ${points[0].x} ${points[0].y}`;
                 for (let i = 1; i < points.length; i++) {
                     d += ` L ${points[i].x} ${points[i].y}`;
                 }
 
+                // Draw selection highlight
+                if (isSelected) {
+                    const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    highlight.setAttribute('d', d);
+                    highlight.setAttribute('stroke', '#2563eb');
+                    highlight.setAttribute('stroke-width', width + 6);
+                    highlight.setAttribute('fill', 'none');
+                    highlight.setAttribute('stroke-linecap', 'round');
+                    highlight.setAttribute('stroke-linejoin', 'round');
+                    highlight.setAttribute('opacity', '0.3');
+                    overlay.appendChild(highlight);
+                }
+
+                const svgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 svgPath.setAttribute('d', d);
                 svgPath.setAttribute('stroke', color);
                 svgPath.setAttribute('stroke-width', width);
@@ -654,6 +755,19 @@
                     Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
                 );
 
+                // Draw selection highlight
+                if (isSelected) {
+                    const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    highlight.setAttribute('cx', start.x);
+                    highlight.setAttribute('cy', start.y);
+                    highlight.setAttribute('r', radius);
+                    highlight.setAttribute('stroke', '#2563eb');
+                    highlight.setAttribute('stroke-width', width + 6);
+                    highlight.setAttribute('fill', 'none');
+                    highlight.setAttribute('opacity', '0.3');
+                    overlay.appendChild(highlight);
+                }
+
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('cx', start.x);
                 circle.setAttribute('cy', start.y);
@@ -668,6 +782,42 @@
                 const start = latLngToPoint(path.points[0][0], path.points[0][1]);
                 const end = latLngToPoint(path.points[1][0], path.points[1][1]);
 
+                // Arrow head calculations
+                const ARROW_HEAD_LENGTH_MULTIPLIER = 3;
+                const ARROW_HEAD_ANGLE_RADIANS = Math.PI / 6;
+                const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                const headLength = width * ARROW_HEAD_LENGTH_MULTIPLIER;
+                const headAngle = ARROW_HEAD_ANGLE_RADIANS;
+
+                const x1 = end.x - headLength * Math.cos(angle - headAngle);
+                const y1 = end.y - headLength * Math.sin(angle - headAngle);
+                const x2 = end.x - headLength * Math.cos(angle + headAngle);
+                const y2 = end.y - headLength * Math.sin(angle + headAngle);
+
+                // Draw selection highlight
+                if (isSelected) {
+                    const highlightLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    highlightLine.setAttribute('x1', start.x);
+                    highlightLine.setAttribute('y1', start.y);
+                    highlightLine.setAttribute('x2', end.x);
+                    highlightLine.setAttribute('y2', end.y);
+                    highlightLine.setAttribute('stroke', '#2563eb');
+                    highlightLine.setAttribute('stroke-width', width + 6);
+                    highlightLine.setAttribute('stroke-linecap', 'round');
+                    highlightLine.setAttribute('opacity', '0.3');
+                    overlay.appendChild(highlightLine);
+
+                    const highlightHead = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    highlightHead.setAttribute('d', `M ${x1} ${y1} L ${end.x} ${end.y} L ${x2} ${y2}`);
+                    highlightHead.setAttribute('stroke', '#2563eb');
+                    highlightHead.setAttribute('stroke-width', width + 6);
+                    highlightHead.setAttribute('fill', 'none');
+                    highlightHead.setAttribute('stroke-linecap', 'round');
+                    highlightHead.setAttribute('stroke-linejoin', 'round');
+                    highlightHead.setAttribute('opacity', '0.3');
+                    overlay.appendChild(highlightHead);
+                }
+
                 // Arrow line
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', start.x);
@@ -681,18 +831,7 @@
                 overlay.appendChild(line);
 
                 // Arrow head
-                const ARROW_HEAD_LENGTH_MULTIPLIER = 3;
-                const ARROW_HEAD_ANGLE_RADIANS = Math.PI / 6;
-                const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                const headLength = width * ARROW_HEAD_LENGTH_MULTIPLIER;
-                const headAngle = ARROW_HEAD_ANGLE_RADIANS;
-
                 const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                const x1 = end.x - headLength * Math.cos(angle - headAngle);
-                const y1 = end.y - headLength * Math.sin(angle - headAngle);
-                const x2 = end.x - headLength * Math.cos(angle + headAngle);
-                const y2 = end.y - headLength * Math.sin(angle + headAngle);
-
                 arrowHead.setAttribute('d', `M ${x1} ${y1} L ${end.x} ${end.y} L ${x2} ${y2}`);
                 arrowHead.setAttribute('stroke', color);
                 arrowHead.setAttribute('stroke-width', width);
@@ -702,6 +841,74 @@
                 if (isCurrent) arrowHead.setAttribute('opacity', '0.7');
                 overlay.appendChild(arrowHead);
             }
+        }
+
+        // Hit detection - find which path was clicked
+        function findPathAtPoint(x, y) {
+            const clickLatLng = pointToLatLng(x, y);
+            const threshold = 10; // pixels
+
+            // Check paths in reverse order (top to bottom)
+            for (let i = paths.length - 1; i >= 0; i--) {
+                const path = paths[i];
+
+                if (path.type === 'freehand' || path.type === 'line') {
+                    // Check if click is near any line segment
+                    for (let j = 0; j < path.points.length - 1; j++) {
+                        const p1 = latLngToPoint(path.points[j][0], path.points[j][1]);
+                        const p2 = latLngToPoint(path.points[j + 1][0], path.points[j + 1][1]);
+
+                        const dist = distanceToSegment(x, y, p1.x, p1.y, p2.x, p2.y);
+                        if (dist < threshold + path.width / 2) {
+                            return i;
+                        }
+                    }
+                } else if (path.type === 'circle') {
+                    const center = latLngToPoint(path.points[0][0], path.points[0][1]);
+                    const edge = latLngToPoint(path.points[1][0], path.points[1][1]);
+                    const radius = Math.sqrt(
+                        Math.pow(edge.x - center.x, 2) + Math.pow(edge.y - center.y, 2)
+                    );
+
+                    const distToCenter = Math.sqrt(
+                        Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2)
+                    );
+
+                    // Check if click is near the circle outline
+                    if (Math.abs(distToCenter - radius) < threshold + path.width / 2) {
+                        return i;
+                    }
+                } else if (path.type === 'arrow') {
+                    const start = latLngToPoint(path.points[0][0], path.points[0][1]);
+                    const end = latLngToPoint(path.points[1][0], path.points[1][1]);
+
+                    const dist = distanceToSegment(x, y, start.x, start.y, end.x, end.y);
+                    if (dist < threshold + path.width / 2) {
+                        return i;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // Calculate distance from point to line segment
+        function distanceToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const lengthSquared = dx * dx + dy * dy;
+
+            if (lengthSquared === 0) {
+                return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
+            }
+
+            let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
+            t = Math.max(0, Math.min(1, t));
+
+            const closestX = x1 + t * dx;
+            const closestY = y1 + t * dy;
+
+            return Math.sqrt((px - closestX) * (px - closestX) + (py - closestY) * (py - closestY));
         }
 
         // Update overlay when map moves
@@ -726,10 +933,21 @@
         function selectTool(tool) {
             currentTool = tool;
 
+            // Clear selection when switching tools
+            selectedPathIndex = null;
+
             // Enable/disable drawing overlay based on tool
             // 'pan' mode: disable overlay so map can be fully interacted with
             // Other tools: enable overlay for drawing
             overlay.classList.toggle('drawing', tool !== null && tool !== 'pan');
+
+            // Update cursor classes
+            overlay.classList.remove('select-mode', 'eraser-mode');
+            if (tool === 'select') {
+                overlay.classList.add('select-mode');
+            } else if (tool === 'eraser') {
+                overlay.classList.add('eraser-mode');
+            }
 
             document.querySelectorAll('.tool-btn').forEach(btn => {
                 btn.classList.remove('active');
@@ -742,6 +960,9 @@
             // Hide pickers
             document.getElementById('colorPicker').classList.remove('show');
             document.getElementById('strokePicker').classList.remove('show');
+
+            // Re-render to clear any selection highlights
+            renderPaths();
         }
 
         document.getElementById('panBtn').addEventListener('click', () => selectTool('pan'));
@@ -749,6 +970,8 @@
         document.getElementById('lineBtn').addEventListener('click', () => selectTool('line'));
         document.getElementById('circleBtn').addEventListener('click', () => selectTool('circle'));
         document.getElementById('arrowBtn').addEventListener('click', () => selectTool('arrow'));
+        document.getElementById('selectBtn').addEventListener('click', () => selectTool('select'));
+        document.getElementById('eraserBtn').addEventListener('click', () => selectTool('eraser'));
 
         // Color picker
         document.getElementById('colorBtn').addEventListener('click', () => {
