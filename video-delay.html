@@ -377,6 +377,11 @@
                 delayedCanvas.width = width;
                 delayedCanvas.height = height;
             }
+
+            // Update rotation detection when orientation changes
+            if (isRunning) {
+                needsRotation = detectRotation();
+            }
         }
 
         function detectRotation() {
