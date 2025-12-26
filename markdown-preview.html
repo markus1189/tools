@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #3e3e3e;
+        }
+
+        .preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pane-header {
+            padding: 12px 16px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #3e3e3e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pane-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #cccccc;
+        }
+
+        .copy-button {
+            padding: 6px 12px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .copy-button:hover {
+            background: #1177bb;
+        }
+
+        .copy-button:active {
+            background: #0d5a8f;
+        }
+
+        .copy-button.copied {
+            background: #107c10;
+        }
+
+        #markdown-input {
+            flex: 1;
+            padding: 16px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            resize: none;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            outline: none;
+        }
+
+        #preview {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background: #252525;
+        }
+
+        /* Markdown styling */
+        #preview h1 {
+            font-size: 2em;
+            margin: 0.67em 0;
+            border-bottom: 1px solid #3e3e3e;
+            padding-bottom: 0.3em;
+        }
+
+        #preview h2 {
+            font-size: 1.5em;
+            margin: 0.75em 0 0.5em;
+            border-bottom: 1px solid #3e3e3e;
+            padding-bottom: 0.3em;
+        }
+
+        #preview h3 {
+            font-size: 1.25em;
+            margin: 0.5em 0;
+        }
+
+        #preview h4, #preview h5, #preview h6 {
+            margin: 0.5em 0;
+        }
+
+        #preview p {
+            margin: 1em 0;
+            line-height: 1.6;
+        }
+
+        #preview code {
+            background: #1e1e1e;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        #preview pre {
+            background: #1e1e1e;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        #preview pre code {
+            background: none;
+            padding: 0;
+        }
+
+        #preview blockquote {
+            border-left: 4px solid #0e639c;
+            padding-left: 16px;
+            margin: 1em 0;
+            color: #b0b0b0;
+        }
+
+        #preview ul, #preview ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        #preview li {
+            margin: 0.5em 0;
+        }
+
+        #preview a {
+            color: #4fc3f7;
+            text-decoration: none;
+        }
+
+        #preview a:hover {
+            text-decoration: underline;
+        }
+
+        #preview table {
+            border-collapse: collapse;
+            margin: 1em 0;
+            width: 100%;
+        }
+
+        #preview th, #preview td {
+            border: 1px solid #3e3e3e;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        #preview th {
+            background: #2d2d2d;
+            font-weight: 600;
+        }
+
+        #preview hr {
+            border: none;
+            border-top: 1px solid #3e3e3e;
+            margin: 2em 0;
+        }
+
+        #preview img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-pane">
+            <div class="pane-header">
+                <span class="pane-title">Markdown Input</span>
+            </div>
+            <textarea id="markdown-input" placeholder="# Start typing markdown here...
+
+Try some **bold**, *italic*, or `code`.
+
+## Lists work too
+- Item 1
+- Item 2
+- Item 3
+
+[Links](https://example.com) and more!"></textarea>
+        </div>
+        <div class="preview-pane">
+            <div class="pane-header">
+                <span class="pane-title">Preview</span>
+                <button class="copy-button" id="copy-button">Copy Formatted</button>
+            </div>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    <script>
+        const input = document.getElementById('markdown-input');
+        const preview = document.getElementById('preview');
+        const copyButton = document.getElementById('copy-button');
+
+        // Configure marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        // Update preview
+        function updatePreview() {
+            const markdown = input.value;
+            preview.innerHTML = marked.parse(markdown);
+        }
+
+        // Copy rendered content with formatting to clipboard
+        async function copyToClipboard() {
+            const html = preview.innerHTML;
+            const text = preview.innerText;
+
+            try {
+                // Create clipboard item with both HTML and plain text
+                const clipboardItem = new ClipboardItem({
+                    'text/html': new Blob([html], { type: 'text/html' }),
+                    'text/plain': new Blob([text], { type: 'text/plain' })
+                });
+
+                await navigator.clipboard.write([clipboardItem]);
+                copyButton.textContent = 'Copied!';
+                copyButton.classList.add('copied');
+                setTimeout(() => {
+                    copyButton.textContent = 'Copy Formatted';
+                    copyButton.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                copyButton.textContent = 'Copy Failed';
+                setTimeout(() => {
+                    copyButton.textContent = 'Copy Formatted';
+                }, 2000);
+            }
+        }
+
+        // Event listeners
+        input.addEventListener('input', updatePreview);
+        copyButton.addEventListener('click', copyToClipboard);
+
+        // Initial render
+        updatePreview();
+    </script>
+</body>
+</html>

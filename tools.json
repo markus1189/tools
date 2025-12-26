@@ -29,6 +29,11 @@
       "id": "gpx-viewer",
       "title": "GPX Viewer",
       "description": "View GPX tracks with elevation analysis and climb/descent segmentation"
+    },
+    {
+      "id": "markdown-preview",
+      "title": "Markdown Preview",
+      "description": "Live markdown editor with split-screen preview and HTML export"
     }
   ]
 }
