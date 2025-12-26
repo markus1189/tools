@@ -64,6 +64,18 @@ Adapted for self-contained use with inline SVG icons.
             cursor: crosshair;
         }
 
+        .drawing-overlay.rectangle-mode {
+            cursor: crosshair;
+        }
+
+        .drawing-overlay.pan-mode {
+            cursor: grab;
+        }
+
+        .drawing-overlay.pan-mode.panning {
+            cursor: grabbing;
+        }
+
         .controls {
             position: absolute;
             top: 12px;
@@ -94,7 +106,7 @@ Adapted for self-contained use with inline SVG icons.
             padding-left: 12px;
         }
 
-        button {
+        .toolbar-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -110,15 +122,17 @@ Adapted for self-contained use with inline SVG icons.
             transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
             white-space: nowrap;
             box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+            min-height: 32px;
+            text-decoration: none;
         }
 
-        button:hover {
+        .toolbar-btn:hover {
             background: linear-gradient(180deg, #ffffff 0%, #f1f1f6 100%);
             border-color: #bfbfc7;
             box-shadow: 0 2px 4px rgba(0,0,0,0.12);
         }
 
-        button:disabled {
+        .toolbar-btn:disabled {
             background: linear-gradient(180deg, #f5f5f7 0%, #ececf1 100%);
             border-color: #e0e0e6;
             color: #b0b0b9;
@@ -127,15 +141,11 @@ Adapted for self-contained use with inline SVG icons.
             opacity: 0.8;
         }
 
-        button.active {
+        .toolbar-btn.active {
             background: linear-gradient(180deg, rgba(0, 122, 255, 0.2) 0%, rgba(0, 122, 255, 0.05) 100%);
             border-color: #007AFF;
             color: #0056B3;
             box-shadow: 0 3px 10px rgba(0, 122, 255, 0.25);
-        }
-
-        .toolbar-btn {
-            min-height: 32px;
         }
 
         .toolbar-btn .icon {
@@ -421,12 +431,93 @@ Adapted for self-contained use with inline SVG icons.
             pointer-events: none;
         }
 
+        .preview-rectangle {
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 5,5;
+            pointer-events: none;
+        }
+
         label {
             font-size: 11px;
             color: #666;
         }
 
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 6px 10px;
+            border: 1px solid #d1d1d6;
+            border-radius: 10px;
+            font-size: 12px;
+            background: white;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+        }
+
+        .search-results {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d1d6;
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1003;
+            display: none;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            border-bottom: 1px solid #f0f0f5;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-item:hover {
+            background: #f2f2f7;
+        }
+
+        .search-result-item:active {
+            background: #e5e5ea;
+        }
+
+        .search-loading {
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #8e8e93;
+            text-align: center;
+        }
+
         @media (max-width: 768px) {
+            .search-input {
+                width: 150px;
+                font-size: 11px;
+                padding: 5px 8px;
+            }
+
             .controls {
                 position: fixed;
                 top: auto;
@@ -488,24 +579,30 @@ Adapted for self-contained use with inline SVG icons.
     
     <div class="controls" role="toolbar" aria-label="Drawing controls">
         <div class="toolbar-group">
+            <a href="index.html" class="toolbar-btn" title="Back to tools" aria-label="Back to tools">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                </span>
+            </a>
             <button id="locationBtn" class="toolbar-btn location-btn" aria-pressed="false" aria-label="Toggle location tracking">
                 <span class="icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
                 </span>
-                <span class="btn-label">Locate</span>
             </button>
             <button id="shareBtn" class="toolbar-btn" aria-pressed="false" aria-label="Share drawing">
                 <span class="icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </span>
-                <span class="btn-label">Share</span>
             </button>
-            <a href="index.html" class="toolbar-btn" title="Back to tools" aria-label="Back to tools" style="text-decoration: none; color: inherit;">
+            <button id="searchToggleBtn" class="toolbar-btn" aria-pressed="false" aria-label="Search location">
                 <span class="icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 </span>
-                <span class="btn-label">Back</span>
-            </a>
+            </button>
+            <div class="search-container" id="searchContainer" style="display: none;">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search location..." aria-label="Search for a location">
+                <div id="searchResults" class="search-results" role="listbox"></div>
+            </div>
         </div>
         <div class="toolbar-group">
             <button id="undoBtn" class="toolbar-btn" title="Undo" aria-label="Undo">
@@ -526,8 +623,26 @@ Adapted for self-contained use with inline SVG icons.
                 </span>
                 <span class="btn-label">Clear</span>
             </button>
+            <button id="exportBtn" class="toolbar-btn" title="Export as GeoJSON" aria-label="Export as GeoJSON">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </span>
+                <span class="btn-label">Export</span>
+            </button>
+            <button id="importBtn" class="toolbar-btn" title="Import GeoJSON" aria-label="Import GeoJSON">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </span>
+                <span class="btn-label">Import</span>
+            </button>
         </div>
         <div class="toolbar-group">
+            <button id="panBtn" class="toolbar-btn tool-btn" title="Pan" aria-label="Pan tool">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+                </span>
+                <span class="btn-label">Pan</span>
+            </button>
             <button id="freehandBtn" class="toolbar-btn tool-btn active" title="Freehand" aria-label="Freehand tool">
                 <span class="icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
@@ -551,6 +666,12 @@ Adapted for self-contained use with inline SVG icons.
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </span>
                 <span class="btn-label">Arrow</span>
+            </button>
+            <button id="rectangleBtn" class="toolbar-btn tool-btn" title="Rectangle" aria-label="Rectangle tool">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                </span>
+                <span class="btn-label">Rectangle</span>
             </button>
         </div>
         <div class="toolbar-group">
@@ -578,6 +699,8 @@ Adapted for self-contained use with inline SVG icons.
     </div>
     
     <div class="status" id="status"></div>
+
+    <input type="file" id="geojsonFileInput" accept=".json,.geojson" style="display: none;">
 
     <!-- Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -607,17 +730,14 @@ Adapted for self-contained use with inline SVG icons.
                 this.cachedCompressedDrawing = '';
                 this.drawingSerializationDirty = true;
                 this.compressInFlight = null;
+                this.compressionGeneration = 0;
                 this.colorPalette = [
                     '#FF3B30', '#FF9500', '#FFCC00', '#4CD964',
-                    '#5AC8FA', '#007AFF', '#5856D6', '#AF52DE',
-                    '#FF2D55', '#8E8E93', '#FF6B81', '#2ECC71',
-                    '#1ABC9C', '#3498DB', '#9B59B6', '#34495E'
+                    '#007AFF', '#5856D6', '#FF2D55', '#8E8E93'
                 ];
                 this.colorNames = [
                     'Red', 'Orange', 'Yellow', 'Lime',
-                    'Sky', 'Blue', 'Indigo', 'Violet',
-                    'Pink', 'Gray', 'Coral', 'Emerald',
-                    'Teal', 'Azure', 'Purple', 'Slate'
+                    'Blue', 'Indigo', 'Pink', 'Gray'
                 ];
                 this.currentColorIndex = 0;
                 this.activeDrawingColorIndex = 0;
@@ -652,6 +772,14 @@ Adapted for self-contained use with inline SVG icons.
                 this.clearButton = null;
                 this.undoButton = null;
                 this.redoButton = null;
+                this.searchInput = null;
+                this.searchResults = null;
+                this.searchDebounceTimer = null;
+                this.lastSearchTime = 0;
+                this.searchMarker = null;
+                this.searchMarkerTimer = null;
+                this.spacebarPressed = false;
+                this.toolBeforeSpacebar = null;
                 this.initMarkers();
 
                 this.init();
@@ -662,6 +790,7 @@ Adapted for self-contained use with inline SVG icons.
                 this.initMap();
                 this.initControls();
                 this.initDrawing();
+                this.initKeyboardShortcuts();
                 this.loadFromUrl();
                 this.startAutoSave();
             }
@@ -752,18 +881,25 @@ Adapted for self-contained use with inline SVG icons.
                 this.clearButton = attachButton('clearBtn', () => this.clearDrawing());
                 this.undoButton = attachButton('undoBtn', () => this.undo());
                 this.redoButton = attachButton('redoBtn', () => this.redo());
+                this.exportButton = attachButton('exportBtn', () => this.exportGeoJSON());
+                this.importButton = attachButton('importBtn', () => this.importGeoJSON());
 
                 // Tool buttons
+                attachButton('panBtn', () => this.setTool('pan'));
                 attachButton('freehandBtn', () => this.setTool('freehand'));
                 attachButton('lineBtn', () => this.setTool('line'));
                 attachButton('circleBtn', () => this.setTool('circle'));
                 attachButton('arrowBtn', () => this.setTool('arrow'));
+                attachButton('rectangleBtn', () => this.setTool('rectangle'));
 
                 // Stroke width options
                 this.initWidthControls();
 
                 // Color palette
                 this.initColorControls();
+
+                // Search controls
+                this.initSearchControls();
 
                 if (!this.statusAnchor) {
                     this.statusAnchor = this.shareButton || this.locationButton || this.clearButton;
@@ -807,21 +943,30 @@ Adapted for self-contained use with inline SVG icons.
 
             toggleDrawingMode(enable = null) {
                 this.drawingMode = enable !== null ? enable : !this.drawingMode;
-                
+
                 const overlay = document.getElementById('drawingOverlay');
-                
+                const isPanMode = this.currentTool === 'pan';
+
                 if (this.drawingMode) {
                     overlay.classList.add('drawing-mode');
-                    this.map.dragging.disable();
-                    this.map.scrollWheelZoom.disable();
-                    this.map.doubleClickZoom.disable();
+                    if (isPanMode) {
+                        // Pan mode: enable map interaction
+                        this.map.dragging.enable();
+                        this.map.scrollWheelZoom.enable();
+                        this.map.doubleClickZoom.enable();
+                    } else {
+                        // Drawing modes: disable map interaction
+                        this.map.dragging.disable();
+                        this.map.scrollWheelZoom.disable();
+                        this.map.doubleClickZoom.disable();
+                    }
                 } else {
                     overlay.classList.remove('drawing-mode');
                     this.map.dragging.enable();
                     this.map.scrollWheelZoom.enable();
                     this.map.doubleClickZoom.enable();
                 }
-                
+
                 this.updateToolButtons();
             }
 
@@ -851,12 +996,68 @@ Adapted for self-contained use with inline SVG icons.
                 overlay.addEventListener('contextmenu', (e) => e.preventDefault());
             }
 
+            initKeyboardShortcuts() {
+                // Spacebar for temporary pan mode
+                document.addEventListener('keydown', (e) => {
+                    // Ignore if typing in an input field
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                        return;
+                    }
+
+                    // Spacebar activates temporary pan mode
+                    if (e.code === 'Space' && !this.spacebarPressed) {
+                        e.preventDefault();
+                        this.spacebarPressed = true;
+
+                        // Switch to pan mode if not already in it
+                        if (this.currentTool !== 'pan') {
+                            this.toolBeforeSpacebar = this.currentTool;
+                            const wasInDrawingMode = this.drawingMode;
+                            this.setTool('pan');
+                            // If we weren't in drawing mode, the pan tool won't be active yet
+                            if (!wasInDrawingMode) {
+                                this.toggleDrawingMode(true);
+                            }
+                        }
+                    }
+                });
+
+                document.addEventListener('keyup', (e) => {
+                    // Ignore if typing in an input field
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                        return;
+                    }
+
+                    // Release spacebar returns to previous tool
+                    if (e.code === 'Space' && this.spacebarPressed) {
+                        e.preventDefault();
+                        this.spacebarPressed = false;
+
+                        // Return to previous tool if we have one
+                        if (this.toolBeforeSpacebar) {
+                            this.setTool(this.toolBeforeSpacebar);
+                            this.toolBeforeSpacebar = null;
+                        } else {
+                            // If there was no previous tool, just exit drawing mode
+                            this.toggleDrawingMode(false);
+                        }
+                    }
+                });
+            }
+
             handleDrawStart(event) {
                 if (!this.drawingMode) return;
 
+                // Pan mode doesn't draw, just pans
+                if (this.currentTool === 'pan') {
+                    const overlay = document.getElementById('drawingOverlay');
+                    overlay.classList.add('panning');
+                    return;
+                }
+
                 this.closeStrokePopover();
                 this.closeColorPopover();
-                
+
                 this.captureUndoSnapshot();
                 this.didMutatePaths = false;
                 this.redoStack = [];
@@ -889,8 +1090,14 @@ Adapted for self-contained use with inline SVG icons.
             }
 
             handleDrawEnd(event) {
+                // Remove panning cursor class if in pan mode
+                if (this.currentTool === 'pan') {
+                    const overlay = document.getElementById('drawingOverlay');
+                    overlay.classList.remove('panning');
+                }
+
                 if (!this.isDrawing) return;
-                
+
                 const point = this.getDrawingPoint(event);
                 this.isDrawing = false;
 
@@ -899,7 +1106,7 @@ Adapted for self-contained use with inline SVG icons.
                 } else {
                     this.endShapePath(this.startPoint, point);
                 }
-                
+
                 this.pendingShapeColorIndex = null;
                 this.clearPreview();
                 this.commitUndoSnapshot();
@@ -986,7 +1193,7 @@ Adapted for self-contained use with inline SVG icons.
 
                     case 'circle':
                         const radius = Math.sqrt(
-                            Math.pow(currentContainer.x - startContainer.x, 2) + 
+                            Math.pow(currentContainer.x - startContainer.x, 2) +
                             Math.pow(currentContainer.y - startContainer.y, 2)
                         );
                         element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -994,6 +1201,20 @@ Adapted for self-contained use with inline SVG icons.
                         element.setAttribute('cx', startContainer.x);
                         element.setAttribute('cy', startContainer.y);
                         element.setAttribute('r', radius);
+                        element.setAttribute('stroke-width', this.currentStroke);
+                        break;
+
+                    case 'rectangle':
+                        const minX = Math.min(startContainer.x, currentContainer.x);
+                        const minY = Math.min(startContainer.y, currentContainer.y);
+                        const width = Math.abs(currentContainer.x - startContainer.x);
+                        const height = Math.abs(currentContainer.y - startContainer.y);
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        element.setAttribute('class', 'preview-rectangle');
+                        element.setAttribute('x', minX);
+                        element.setAttribute('y', minY);
+                        element.setAttribute('width', width);
+                        element.setAttribute('height', height);
                         element.setAttribute('stroke-width', this.currentStroke);
                         break;
 
@@ -1028,6 +1249,10 @@ Adapted for self-contained use with inline SVG icons.
 
                     case 'circle':
                         pathData = this.circlePathFromLatLng(points[0], points[1]);
+                        break;
+
+                    case 'rectangle':
+                        pathData = this.rectanglePathFromLatLng(points[0], points[1]);
                         break;
 
                     case 'arrow':
@@ -1114,6 +1339,17 @@ Adapted for self-contained use with inline SVG icons.
                     Math.pow(edgePoint.y - centerPoint.y, 2)
                 );
                 return this.circleToPath(centerPoint.x, centerPoint.y, radius);
+            }
+
+            rectanglePathFromLatLng(corner1, corner2) {
+                if (!corner1 || !corner2) return '';
+                const pt1 = this.map.latLngToContainerPoint([corner1.lat, corner1.lng]);
+                const pt2 = this.map.latLngToContainerPoint([corner2.lat, corner2.lng]);
+                const minX = Math.min(pt1.x, pt2.x);
+                const minY = Math.min(pt1.y, pt2.y);
+                const maxX = Math.max(pt1.x, pt2.x);
+                const maxY = Math.max(pt1.y, pt2.y);
+                return `M${minX},${minY} L${maxX},${minY} L${maxX},${maxY} L${minX},${maxY} Z`;
             }
 
             captureUndoSnapshot() {
@@ -1716,6 +1952,214 @@ Adapted for self-contained use with inline SVG icons.
                 this.updateWidthButtons();
             }
 
+            initSearchControls() {
+                this.searchInput = document.getElementById('searchInput');
+                this.searchResults = document.getElementById('searchResults');
+                const searchToggleBtn = document.getElementById('searchToggleBtn');
+                const searchContainer = document.getElementById('searchContainer');
+
+                if (!this.searchInput || !this.searchResults || !searchToggleBtn || !searchContainer) return;
+
+                // Toggle search visibility
+                searchToggleBtn.addEventListener('click', () => {
+                    const isVisible = searchContainer.style.display !== 'none';
+                    if (isVisible) {
+                        searchContainer.style.display = 'none';
+                        searchToggleBtn.setAttribute('aria-pressed', 'false');
+                        this.hideSearchResults();
+                    } else {
+                        searchContainer.style.display = '';
+                        searchToggleBtn.setAttribute('aria-pressed', 'true');
+                        this.searchInput.focus();
+                    }
+                });
+
+                // Hide search when map moves
+                this.map.on('movestart', () => {
+                    if (searchContainer.style.display !== 'none') {
+                        searchContainer.style.display = 'none';
+                        searchToggleBtn.setAttribute('aria-pressed', 'false');
+                        this.hideSearchResults();
+                    }
+                });
+
+                this.searchInput.addEventListener('input', (e) => {
+                    this.handleSearchInput(e.target.value);
+                });
+
+                this.searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.hideSearchResults();
+                        this.searchInput.blur();
+                        searchContainer.style.display = 'none';
+                        searchToggleBtn.setAttribute('aria-pressed', 'false');
+                    }
+                });
+
+                // Close results when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!this.searchInput.contains(e.target) && !this.searchResults.contains(e.target) && e.target !== searchToggleBtn) {
+                        this.hideSearchResults();
+                    }
+                });
+            }
+
+            handleSearchInput(query) {
+                clearTimeout(this.searchDebounceTimer);
+
+                if (!query || query.trim().length < 2) {
+                    this.hideSearchResults();
+                    return;
+                }
+
+                this.searchDebounceTimer = setTimeout(() => {
+                    this.performSearch(query.trim());
+                }, 500);
+            }
+
+            async performSearch(query) {
+                // Rate limiting: 1 request per second
+                const now = Date.now();
+                const timeSinceLastSearch = now - this.lastSearchTime;
+                if (timeSinceLastSearch < 1000) {
+                    const delay = 1000 - timeSinceLastSearch;
+                    setTimeout(() => this.performSearch(query), delay);
+                    return;
+                }
+                this.lastSearchTime = now;
+
+                this.showSearchLoading();
+
+                try {
+                    const url = new URL('https://nominatim.openstreetmap.org/search');
+                    url.searchParams.set('format', 'json');
+                    url.searchParams.set('q', query);
+                    url.searchParams.set('limit', '5');
+                    url.searchParams.set('addressdetails', '1');
+
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                    const response = await fetch(url.toString(), {
+                        headers: {
+                            'User-Agent': 'MapAnnotator/1.0 (https://github.com/gnyman/mapdraw)'
+                        },
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) {
+                        throw new Error('Search request failed');
+                    }
+
+                    const results = await response.json();
+                    this.displaySearchResults(results);
+
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        this.showSearchError('Search timed out');
+                    } else {
+                        this.showSearchError('Search unavailable');
+                    }
+                }
+            }
+
+            showSearchLoading() {
+                this.searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
+                this.searchResults.classList.add('show');
+            }
+
+            displaySearchResults(results) {
+                if (!results || results.length === 0) {
+                    this.searchResults.innerHTML = '<div class="search-loading">No results found</div>';
+                    return;
+                }
+
+                this.searchResults.innerHTML = '';
+
+                results.forEach(result => {
+                    const item = document.createElement('div');
+                    item.className = 'search-result-item';
+                    item.textContent = result.display_name;
+                    item.setAttribute('role', 'option');
+                    item.setAttribute('tabindex', '0');
+
+                    item.addEventListener('click', () => {
+                        this.selectSearchResult(result);
+                    });
+
+                    item.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            this.selectSearchResult(result);
+                        }
+                    });
+
+                    this.searchResults.appendChild(item);
+                });
+
+                this.searchResults.classList.add('show');
+            }
+
+            showSearchError(message) {
+                this.searchResults.innerHTML = `<div class="search-loading">${message}</div>`;
+                this.searchResults.classList.add('show');
+            }
+
+            hideSearchResults() {
+                this.searchResults.classList.remove('show');
+                this.searchResults.innerHTML = '';
+            }
+
+            selectSearchResult(result) {
+                const lat = parseFloat(result.lat);
+                const lng = parseFloat(result.lon);
+
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+                // Remove previous search marker
+                this.removeSearchMarker();
+
+                // Pan and zoom to location
+                this.map.setView([lat, lng], 16, { animate: true });
+
+                // Add temporary marker with inline SVG
+                const markerIcon = L.icon({
+                    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36">
+                            <path fill="#007AFF" d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z"/>
+                            <circle fill="white" cx="12" cy="12" r="4"/>
+                        </svg>
+                    `),
+                    iconSize: [24, 36],
+                    iconAnchor: [12, 36]
+                });
+
+                this.searchMarker = L.marker([lat, lng], { icon: markerIcon }).addTo(this.map);
+
+                // Auto-remove marker after 10 seconds
+                clearTimeout(this.searchMarkerTimer);
+                this.searchMarkerTimer = setTimeout(() => {
+                    this.removeSearchMarker();
+                }, 10000);
+
+                // Hide results and clear input
+                this.hideSearchResults();
+                this.searchInput.value = '';
+                this.searchInput.blur();
+            }
+
+            removeSearchMarker() {
+                if (this.searchMarker) {
+                    this.map.removeLayer(this.searchMarker);
+                    this.searchMarker = null;
+                }
+                if (this.searchMarkerTimer) {
+                    clearTimeout(this.searchMarkerTimer);
+                    this.searchMarkerTimer = null;
+                }
+            }
+
             initMarkers() {
                 const defs = document.getElementById('arrowMarkers');
                 if (!defs) return;
@@ -1838,15 +2282,15 @@ Adapted for self-contained use with inline SVG icons.
             }
 
             encodePathsToBinary() {
-                const typeToCode = { freehand: 0, line: 1, circle: 2, arrow: 3 };
+                const typeToCode = { freehand: 0, line: 1, circle: 2, arrow: 3, rectangle: 4 };
                 const prepared = [];
 
                 this.paths.forEach(path => {
-                    const requiresTwoPoints = path.type === 'circle' || path.type === 'line' || path.type === 'arrow';
+                    const requiresTwoPoints = path.type === 'circle' || path.type === 'line' || path.type === 'arrow' || path.type === 'rectangle';
                     const normalized = this.normalizePathPoints(path.points, requiresTwoPoints);
                     if (normalized.length === 0) return;
 
-                    const colorIndex = Math.max(0, Math.min(15, Number.isInteger(path.colorIndex) ? path.colorIndex : 0)) % this.colorPalette.length;
+                    const colorIndex = Math.max(0, Math.min(7, Number.isInteger(path.colorIndex) ? path.colorIndex : 0)) % this.colorPalette.length;
                     const widthIndex = this.getClosestWidthIndex(path.strokeWidth || this.widthOptions[this.currentWidthIndex]);
                     const snappedWidth = this.widthOptions[widthIndex];
                     const typeCode = typeToCode[path.type] ?? typeToCode.freehand;
@@ -1863,11 +2307,11 @@ Adapted for self-contained use with inline SVG icons.
                 });
 
                 const bytes = [];
-                bytes.push(2); // version
+                bytes.push(3); // version
                 this.writeVarUint(bytes, prepared.length);
 
                 prepared.forEach(path => {
-                    const meta = ((path.typeCode & 0x03) << 6) | ((path.widthIndex & 0x03) << 4) | (path.colorIndex & 0x0f);
+                    const meta = ((path.typeCode & 0x07) << 5) | ((path.widthIndex & 0x03) << 3) | (path.colorIndex & 0x07);
                     bytes.push(meta & 0xff);
                     this.writeVarUint(bytes, path.points.length);
 
@@ -1898,12 +2342,12 @@ Adapted for self-contained use with inline SVG icons.
 
                 const cursor = { index: 0 };
                 const version = bytes[cursor.index++];
-                if (version !== 2) {
+                if (version !== 3) {
                     throw new Error('Unsupported drawing format');
                 }
 
                 const pathCount = this.readVarUint(bytes, cursor);
-                const codeToType = ['freehand', 'line', 'circle', 'arrow'];
+                const codeToType = ['freehand', 'line', 'circle', 'arrow', 'rectangle'];
                 const paths = [];
 
                 for (let i = 0; i < pathCount; i++) {
@@ -1912,9 +2356,9 @@ Adapted for self-contained use with inline SVG icons.
                     }
 
                     const meta = bytes[cursor.index++];
-                    const typeCode = (meta >> 6) & 0x03;
-                    const widthIndex = (meta >> 4) & 0x03;
-                    const colorIndex = meta & 0x0f;
+                    const typeCode = (meta >> 5) & 0x07;
+                    const widthIndex = (meta >> 3) & 0x03;
+                    const colorIndex = meta & 0x07;
 
                     const pointCount = this.readVarUint(bytes, cursor);
                     const points = [];
@@ -2030,13 +2474,299 @@ Adapted for self-contained use with inline SVG icons.
                 }
             }
 
+            haversineDistance(lat1, lng1, lat2, lng2) {
+                const R = 6371000; // Earth radius in meters
+                const φ1 = lat1 * Math.PI / 180;
+                const φ2 = lat2 * Math.PI / 180;
+                const Δφ = (lat2 - lat1) * Math.PI / 180;
+                const Δλ = (lng2 - lng1) * Math.PI / 180;
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            exportGeoJSON() {
+                if (this.paths.length === 0) {
+                    this.showStatus('No drawing to export', 'error', this.exportButton);
+                    return;
+                }
+
+                const features = [];
+
+                this.paths.forEach(path => {
+                    const color = this.getColorHex(path.colorIndex);
+                    const properties = {
+                        'stroke': color,
+                        'stroke-width': path.strokeWidth,
+                        'shape_type': path.type
+                    };
+
+                    let geometry;
+
+                    switch (path.type) {
+                        case 'freehand':
+                        case 'line':
+                            // GeoJSON uses [lng, lat] order!
+                            geometry = {
+                                type: 'LineString',
+                                coordinates: path.points.map(p => [p.lng, p.lat])
+                            };
+                            break;
+
+                        case 'arrow':
+                            geometry = {
+                                type: 'LineString',
+                                coordinates: path.points.slice(0, 2).map(p => [p.lng, p.lat])
+                            };
+                            properties.arrowhead = true;
+                            break;
+
+                        case 'circle':
+                            if (path.points.length < 2) return;
+                            const center = path.points[0];
+                            const edge = path.points[1];
+                            const radius = this.haversineDistance(center.lat, center.lng, edge.lat, edge.lng);
+
+                            geometry = {
+                                type: 'Point',
+                                coordinates: [center.lng, center.lat]  // [lng, lat]!
+                            };
+                            properties.radius_meters = radius;
+                            break;
+
+                        case 'rectangle':
+                            if (path.points.length < 2) return;
+                            const p1 = path.points[0];
+                            const p2 = path.points[1];
+                            // Create closed polygon ring [sw, se, ne, nw, sw]
+                            geometry = {
+                                type: 'Polygon',
+                                coordinates: [[
+                                    [p1.lng, p1.lat],
+                                    [p2.lng, p1.lat],
+                                    [p2.lng, p2.lat],
+                                    [p1.lng, p2.lat],
+                                    [p1.lng, p1.lat]  // Close the ring
+                                ]]
+                            };
+                            break;
+
+                        default:
+                            return;
+                    }
+
+                    features.push({
+                        type: 'Feature',
+                        geometry: geometry,
+                        properties: properties
+                    });
+                });
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                // Download as file
+                const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `map-drawing-${Date.now()}.geojson`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                this.showStatus(`Exported ${features.length} features`, 'success', this.exportButton);
+            }
+
+            importGeoJSON() {
+                const fileInput = document.getElementById('geojsonFileInput');
+                if (!fileInput) return;
+
+                fileInput.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    // Validate file size (max 10MB)
+                    if (file.size > 10 * 1024 * 1024) {
+                        this.showStatus('File too large (max 10MB)', 'error', this.importButton);
+                        fileInput.value = '';
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const geojson = JSON.parse(event.target.result);
+                            this.processGeoJSONImport(geojson);
+                        } catch (error) {
+                            this.showStatus('Invalid JSON file', 'error', this.importButton);
+                        }
+                    };
+                    reader.readAsText(file);
+                    fileInput.value = ''; // Reset for re-import
+                };
+
+                fileInput.click();
+            }
+
+            processGeoJSONImport(geojson) {
+                if (!geojson || geojson.type !== 'FeatureCollection') {
+                    this.showStatus('Not a valid GeoJSON FeatureCollection', 'error', this.importButton);
+                    return;
+                }
+
+                const newPaths = [];
+                let skipped = 0;
+
+                (geojson.features || []).forEach(feature => {
+                    if (!feature.geometry || !feature.geometry.type) {
+                        skipped++;
+                        return;
+                    }
+
+                    const props = feature.properties || {};
+                    const shapeType = props.shape_type || this.inferShapeType(feature.geometry.type, props);
+
+                    // Find closest color
+                    const strokeColor = props.stroke || '#FF3B30';
+                    const colorIndex = this.findClosestColorIndex(strokeColor);
+
+                    // Find closest width
+                    const strokeWidth = props['stroke-width'] || 4;
+                    const widthIndex = this.getClosestWidthIndex(strokeWidth);
+
+                    let points = [];
+
+                    switch (feature.geometry.type) {
+                        case 'LineString':
+                            // Convert GeoJSON [lng,lat] to Leaflet {lat,lng}
+                            points = feature.geometry.coordinates.map(c => ({ lng: c[0], lat: c[1] }));
+                            break;
+
+                        case 'Point':
+                            // Circle: convert radius back to edge point
+                            const centerLng = feature.geometry.coordinates[0];
+                            const centerLat = feature.geometry.coordinates[1];
+                            const radiusMeters = props.radius_meters || 100;
+
+                            // Approximate edge point (simple method, good enough for small radii)
+                            const R = 6371000; // Earth radius in meters
+                            const latOffset = (radiusMeters / R) * (180 / Math.PI);
+                            const edgeLat = centerLat + latOffset;
+
+                            points = [
+                                { lng: centerLng, lat: centerLat },
+                                { lng: centerLng, lat: edgeLat }
+                            ];
+                            break;
+
+                        case 'Polygon':
+                            // Rectangle: extract first 2 diagonal corners
+                            const ring = feature.geometry.coordinates[0];
+                            if (ring && ring.length >= 4) {
+                                points = [
+                                    { lng: ring[0][0], lat: ring[0][1] },
+                                    { lng: ring[2][0], lat: ring[2][1] }
+                                ];
+                            }
+                            break;
+
+                        default:
+                            skipped++;
+                            return;
+                    }
+
+                    if (points.length === 0) {
+                        skipped++;
+                        return;
+                    }
+
+                    newPaths.push({
+                        type: shapeType,
+                        points: points,
+                        strokeWidth: this.widthOptions[widthIndex],
+                        colorIndex: colorIndex
+                    });
+                });
+
+                if (newPaths.length === 0) {
+                    this.showStatus('No compatible features found', 'error', this.importButton);
+                    return;
+                }
+
+                // Ask user: merge or replace
+                const shouldMerge = confirm(`Import ${newPaths.length} features.\n\nOK = Merge with existing\nCancel = Replace existing`);
+
+                this.captureUndoSnapshot();
+
+                if (shouldMerge) {
+                    this.paths.push(...newPaths);
+                } else {
+                    this.paths = newPaths;
+                }
+
+                this.markPathsMutated();
+                this.commitUndoSnapshot();
+                this.redrawPaths();
+                this.updateUrl();
+                this.scheduleAutoSave();
+
+                const msg = skipped > 0
+                    ? `Imported ${newPaths.length} features (${skipped} skipped)`
+                    : `Imported ${newPaths.length} features`;
+                this.showStatus(msg, 'success', this.importButton);
+            }
+
+            inferShapeType(geometryType, props) {
+                if (props.shape_type) return props.shape_type;
+                if (geometryType === 'Point') return 'circle';
+                if (geometryType === 'Polygon') return 'rectangle';
+                if (props.arrowhead) return 'arrow';
+                return 'freehand';
+            }
+
+            findClosestColorIndex(hexColor) {
+                // Simple color matching - finds closest by RGB distance
+                const parseHex = (hex) => {
+                    const clean = hex.replace('#', '');
+                    return {
+                        r: parseInt(clean.substr(0, 2), 16),
+                        g: parseInt(clean.substr(2, 2), 16),
+                        b: parseInt(clean.substr(4, 2), 16)
+                    };
+                };
+
+                const target = parseHex(hexColor);
+                let bestIndex = 0;
+                let bestDistance = Infinity;
+
+                this.colorPalette.forEach((paletteColor, index) => {
+                    const c = parseHex(paletteColor);
+                    const dist = Math.sqrt(
+                        Math.pow(c.r - target.r, 2) +
+                        Math.pow(c.g - target.g, 2) +
+                        Math.pow(c.b - target.b, 2)
+                    );
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestIndex = index;
+                    }
+                });
+
+                return bestIndex;
+            }
 
             redrawPaths() {
                 const group = document.getElementById('drawingGroup');
                 group.innerHTML = '';
                 
                 this.paths.forEach(path => {
-                    const colorIndex = Math.max(0, Math.min(15, Number.isInteger(path.colorIndex) ? path.colorIndex : 0)) % this.colorPalette.length;
+                    const colorIndex = Math.max(0, Math.min(7, Number.isInteger(path.colorIndex) ? path.colorIndex : 0)) % this.colorPalette.length;
                     const widthIndex = this.getClosestWidthIndex(path.strokeWidth || this.widthOptions[this.currentWidthIndex]);
                     const strokeWidth = this.widthOptions[widthIndex];
                     path.colorIndex = colorIndex;
@@ -2051,6 +2781,11 @@ Adapted for self-contained use with inline SVG icons.
                         case 'circle':
                             if (path.points && path.points.length >= 2) {
                                 pathData = this.circlePathFromLatLng(path.points[0], path.points[1]);
+                            }
+                            break;
+                        case 'rectangle':
+                            if (path.points && path.points.length >= 2) {
+                                pathData = this.rectanglePathFromLatLng(path.points[0], path.points[1]);
                             }
                             break;
                         case 'arrow':
@@ -2140,32 +2875,24 @@ Adapted for self-contained use with inline SVG icons.
             }
 
             async showShare() {
-                const urlContainer = document.getElementById('urlContainer');
-                const shareUrl = document.getElementById('shareUrl');
-                this.shareOpen = true;
                 this.closeColorPopover();
                 this.closeStrokePopover();
                 const shareBtn = document.getElementById('shareBtn');
                 if (shareBtn) {
                     this.statusAnchor = shareBtn;
                 }
-                if (shareBtn) {
-                    shareBtn.classList.add('active');
-                    shareBtn.setAttribute('aria-pressed', 'true');
-                }
 
                 const updated = await this.updateUrl();
                 const url = updated || window.location.href;
-                if (shareUrl) {
-                    shareUrl.value = url;
+
+                // Copy to clipboard directly
+                try {
+                    await navigator.clipboard.writeText(url);
+                    const length = url.length;
+                    this.showStatus(`URL copied to clipboard (${length} characters)`, length < 2000 ? 'success' : 'error', shareBtn);
+                } catch (err) {
+                    this.showStatus('Failed to copy URL to clipboard', 'error', shareBtn);
                 }
-                if (urlContainer) {
-                    urlContainer.classList.add('show');
-                }
-                
-                // Show URL length info
-                const length = url.length;
-                this.showStatus(`Share URL generated (${length} characters)`, length < 2000 ? 'success' : 'error', shareBtn);
             }
 
             showStatus(message, type = '', anchor = null) {
@@ -2307,6 +3034,7 @@ Adapted for self-contained use with inline SVG icons.
         window.addEventListener('beforeunload', () => {
             if (app) {
                 app.stopLocationTracking(true);
+                app.removeSearchMarker();
                 app.saveState();
             }
         });
