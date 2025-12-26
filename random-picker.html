@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Picker</title>
+
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"
+            integrity="sha256-aEIb1Iz5HLS6m3J6op2mGnwZTe+HTkI3cvT8YNVsakI="
+            crossorigin="anonymous"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --bg-input: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #8b5cf6;
+            --accent-hover: #7c3aed;
+            --accent-dim: #6d28d9;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            max-height: 90vh;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Input Section */
+        .input-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        form {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: var(--danger-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card-hover);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border);
+        }
+
+        /* List Section */
+        .list-section {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .list-count {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .btn-clear {
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .btn-clear:hover {
+            background: var(--bg-card-hover);
+        }
+
+        /* Empty State */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 3rem;
+            height: 3rem;
+            margin-bottom: 0.75rem;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 0.875rem;
+        }
+
+        /* Items List */
+        .items-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding-right: 0.25rem;
+        }
+
+        .items-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .items-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .items-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .items-list::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        .item {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .item:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .item-text {
+            flex: 1;
+            font-size: 0.875rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 0.5rem;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s, background 0.2s, color 0.2s;
+        }
+
+        .item:hover .btn-delete,
+        .btn-delete:focus {
+            opacity: 1;
+        }
+
+        .btn-delete:hover {
+            background: var(--bg-card-hover);
+            color: var(--danger);
+        }
+
+        /* Loading State */
+        .btn-loading {
+            background: var(--bg-card-hover);
+            cursor: wait;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--border);
+            border-top-color: var(--text);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1000;
+            animation: fadeInModal 0.2s ease-out;
+        }
+
+        @keyframes fadeInModal {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .btn-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .btn-close:hover {
+            background: var(--bg-card-hover);
+            color: var(--text);
+        }
+
+        .modal-icon {
+            width: 4rem;
+            height: 4rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+            border-radius: 50%;
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-icon svg {
+            width: 2rem;
+            height: 2rem;
+            color: white;
+        }
+
+        .modal-title {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .modal-winner {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 2rem;
+            word-break: break-word;
+        }
+
+        .modal-text {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Icons */
+        .icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Random Picker</h1>
+            <p class="subtitle">Cryptographically Secure</p>
+        </header>
+
+        <!-- Input Section -->
+        <div class="input-section">
+            <form id="add-form">
+                <label for="item-input" class="sr-only">Enter a new option</label>
+                <input
+                    id="item-input"
+                    type="text"
+                    placeholder="Enter an option..."
+                    autocomplete="off"
+                    maxlength="200"
+                    aria-describedby="input-help"
+                >
+                <button
+                    id="add-btn"
+                    type="submit"
+                    class="btn btn-icon"
+                    disabled
+                    aria-label="Add option"
+                >
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </form>
+            <p id="input-help" class="sr-only">Maximum 200 characters, 1000 items total</p>
+        </div>
+
+        <!-- List Section -->
+        <div class="list-section">
+            <div class="list-header">
+                <span id="count-label" class="list-count">Items (0)</span>
+                <button
+                    id="clear-btn"
+                    class="btn-clear hidden"
+                    aria-label="Clear all items"
+                >
+                    Clear All
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <p>Add items to the pool</p>
+            </div>
+
+            <!-- Items List -->
+            <div id="items-list" class="items-list hidden" role="list"></div>
+        </div>
+
+        <!-- Pick Button -->
+        <button
+            id="pick-btn"
+            class="btn btn-primary"
+            disabled
+        >
+            <span id="btn-text">Pick Randomly</span>
+            <span id="btn-loader" class="hidden">
+                <span class="spinner" aria-hidden="true"></span>
+                Picking...
+            </span>
+        </button>
+    </div>
+
+    <!-- Winner Modal -->
+    <div
+        id="winner-modal"
+        class="modal hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="winner-title"
+        aria-describedby="winner-name"
+    >
+        <div class="modal-content">
+            <button
+                id="close-modal-x"
+                class="btn-close"
+                aria-label="Close (Esc)"
+            >
+                <svg class="icon" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+
+            <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+
+            <h2 id="winner-title" class="modal-title">The Winner</h2>
+            <p id="winner-name" class="modal-winner">Winner Name</p>
+
+            <button id="close-modal-btn" class="btn btn-primary">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div
+        id="confirm-modal"
+        class="modal hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-text"
+    >
+        <div class="modal-content">
+            <h2 id="confirm-title" class="modal-title">Clear Everything?</h2>
+            <p id="confirm-text" class="modal-text">
+                This will remove all items from your list. This action cannot be undone.
+            </p>
+
+            <div class="modal-actions">
+                <button id="cancel-clear-btn" class="btn btn-secondary">
+                    Cancel
+                </button>
+                <button id="confirm-clear-btn" class="btn btn-danger">
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live region for screen readers -->
+    <div aria-live="polite" aria-atomic="true" class="sr-only" id="announcer"></div>
+
+    <script>
+        // Constants
+        const MAX_ITEMS = 1000;
+        const MAX_ITEM_LENGTH = 200;
+        const THINKING_DELAY = 600;
+        const CONFETTI_DURATION = 3000;
+
+        // State
+        const state = {
+            items: [],
+            isThinking: false
+        };
+
+        // DOM Elements
+        const els = {
+            input: document.getElementById('item-input'),
+            addForm: document.getElementById('add-form'),
+            addBtn: document.getElementById('add-btn'),
+            list: document.getElementById('items-list'),
+            emptyState: document.getElementById('empty-state'),
+            countLabel: document.getElementById('count-label'),
+            clearBtn: document.getElementById('clear-btn'),
+            pickBtn: document.getElementById('pick-btn'),
+            btnText: document.getElementById('btn-text'),
+            btnLoader: document.getElementById('btn-loader'),
+            winnerModal: document.getElementById('winner-modal'),
+            winnerName: document.getElementById('winner-name'),
+            closeModalBtn: document.getElementById('close-modal-btn'),
+            closeModalX: document.getElementById('close-modal-x'),
+            confirmModal: document.getElementById('confirm-modal'),
+            confirmClearBtn: document.getElementById('confirm-clear-btn'),
+            cancelClearBtn: document.getElementById('cancel-clear-btn'),
+            announcer: document.getElementById('announcer')
+        };
+
+        // Cryptographically Secure Random Number Generator
+        // Uses rejection sampling to avoid modulo bias
+        function getSecureRandomIndex(max) {
+            if (!window.crypto || !window.crypto.getRandomValues) {
+                console.warn('Crypto API unavailable, using Math.random fallback');
+                return Math.floor(Math.random() * max);
+            }
+
+            // Maximum value that divides evenly into 2^32
+            const limit = Math.floor(0xFFFFFFFF / max) * max;
+
+            let randomValue;
+            const randomBuffer = new Uint32Array(1);
+
+            do {
+                window.crypto.getRandomValues(randomBuffer);
+                randomValue = randomBuffer[0];
+            } while (randomValue >= limit);
+
+            return randomValue % max;
+        }
+
+        // Initialize
+        function init() {
+            loadItems();
+            render();
+            setupEvents();
+        }
+
+        // Load items from localStorage with validation
+        function loadItems() {
+            try {
+                const saved = localStorage.getItem('random-picker-items');
+                if (!saved) return;
+
+                const items = JSON.parse(saved);
+
+                // Validate: must be array of strings
+                if (!Array.isArray(items)) {
+                    throw new Error('Invalid data format');
+                }
+
+                // Filter and sanitize items
+                const validItems = items
+                    .filter(item => typeof item === 'string' && item.trim().length > 0)
+                    .map(item => item.trim().substring(0, MAX_ITEM_LENGTH))
+                    .slice(0, MAX_ITEMS);
+
+                state.items = validItems;
+            } catch (e) {
+                console.error('Failed to load items:', e);
+                state.items = [];
+            }
+        }
+
+        // Save items to localStorage
+        function save() {
+            try {
+                localStorage.setItem('random-picker-items', JSON.stringify(state.items));
+            } catch (e) {
+                console.error('Failed to save items:', e);
+                announce('Error saving items');
+            }
+            render();
+        }
+
+        // Render UI
+        function render() {
+            const hasItems = state.items.length > 0;
+
+            // Toggle empty state
+            els.emptyState.classList.toggle('hidden', hasItems);
+            els.list.classList.toggle('hidden', !hasItems);
+            els.clearBtn.classList.toggle('hidden', !hasItems);
+
+            // Update count
+            els.countLabel.textContent = `Items (${state.items.length})`;
+
+            // Update pick button
+            const canPick = state.items.length >= 2 && !state.isThinking;
+            els.pickBtn.disabled = !canPick;
+
+            // Render list items
+            if (hasItems) {
+                els.list.innerHTML = '';
+                state.items.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'item';
+                    div.setAttribute('role', 'listitem');
+
+                    const span = document.createElement('span');
+                    span.className = 'item-text';
+                    span.textContent = item;
+
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-delete';
+                    btn.setAttribute('aria-label', `Remove ${item}`);
+                    btn.innerHTML = `
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    `;
+                    btn.addEventListener('click', () => removeItem(index));
+
+                    div.appendChild(span);
+                    div.appendChild(btn);
+                    els.list.appendChild(div);
+                });
+            }
+
+            // Update button loading state
+            if (state.isThinking) {
+                els.pickBtn.classList.add('btn-loading');
+                els.btnText.classList.add('hidden');
+                els.btnLoader.classList.remove('hidden');
+            } else {
+                els.pickBtn.classList.remove('btn-loading');
+                els.btnText.classList.remove('hidden');
+                els.btnLoader.classList.add('hidden');
+            }
+
+            // Update add button state
+            const maxReached = state.items.length >= MAX_ITEMS;
+            if (maxReached) {
+                els.input.placeholder = 'Maximum items reached';
+                els.input.disabled = true;
+                els.addBtn.disabled = true;
+            } else {
+                els.input.placeholder = 'Enter an option...';
+                els.input.disabled = false;
+                updateAddButton();
+            }
+        }
+
+        // Update add button state based on input
+        function updateAddButton() {
+            const hasValue = els.input.value.trim().length > 0;
+            const notMaxed = state.items.length < MAX_ITEMS;
+            els.addBtn.disabled = !hasValue || !notMaxed;
+        }
+
+        // Add item
+        function addItem(e) {
+            e.preventDefault();
+
+            const val = els.input.value.trim();
+            if (!val) return;
+
+            // Validate length
+            if (val.length > MAX_ITEM_LENGTH) {
+                announce(`Item too long (max ${MAX_ITEM_LENGTH} characters)`);
+                return;
+            }
+
+            // Check for duplicates
+            if (state.items.includes(val)) {
+                announce('Item already exists');
+                return;
+            }
+
+            // Check max items
+            if (state.items.length >= MAX_ITEMS) {
+                announce(`Maximum ${MAX_ITEMS} items allowed`);
+                return;
+            }
+
+            state.items.push(val);
+            els.input.value = '';
+            announce(`Added ${val}`);
+            save();
+        }
+
+        // Remove item
+        function removeItem(index) {
+            const item = state.items[index];
+            state.items.splice(index, 1);
+            announce(`Removed ${item}`);
+            save();
+        }
+
+        // Request clear confirmation
+        function requestClear() {
+            showModal(els.confirmModal);
+        }
+
+        // Confirm clear
+        function confirmClear() {
+            state.items = [];
+            announce('All items cleared');
+            save();
+            closeModal(els.confirmModal);
+        }
+
+        // Pick winner
+        function pickWinner() {
+            if (state.items.length < 2) return;
+
+            state.isThinking = true;
+            render();
+
+            setTimeout(() => {
+                const index = getSecureRandomIndex(state.items.length);
+                const winner = state.items[index];
+
+                announce(`The winner is ${winner}`);
+                showWinnerModal(winner);
+                triggerConfetti();
+
+                state.isThinking = false;
+                render();
+            }, THINKING_DELAY);
+        }
+
+        // Show winner modal
+        function showWinnerModal(winner) {
+            els.winnerName.textContent = winner;
+            showModal(els.winnerModal);
+
+            // Focus first focusable element
+            setTimeout(() => {
+                const focusable = els.winnerModal.querySelectorAll('button');
+                if (focusable.length) focusable[focusable.length - 1].focus();
+            }, 100);
+        }
+
+        // Show modal
+        function showModal(modal) {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        // Close modal
+        function closeModal(modal) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+
+            // Return focus
+            if (modal === els.winnerModal) {
+                els.pickBtn.focus();
+            }
+        }
+
+        // Trigger confetti
+        function triggerConfetti() {
+            if (typeof confetti !== 'function') {
+                console.warn('Confetti library not available');
+                return;
+            }
+
+            const duration = CONFETTI_DURATION;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+            const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+            const interval = setInterval(() => {
+                const timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) return clearInterval(interval);
+
+                const particleCount = 50 * (timeLeft / duration);
+
+                confetti({
+                    ...defaults,
+                    particleCount,
+                    origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+                });
+                confetti({
+                    ...defaults,
+                    particleCount,
+                    origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+                });
+            }, 250);
+        }
+
+        // Announce to screen readers
+        function announce(message) {
+            els.announcer.textContent = message;
+            setTimeout(() => {
+                els.announcer.textContent = '';
+            }, 1000);
+        }
+
+        // Setup event listeners
+        function setupEvents() {
+            // Form submit
+            els.addForm.addEventListener('submit', addItem);
+
+            // Input validation
+            els.input.addEventListener('input', updateAddButton);
+
+            // Clear button
+            els.clearBtn.addEventListener('click', requestClear);
+
+            // Confirmation modal
+            els.confirmClearBtn.addEventListener('click', confirmClear);
+            els.cancelClearBtn.addEventListener('click', () => closeModal(els.confirmModal));
+            els.confirmModal.addEventListener('click', (e) => {
+                if (e.target === els.confirmModal) closeModal(els.confirmModal);
+            });
+
+            // Pick button
+            els.pickBtn.addEventListener('click', pickWinner);
+
+            // Winner modal
+            els.closeModalBtn.addEventListener('click', () => closeModal(els.winnerModal));
+            els.closeModalX.addEventListener('click', () => closeModal(els.winnerModal));
+            els.winnerModal.addEventListener('click', (e) => {
+                if (e.target === els.winnerModal) closeModal(els.winnerModal);
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (!els.winnerModal.classList.contains('hidden')) {
+                        closeModal(els.winnerModal);
+                    } else if (!els.confirmModal.classList.contains('hidden')) {
+                        closeModal(els.confirmModal);
+                    }
+                }
+            });
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
