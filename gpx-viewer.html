@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="View GPX tracks with elevation analysis and climb/descent segmentation">
+    <title>GPX Viewer</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1000;
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .back-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: #333;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .back-btn:hover {
+            background: #f0f0f0;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            padding: 3rem;
+            text-align: center;
+            z-index: 1001;
+            display: none;
+        }
+
+        .upload-area.show {
+            display: block;
+        }
+
+        .upload-area.drag-over {
+            border: 3px dashed #2563eb;
+            background: #f0f7ff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #666;
+        }
+
+        .upload-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .upload-hint {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-btn {
+            padding: 0.75rem 2rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .upload-btn:hover {
+            background: #1d4ed8;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Map */
+        #map {
+            flex: 1;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Sidebar (Desktop) */
+        .sidebar {
+            display: none;
+            width: 30%;
+            min-width: 300px;
+            max-width: 500px;
+            background: white;
+            overflow-y: auto;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-content {
+            padding: 1.5rem;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stats-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Analysis Panel */
+        .analysis-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .analysis-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .slider-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .slider-value {
+            font-weight: 600;
+            color: #2563eb;
+        }
+
+        .slider-helper {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 0.25rem;
+        }
+
+        #thresholdSlider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        #thresholdSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+        }
+
+        #thresholdSlider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Segment List */
+        .segment-list {
+            margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .segment-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto auto;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.2s;
+            align-items: center;
+        }
+
+        .segment-item:hover {
+            background: #f0f0f0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .segment-item.highlighted {
+            background: #e3f2fd;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+
+        .segment-icon {
+            font-size: 1.2rem;
+        }
+
+        .segment-type {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .segment-distance {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .segment-elevation {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .segment-gradient {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #2563eb;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 1rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        /* Error Message */
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            border-radius: 8px;
+            padding: 1rem;
+            color: #c33;
+            margin: 1rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* File Info */
+        .file-info {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .file-info.show {
+            display: flex;
+        }
+
+        .file-name {
+            font-size: 0.9rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .reload-btn {
+            padding: 0.5rem 1rem;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .reload-btn:hover {
+            background: #e0e0e0;
+        }
+
+        /* Mobile Panel */
+        .mobile-panel {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            transition: transform 0.3s;
+        }
+
+        .mobile-panel.collapsed {
+            transform: translateY(calc(100% - 60px));
+        }
+
+        .mobile-panel-header {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .mobile-panel-peek {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .mobile-panel-toggle {
+            font-size: 1.5rem;
+            color: #666;
+        }
+
+        .mobile-panel-content {
+            padding: 1rem;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        /* Desktop Layout */
+        @media (min-width: 768px) {
+            .container {
+                flex-direction: row;
+            }
+
+            .sidebar {
+                display: block;
+            }
+
+            .mobile-panel {
+                display: none !important;
+            }
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 767px) {
+            .mobile-panel {
+                display: block;
+            }
+
+            .file-info {
+                top: auto;
+                bottom: calc(60px + 1rem);
+                right: 1rem;
+            }
+        }
+
+        /* Warning Banner */
+        .warning-banner {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 1rem;
+            color: #856404;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .warning-banner.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <a href="index.html" class="back-btn" title="Back to tools" aria-label="Back to tools">
+                <svg viewBox="0 0 24 24">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+            </a>
+        </div>
+
+        <!-- Upload Area -->
+        <div class="upload-area show" id="uploadArea">
+            <div class="upload-icon">📊</div>
+            <div class="upload-title">GPX Viewer</div>
+            <div class="upload-hint">Drop a GPX file here or click to browse</div>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Choose File
+            </button>
+            <input type="file" id="fileInput" accept=".gpx" />
+            <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <!-- File Info -->
+        <div class="file-info" id="fileInfo">
+            <span class="file-name" id="fileName"></span>
+            <button class="reload-btn" onclick="reloadFile()">Load New File</button>
+        </div>
+
+        <!-- Map -->
+        <div id="map"></div>
+
+        <!-- Sidebar (Desktop) -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <div class="warning-banner" id="warningBanner"></div>
+                
+                <div class="stats-panel">
+                    <div class="stats-title">Track Statistics</div>
+                    <div id="statsContent"></div>
+                </div>
+
+                <div class="analysis-panel" id="analysisPanel">
+                    <div class="analysis-title">Climb/Descent Analysis</div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Gradient Threshold</span>
+                            <span class="slider-value" id="sliderValue">3.0%</span>
+                        </div>
+                        <input type="range" id="thresholdSlider" min="0" max="15" step="0.5" value="3" />
+                        <div class="slider-helper" id="sliderHelper">3.0% = 1:33 gradient</div>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Minimum Segment Distance</span>
+                            <span class="slider-value" id="minDistanceValue">100 m</span>
+                        </div>
+                        <input type="range" id="minDistanceSlider" min="0" max="500" step="10" value="100" />
+                        <div class="slider-helper" id="minDistanceHelper">Merge segments shorter than this</div>
+                    </div>
+                    <div class="segment-list" id="segmentList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Panel -->
+        <div class="mobile-panel collapsed" id="mobilePanel">
+            <div class="mobile-panel-header" onclick="toggleMobilePanel()">
+                <span class="mobile-panel-peek" id="mobilePeek">Total Distance: --</span>
+                <span class="mobile-panel-toggle">▲</span>
+            </div>
+            <div class="mobile-panel-content">
+                <div class="warning-banner" id="warningBannerMobile"></div>
+                
+                <div class="stats-panel">
+                    <div class="stats-title">Track Statistics</div>
+                    <div id="statsContentMobile"></div>
+                </div>
+
+                <div class="analysis-panel" id="analysisPanelMobile">
+                    <div class="analysis-title">Climb/Descent Analysis</div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Gradient Threshold</span>
+                            <span class="slider-value" id="sliderValueMobile">3.0%</span>
+                        </div>
+                        <input type="range" id="thresholdSliderMobile" min="0" max="15" step="0.5" value="3" />
+                        <div class="slider-helper" id="sliderHelperMobile">3.0% = 1:33 gradient</div>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Minimum Segment Distance</span>
+                            <span class="slider-value" id="minDistanceValueMobile">100 m</span>
+                        </div>
+                        <input type="range" id="minDistanceSliderMobile" min="0" max="500" step="10" value="100" />
+                        <div class="slider-helper" id="minDistanceHelperMobile">Merge segments shorter than this</div>
+                    </div>
+                    <div class="segment-list" id="segmentListMobile"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div>
+            <div class="spinner"></div>
+            <div class="loading-text">Analyzing track...</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // Application State
+        const AppState = {
+            rawPoints: null,
+            smoothedPoints: null,
+            currentThreshold: 3.0,
+            currentMinDistance: 100,
+            currentSegments: null,
+            map: null,
+            polylines: [],
+            highlightedPolyline: null,
+            startMarker: null,
+            endMarker: null,
+            fileName: ''
+        };
+
+        // Color palette (ColorBrewer2, color-blind safe)
+        const COLORS = {
+            climb: '#fc8d59',
+            flat: '#ffffbf',
+            descent: '#91bfdb'
+        };
+
+        // GPX Parser Module
+        const GPXParser = {
+            async parse(file) {
+                try {
+                    const text = await file.text();
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(text, 'text/xml');
+
+                    // Check for parsing errors
+                    const parserError = xmlDoc.querySelector('parsererror');
+                    if (parserError) {
+                        return { success: false, error: 'Invalid XML file format' };
+                    }
+
+                    // Check for GPX root
+                    const gpx = xmlDoc.querySelector('gpx');
+                    if (!gpx) {
+                        return { success: false, error: 'Not a valid GPX file' };
+                    }
+
+                    // Extract track
+                    const points = this.extractTrack(xmlDoc);
+                    if (!points || points.length === 0) {
+                        return { success: false, error: 'No track data found in GPX file' };
+                    }
+
+                    if (points.length < 2) {
+                        return { success: false, error: 'Track must contain at least 2 points' };
+                    }
+
+                    // Validate points
+                    const validation = this.validatePoints(points);
+                    if (!validation.success) {
+                        return { success: false, error: validation.error };
+                    }
+
+                    return { success: true, data: { points: validation.points, hasElevation: validation.hasElevation } };
+                } catch (error) {
+                    return { success: false, error: 'Failed to read file: ' + error.message };
+                }
+            },
+
+            extractTrack(xmlDoc) {
+                const points = [];
+                
+                // Try to find track
+                const tracks = xmlDoc.querySelectorAll('trk');
+                if (tracks.length === 0) {
+                    // Try routes as fallback
+                    const routes = xmlDoc.querySelectorAll('rte');
+                    if (routes.length === 0) return null;
+                    
+                    const routePoints = routes[0].querySelectorAll('rtept');
+                    routePoints.forEach(pt => {
+                        const lat = parseFloat(pt.getAttribute('lat'));
+                        const lon = parseFloat(pt.getAttribute('lon'));
+                        const eleNode = pt.querySelector('ele');
+                        const ele = eleNode ? parseFloat(eleNode.textContent) : null;
+                        
+                        points.push({ lat, lon, elevation: ele });
+                    });
+                    return points;
+                }
+
+                // Process first track with all its segments
+                const track = tracks[0];
+                const segments = track.querySelectorAll('trkseg');
+                
+                segments.forEach(segment => {
+                    const trackPoints = segment.querySelectorAll('trkpt');
+                    trackPoints.forEach(pt => {
+                        const lat = parseFloat(pt.getAttribute('lat'));
+                        const lon = parseFloat(pt.getAttribute('lon'));
+                        const eleNode = pt.querySelector('ele');
+                        const ele = eleNode ? parseFloat(eleNode.textContent) : null;
+                        
+                        points.push({ lat, lon, elevation: ele });
+                    });
+                });
+
+                return points;
+            },
+
+            validatePoints(points) {
+                let validElevationCount = 0;
+                const validatedPoints = [];
+
+                for (const point of points) {
+                    // Validate coordinates
+                    if (isNaN(point.lat) || point.lat < -90 || point.lat > 90) {
+                        return { success: false, error: 'Invalid latitude value' };
+                    }
+                    if (isNaN(point.lon) || point.lon < -180 || point.lon > 180) {
+                        return { success: false, error: 'Invalid longitude value' };
+                    }
+
+                    // Validate elevation if present
+                    if (point.elevation !== null) {
+                        if (isNaN(point.elevation) || point.elevation < -500 || point.elevation > 9000) {
+                            return { success: false, error: 'Invalid elevation value' };
+                        }
+                        validElevationCount++;
+                    }
+
+                    validatedPoints.push(point);
+                }
+
+                // Check if we have sufficient elevation data
+                const elevationPercentage = (validElevationCount / points.length) * 100;
+                const hasElevation = elevationPercentage >= 50;
+
+                return { 
+                    success: true, 
+                    points: validatedPoints,
+                    hasElevation
+                };
+            }
+        };
+
+        // Haversine Distance Calculation
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Earth radius in meters
+            const toRad = deg => deg * Math.PI / 180;
+            
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            
+            const a = Math.sin(dLat/2) ** 2 +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon/2) ** 2;
+            
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            
+            return R * c; // Distance in meters
+        }
+
+        // Elevation Analysis Module
+        const ElevationAnalysis = {
+            smoothElevation(points) {
+                const WINDOW_SIZE = 5;
+                const HALF = Math.floor(WINDOW_SIZE / 2);
+                
+                return points.map((point, i) => {
+                    const start = Math.max(0, i - HALF);
+                    const end = Math.min(points.length - 1, i + HALF);
+                    
+                    let sum = 0, count = 0;
+                    for (let j = start; j <= end; j++) {
+                        sum += points[j].elevation;
+                        count++;
+                    }
+                    
+                    return { 
+                        ...point, 
+                        elevation: sum / count,
+                        rawElevation: point.elevation 
+                    };
+                });
+            },
+
+            calculateGradients(points, threshold) {
+                const WINDOW_SIZE = 5;
+                const STEP_SIZE = 3;
+                const segments = [];
+                
+                for (let i = 0; i <= points.length - WINDOW_SIZE; i += STEP_SIZE) {
+                    const window = points.slice(i, i + WINDOW_SIZE);
+                    
+                    // Calculate total distance in window
+                    let distance = 0;
+                    for (let j = 0; j < window.length - 1; j++) {
+                        distance += haversineDistance(
+                            window[j].lat, window[j].lon,
+                            window[j+1].lat, window[j+1].lon
+                        );
+                    }
+                    
+                    const elevChange = window[WINDOW_SIZE-1].elevation - window[0].elevation;
+                    const gradient = distance > 0 ? (elevChange / distance) * 100 : 0;
+                    
+                    // Classify
+                    let type;
+                    if (gradient > threshold) type = 'climb';
+                    else if (gradient < -threshold) type = 'descent';
+                    else type = 'flat';
+                    
+                    segments.push({
+                        id: `seg-${i}`,
+                        startIdx: i,
+                        endIdx: i + WINDOW_SIZE - 1,
+                        type,
+                        gradient,
+                        distance,
+                        elevChange,
+                        points: window
+                    });
+                }
+                
+                return segments;
+            },
+
+            mergeSegments(segments, minDistance = 100) {
+                if (segments.length <= 1) return segments;
+                
+                // Pass 1: merge consecutive same-type segments
+                let merged = [{ ...segments[0] }];
+                
+                for (let i = 1; i < segments.length; i++) {
+                    const prev = merged[merged.length - 1];
+                    const curr = segments[i];
+                    
+                    if (prev.type === curr.type) {
+                        prev.endIdx = curr.endIdx;
+                        prev.distance += curr.distance;
+                        prev.elevChange += curr.elevChange;
+                        prev.gradient = prev.distance > 0 ? 
+                            (prev.elevChange / prev.distance) * 100 : 0;
+                        prev.points = [...prev.points, ...curr.points];
+                    } else {
+                        merged.push({ ...curr });
+                    }
+                }
+                
+                // Pass 2: iteratively merge short segments
+                const totalDistance = merged.reduce((sum, seg) => sum + seg.distance, 0);
+                if (totalDistance < minDistance) {
+                    // Total distance too short - merge everything into one segment
+                    if (merged.length > 1) {
+                        const first = merged[0];
+                        for (let i = 1; i < merged.length; i++) {
+                            first.endIdx = merged[i].endIdx;
+                            first.distance += merged[i].distance;
+                            first.elevChange += merged[i].elevChange;
+                            first.points = [...first.points, ...merged[i].points];
+                        }
+                        first.gradient = first.distance > 0 ? 
+                            (first.elevChange / first.distance) * 100 : 0;
+                        return [first];
+                    }
+                    return merged;
+                }
+                
+                // Keep merging until no short segments remain
+                let maxIterations = merged.length; // Safety limit: at most N-1 merges possible
+                let iterations = 0;
+                
+                while (iterations < maxIterations) {
+                    iterations++;
+                    
+                    // Find first segment below threshold
+                    let shortIdx = -1;
+                    for (let i = 0; i < merged.length; i++) {
+                        if (merged[i].distance < minDistance) {
+                            shortIdx = i;
+                            break;
+                        }
+                    }
+                    
+                    if (shortIdx === -1) break; // No more short segments found
+                    
+                    const seg = merged[shortIdx];
+                    const hasPrev = shortIdx > 0;
+                    const hasNext = shortIdx < merged.length - 1;
+                    
+                    if (!hasPrev && !hasNext) {
+                        // Only one segment left, can't merge
+                        break;
+                    }
+                    
+                    // Decide which neighbor to merge into
+                    let mergeIntoPrev;
+                    
+                    if (!hasPrev) {
+                        mergeIntoPrev = false; // Must merge into next
+                    } else if (!hasNext) {
+                        mergeIntoPrev = true; // Must merge into prev
+                    } else {
+                        // Has both neighbors - choose based on type match first, then size
+                        const prev = merged[shortIdx - 1];
+                        const next = merged[shortIdx + 1];
+                        
+                        const prevSameType = prev.type === seg.type;
+                        const nextSameType = next.type === seg.type;
+                        
+                        if (prevSameType && !nextSameType) {
+                            mergeIntoPrev = true; // Prefer same-type neighbor
+                        } else if (nextSameType && !prevSameType) {
+                            mergeIntoPrev = false; // Prefer same-type neighbor
+                        } else {
+                            // Both same type or both different - merge into larger segment
+                            mergeIntoPrev = prev.distance >= next.distance;
+                        }
+                    }
+                    
+                    // Execute the merge
+                    if (mergeIntoPrev) {
+                        const prev = merged[shortIdx - 1];
+                        prev.endIdx = seg.endIdx;
+                        prev.distance += seg.distance;
+                        prev.elevChange += seg.elevChange;
+                        prev.gradient = prev.distance > 0 ?
+                            (prev.elevChange / prev.distance) * 100 : 0;
+                        prev.points = [...prev.points, ...seg.points];
+                        merged.splice(shortIdx, 1); // Remove short segment
+                    } else {
+                        const next = merged[shortIdx + 1];
+                        next.startIdx = seg.startIdx;
+                        next.distance += seg.distance;
+                        next.elevChange += seg.elevChange;
+                        next.gradient = next.distance > 0 ?
+                            (next.elevChange / next.distance) * 100 : 0;
+                        next.points = [...seg.points, ...next.points];
+                        merged.splice(shortIdx, 1); // Remove short segment
+                    }
+                }
+                
+                return merged;
+            },
+
+            calculateStatistics(points) {
+                if (points.length < 2) {
+                    return {
+                        totalDistance: 0,
+                        totalGain: 0,
+                        totalLoss: 0,
+                        maxElevation: 0,
+                        minElevation: 0,
+                        elevationRange: 0
+                    };
+                }
+
+                // Calculate total distance
+                let totalDistance = 0;
+                for (let i = 1; i < points.length; i++) {
+                    totalDistance += haversineDistance(
+                        points[i-1].lat, points[i-1].lon,
+                        points[i].lat, points[i].lon
+                    );
+                }
+
+                // Check for zero distance
+                if (totalDistance < 1) {
+                    const elevations = points.map(p => p.elevation);
+                    return {
+                        totalDistance: 0,
+                        totalGain: 0,
+                        totalLoss: 0,
+                        maxElevation: Math.max(...elevations),
+                        minElevation: Math.min(...elevations),
+                        elevationRange: Math.max(...elevations) - Math.min(...elevations)
+                    };
+                }
+
+                // Noise-filtered elevation gain/loss
+                const minChangeMeters = 3;
+                let totalGain = 0, totalLoss = 0;
+                let currentElevation = points[0].elevation;
+                
+                for (let i = 1; i < points.length; i++) {
+                    const change = points[i].elevation - currentElevation;
+                    
+                    if (Math.abs(change) >= minChangeMeters) {
+                        if (change > 0) {
+                            totalGain += change;
+                        } else {
+                            totalLoss += Math.abs(change);
+                        }
+                        currentElevation = points[i].elevation;
+                    }
+                }
+
+                const elevations = points.map(p => p.elevation);
+                const maxElevation = Math.max(...elevations);
+                const minElevation = Math.min(...elevations);
+
+                return {
+                    totalDistance,
+                    totalGain,
+                    totalLoss,
+                    maxElevation,
+                    minElevation,
+                    elevationRange: maxElevation - minElevation
+                };
+            }
+        };
+
+        // Map Controller
+        const MapController = {
+            initialize() {
+                AppState.map = L.map('map', {
+                    zoomControl: false
+                }).setView([51.505, -0.09], 13);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(AppState.map);
+
+                L.control.zoom({ position: 'bottomright' }).addTo(AppState.map);
+            },
+
+            clearTrack() {
+                // Remove existing polylines
+                AppState.polylines.forEach(polyline => {
+                    AppState.map.removeLayer(polyline);
+                });
+                AppState.polylines = [];
+
+                // Remove markers
+                if (AppState.startMarker) {
+                    AppState.map.removeLayer(AppState.startMarker);
+                    AppState.startMarker = null;
+                }
+                if (AppState.endMarker) {
+                    AppState.map.removeLayer(AppState.endMarker);
+                    AppState.endMarker = null;
+                }
+            },
+
+            displayTrack(segments, allPoints) {
+                this.clearTrack();
+
+                // Draw each segment
+                segments.forEach((segment, index) => {
+                    const coords = segment.points.map(p => [p.lat, p.lon]);
+                    const color = COLORS[segment.type];
+
+                    const polyline = L.polyline(coords, {
+                        color: color,
+                        weight: 4,
+                        opacity: 0.7,
+                        smoothFactor: 1
+                    }).addTo(AppState.map);
+
+                    polyline.segmentId = segment.id;
+                    polyline.segmentIndex = index;
+
+                    // Tooltip
+                    const distStr = segment.distance >= 1000 ? 
+                        (segment.distance / 1000).toFixed(2) + ' km' : 
+                        Math.round(segment.distance) + ' m';
+                    polyline.bindTooltip(
+                        `${segment.type.charAt(0).toUpperCase() + segment.type.slice(1)}: ${distStr}, ${segment.gradient.toFixed(1)}%`,
+                        { sticky: true }
+                    );
+
+                    // Hover events
+                    polyline.on('mouseover', () => {
+                        this.highlightSegment(segment.id);
+                    });
+                    polyline.on('mouseout', () => {
+                        this.clearHighlight();
+                    });
+
+                    AppState.polylines.push(polyline);
+                });
+
+                // Add start/end markers
+                const start = allPoints[0];
+                const end = allPoints[allPoints.length - 1];
+
+                AppState.startMarker = L.circleMarker([start.lat, start.lon], {
+                    radius: 8,
+                    color: '#22c55e',
+                    fillColor: '#22c55e',
+                    fillOpacity: 0.8
+                }).addTo(AppState.map).bindTooltip('Start');
+
+                AppState.endMarker = L.circleMarker([end.lat, end.lon], {
+                    radius: 8,
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.8
+                }).addTo(AppState.map).bindTooltip('End');
+
+                // Fit bounds
+                const bounds = L.latLngBounds(allPoints.map(p => [p.lat, p.lon]));
+                AppState.map.fitBounds(bounds, { padding: [50, 50] });
+            },
+
+            highlightSegment(segmentId) {
+                // Highlight polyline on map
+                const polyline = AppState.polylines.find(p => p.segmentId === segmentId);
+                if (polyline) {
+                    polyline.setStyle({ weight: 8, opacity: 1 });
+                    AppState.highlightedPolyline = polyline;
+                }
+
+                // Highlight in list
+                document.querySelectorAll('.segment-item').forEach(item => {
+                    if (item.dataset.segmentId === segmentId) {
+                        item.classList.add('highlighted');
+                    } else {
+                        item.classList.remove('highlighted');
+                    }
+                });
+            },
+
+            clearHighlight() {
+                if (AppState.highlightedPolyline) {
+                    AppState.highlightedPolyline.setStyle({ weight: 4, opacity: 0.7 });
+                    AppState.highlightedPolyline = null;
+                }
+
+                document.querySelectorAll('.segment-item').forEach(item => {
+                    item.classList.remove('highlighted');
+                });
+            }
+        };
+
+        // UI Controller
+        const UIController = {
+            showLoading() {
+                document.getElementById('loadingOverlay').classList.add('show');
+            },
+
+            hideLoading() {
+                document.getElementById('loadingOverlay').classList.remove('show');
+            },
+
+            showError(message) {
+                const errorEl = document.getElementById('errorMessage');
+                errorEl.textContent = message;
+                errorEl.classList.add('show');
+            },
+
+            hideError() {
+                document.getElementById('errorMessage').classList.remove('show');
+            },
+
+            showWarning(message) {
+                document.getElementById('warningBanner').textContent = message;
+                document.getElementById('warningBanner').classList.add('show');
+                document.getElementById('warningBannerMobile').textContent = message;
+                document.getElementById('warningBannerMobile').classList.add('show');
+            },
+
+            hideWarning() {
+                document.getElementById('warningBanner').classList.remove('show');
+                document.getElementById('warningBannerMobile').classList.remove('show');
+            },
+
+            updateStatistics(stats) {
+                const html = `
+                    <div class="stat-item">
+                        <span class="stat-label">Total Distance</span>
+                        <span class="stat-value">${(stats.totalDistance / 1000).toFixed(2)} km</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Elevation Gain</span>
+                        <span class="stat-value">${Math.round(stats.totalGain)} m</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Elevation Loss</span>
+                        <span class="stat-value">${Math.round(stats.totalLoss)} m</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Elevation</span>
+                        <span class="stat-value">${stats.maxElevation.toFixed(1)} m</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Min Elevation</span>
+                        <span class="stat-value">${stats.minElevation.toFixed(1)} m</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Elevation Range</span>
+                        <span class="stat-value">${stats.elevationRange.toFixed(1)} m</span>
+                    </div>
+                `;
+                
+                document.getElementById('statsContent').innerHTML = html;
+                document.getElementById('statsContentMobile').innerHTML = html;
+
+                // Update mobile peek
+                document.getElementById('mobilePeek').textContent = 
+                    `Total Distance: ${(stats.totalDistance / 1000).toFixed(2)} km`;
+            },
+
+            updateSegmentList(segments) {
+                const icons = { climb: '🔺', flat: '⚪', descent: '🔻' };
+                
+                const html = segments.map(segment => {
+                    const distStr = segment.distance >= 1000 ? 
+                        (segment.distance / 1000).toFixed(2) + ' km' : 
+                        Math.round(segment.distance) + ' m';
+                    const elevStr = segment.elevChange >= 0 ? 
+                        '+' + Math.round(segment.elevChange) + ' m' : 
+                        Math.round(segment.elevChange) + ' m';
+                    
+                    return `
+                        <div class="segment-item" data-segment-id="${segment.id}">
+                            <span class="segment-icon">${icons[segment.type]}</span>
+                            <span class="segment-type">${segment.type.charAt(0).toUpperCase() + segment.type.slice(1)}</span>
+                            <span class="segment-distance">${distStr}</span>
+                            <span class="segment-elevation">${elevStr}</span>
+                            <span class="segment-gradient">${segment.gradient.toFixed(1)}%</span>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('segmentList').innerHTML = html;
+                document.getElementById('segmentListMobile').innerHTML = html;
+
+                // Attach hover listeners
+                this.attachSegmentHoverListeners();
+            },
+
+            attachSegmentHoverListeners() {
+                document.querySelectorAll('.segment-item').forEach(item => {
+                    item.addEventListener('mouseenter', () => {
+                        MapController.highlightSegment(item.dataset.segmentId);
+                    });
+                    item.addEventListener('mouseleave', () => {
+                        MapController.clearHighlight();
+                    });
+                });
+            },
+
+            updateSliderValue(value) {
+                const ratio = Math.round(100 / value);
+                const helper = `${value.toFixed(1)}% = 1:${ratio} gradient`;
+                
+                document.getElementById('sliderValue').textContent = value.toFixed(1) + '%';
+                document.getElementById('sliderHelper').textContent = helper;
+                document.getElementById('sliderValueMobile').textContent = value.toFixed(1) + '%';
+                document.getElementById('sliderHelperMobile').textContent = helper;
+            },
+
+            updateMinDistanceValue(value) {
+                const displayValue = value >= 1000 ? 
+                    (value / 1000).toFixed(1) + ' km' : 
+                    Math.round(value) + ' m';
+                
+                document.getElementById('minDistanceValue').textContent = displayValue;
+                document.getElementById('minDistanceValueMobile').textContent = displayValue;
+            },
+
+            hideAnalysis() {
+                document.getElementById('analysisPanel').style.display = 'none';
+                document.getElementById('analysisPanelMobile').style.display = 'none';
+            },
+
+            showAnalysis() {
+                document.getElementById('analysisPanel').style.display = 'block';
+                document.getElementById('analysisPanelMobile').style.display = 'block';
+            }
+        };
+
+        // Main Processing Function
+        async function processGPXFile(file) {
+            UIController.showLoading();
+            UIController.hideError();
+            UIController.hideWarning();
+
+            // Parse GPX
+            const result = await GPXParser.parse(file);
+            
+            if (!result.success) {
+                UIController.hideLoading();
+                UIController.showError(result.error);
+                return;
+            }
+
+            const { points, hasElevation } = result.data;
+            AppState.rawPoints = points;
+            AppState.fileName = file.name;
+
+            // Update UI
+            document.getElementById('uploadArea').classList.remove('show');
+            document.getElementById('fileInfo').classList.add('show');
+            document.getElementById('fileName').textContent = file.name;
+
+            // Handle missing elevation
+            if (!hasElevation) {
+                UIController.showWarning('This GPX file doesn\'t contain sufficient elevation data. Showing track without climb/descent analysis.');
+                UIController.hideAnalysis();
+                
+                // Calculate basic stats
+                const stats = {
+                    totalDistance: 0,
+                    totalGain: 0,
+                    totalLoss: 0,
+                    maxElevation: 0,
+                    minElevation: 0,
+                    elevationRange: 0
+                };
+
+                for (let i = 1; i < points.length; i++) {
+                    stats.totalDistance += haversineDistance(
+                        points[i-1].lat, points[i-1].lon,
+                        points[i].lat, points[i].lon
+                    );
+                }
+
+                UIController.updateStatistics(stats);
+
+                // Display simple track
+                const coords = points.map(p => [p.lat, p.lon]);
+                const polyline = L.polyline(coords, {
+                    color: '#808080',
+                    weight: 4,
+                    opacity: 0.7
+                }).addTo(AppState.map);
+                AppState.polylines.push(polyline);
+
+                const start = points[0];
+                const end = points[points.length - 1];
+                AppState.startMarker = L.circleMarker([start.lat, start.lon], {
+                    radius: 8,
+                    color: '#22c55e',
+                    fillColor: '#22c55e',
+                    fillOpacity: 0.8
+                }).addTo(AppState.map).bindTooltip('Start');
+
+                AppState.endMarker = L.circleMarker([end.lat, end.lon], {
+                    radius: 8,
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.8
+                }).addTo(AppState.map).bindTooltip('End');
+
+                const bounds = L.latLngBounds(coords);
+                AppState.map.fitBounds(bounds, { padding: [50, 50] });
+
+                UIController.hideLoading();
+                return;
+            }
+
+            // Process with elevation analysis
+            UIController.showAnalysis();
+            
+            // Smooth elevation
+            AppState.smoothedPoints = ElevationAnalysis.smoothElevation(points);
+
+            // Calculate statistics
+            const stats = ElevationAnalysis.calculateStatistics(AppState.smoothedPoints);
+            
+            // Check for zero distance
+            if (stats.totalDistance < 1) {
+                UIController.showWarning('This track has zero distance (all points at same location). Showing basic statistics only.');
+                UIController.hideAnalysis();
+                UIController.updateStatistics(stats);
+                UIController.hideLoading();
+                return;
+            }
+
+            UIController.updateStatistics(stats);
+
+            // Calculate segments
+            recalculateSegments();
+
+            UIController.hideLoading();
+        }
+
+        // Recalculate Segments (called by slider)
+        function recalculateSegments() {
+            if (!AppState.smoothedPoints) return;
+
+            const threshold = AppState.currentThreshold;
+            const minDistance = AppState.currentMinDistance;
+            
+            // Calculate gradients
+            let segments = ElevationAnalysis.calculateGradients(AppState.smoothedPoints, threshold);
+            
+            // Merge segments
+            segments = ElevationAnalysis.mergeSegments(segments, minDistance);
+            
+            AppState.currentSegments = segments;
+
+            // Display on map
+            MapController.displayTrack(segments, AppState.smoothedPoints);
+
+            // Update segment list
+            UIController.updateSegmentList(segments);
+        }
+
+        // Debounced slider update
+        let sliderDebounceTimer;
+        function handleSliderChange(value) {
+            clearTimeout(sliderDebounceTimer);
+            AppState.currentThreshold = parseFloat(value);
+            UIController.updateSliderValue(AppState.currentThreshold);
+            
+            sliderDebounceTimer = setTimeout(() => {
+                UIController.showLoading();
+                setTimeout(() => {
+                    recalculateSegments();
+                    UIController.hideLoading();
+                }, 50);
+            }, 150);
+        }
+
+        // Debounced minimum distance slider update
+        let minDistDebounceTimer;
+        function handleMinDistanceChange(value) {
+            clearTimeout(minDistDebounceTimer);
+            AppState.currentMinDistance = parseFloat(value);
+            UIController.updateMinDistanceValue(AppState.currentMinDistance);
+            
+            minDistDebounceTimer = setTimeout(() => {
+                UIController.showLoading();
+                setTimeout(() => {
+                    recalculateSegments();
+                    UIController.hideLoading();
+                }, 50);
+            }, 150);
+        }
+
+        // Mobile panel toggle
+        function toggleMobilePanel() {
+            const panel = document.getElementById('mobilePanel');
+            const toggle = panel.querySelector('.mobile-panel-toggle');
+            
+            if (panel.classList.contains('collapsed')) {
+                panel.classList.remove('collapsed');
+                toggle.textContent = '▼';
+            } else {
+                panel.classList.add('collapsed');
+                toggle.textContent = '▲';
+            }
+        }
+
+        // Reload file
+        function reloadFile() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadArea').classList.add('show');
+            document.getElementById('fileInfo').classList.remove('show');
+            MapController.clearTrack();
+            UIController.hideWarning();
+            UIController.hideError();
+            AppState.rawPoints = null;
+            AppState.smoothedPoints = null;
+            AppState.currentSegments = null;
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            MapController.initialize();
+
+            // File input
+            const fileInput = document.getElementById('fileInput');
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    processGPXFile(file);
+                }
+            });
+
+            // Drag and drop
+            const uploadArea = document.getElementById('uploadArea');
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('drag-over');
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('drag-over');
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file && file.name.endsWith('.gpx')) {
+                    processGPXFile(file);
+                } else {
+                    UIController.showError('Please drop a valid GPX file');
+                }
+            });
+
+            // Slider events (both desktop and mobile)
+            const slider = document.getElementById('thresholdSlider');
+            const sliderMobile = document.getElementById('thresholdSliderMobile');
+            
+            slider.addEventListener('input', (e) => {
+                handleSliderChange(e.target.value);
+                sliderMobile.value = e.target.value;
+            });
+            
+            sliderMobile.addEventListener('input', (e) => {
+                handleSliderChange(e.target.value);
+                slider.value = e.target.value;
+            });
+
+            // Minimum distance slider events
+            const minDistSlider = document.getElementById('minDistanceSlider');
+            const minDistSliderMobile = document.getElementById('minDistanceSliderMobile');
+            
+            minDistSlider.addEventListener('input', (e) => {
+                handleMinDistanceChange(e.target.value);
+                minDistSliderMobile.value = e.target.value;
+            });
+            
+            minDistSliderMobile.addEventListener('input', (e) => {
+                handleMinDistanceChange(e.target.value);
+                minDistSlider.value = e.target.value;
+            });
+        });
+    </script>
+</body>
+</html>

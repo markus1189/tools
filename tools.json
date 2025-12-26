@@ -24,6 +24,11 @@
       "id": "random-picker",
       "title": "Random Picker",
       "description": "Cryptographically secure random selection tool with confetti celebration"
+    },
+    {
+      "id": "gpx-viewer",
+      "title": "GPX Viewer",
+      "description": "View GPX tracks with elevation analysis and climb/descent segmentation"
     }
   ]
 }
