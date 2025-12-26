@@ -1,14 +1,20 @@
 <!DOCTYPE html>
+<!--
+BSD 2-Clause License
+Copyright 2025 Gabriel Nyman
+https://github.com/gnyman/mapdraw
+
+Adapted for self-contained use with inline SVG icons.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Map Draw is an interactive map drawing and annotation tool for creating, editing, and sharing custom maps.">
-    <title>Map Draw</title>
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-
+    <title>Map Drawing & Sharing</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
     <style>
         * {
             margin: 0;
@@ -24,1211 +30,2286 @@
 
         #map {
             width: 100%;
-            height: 100%;
+            height: 100vh;
+            position: relative;
         }
 
-        /* Drawing overlay */
-        #drawingOverlay {
+        .drawing-overlay {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
-            z-index: 500;
+            z-index: 1000;
         }
 
-        #drawingOverlay.drawing {
-            pointer-events: auto;
+        .drawing-overlay.drawing-mode {
+            pointer-events: all;
         }
 
-        #drawingOverlay.drawing {
+        .drawing-overlay.freehand-mode {
             cursor: crosshair;
         }
 
-        #drawingOverlay.drawing.select-mode {
-            cursor: move;
+        .drawing-overlay.line-mode {
+            cursor: crosshair;
         }
 
-        #drawingOverlay.drawing.eraser-mode {
-            cursor: not-allowed;
+        .drawing-overlay.circle-mode {
+            cursor: crosshair;
         }
 
-        /* Toolbar */
-        .toolbar {
+        .drawing-overlay.arrow-mode {
+            cursor: crosshair;
+        }
+
+        .controls {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            padding: 0.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            z-index: 1000;
-        }
-
-        .tool-btn {
-            width: 40px;
-            height: 40px;
-            border: none;
-            background: white;
-            cursor: pointer;
-            border-radius: 4px;
+            top: 12px;
+            right: 12px;
+            left: auto;
+            transform: none;
+            z-index: 1001;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.12);
+            padding: 8px 12px;
             display: flex;
             align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            max-width: calc(100% - 32px);
+        }
+
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-group + .toolbar-group {
+            border-left: 1px solid #e5e5ea;
+            padding-left: 12px;
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
             justify-content: center;
-            transition: all 0.2s;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid #d1d1d6;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #fcfcfe 0%, #e9e9f1 100%);
+            color: #1c1c1e;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
         }
 
-        .tool-btn svg {
-            width: 20px;
-            height: 20px;
-            stroke: #333;
-            fill: none;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+        button:hover {
+            background: linear-gradient(180deg, #ffffff 0%, #f1f1f6 100%);
+            border-color: #bfbfc7;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.12);
         }
 
-        .tool-btn:hover {
-            background: #f0f0f0;
+        button:disabled {
+            background: linear-gradient(180deg, #f5f5f7 0%, #ececf1 100%);
+            border-color: #e0e0e6;
+            color: #b0b0b9;
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.8;
         }
 
-        .tool-btn.active {
-            background: #2563eb;
+        button.active {
+            background: linear-gradient(180deg, rgba(0, 122, 255, 0.2) 0%, rgba(0, 122, 255, 0.05) 100%);
+            border-color: #007AFF;
+            color: #0056B3;
+            box-shadow: 0 3px 10px rgba(0, 122, 255, 0.25);
         }
 
-        .tool-btn.active svg {
-            stroke: white;
+        .toolbar-btn {
+            min-height: 32px;
         }
 
-        .tool-separator {
-            height: 1px;
-            background: #e0e0e0;
-            margin: 0.25rem 0;
-        }
-
-        /* Color picker */
-        .color-picker {
-            position: absolute;
-            top: 1rem;
-            right: 5rem;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            padding: 0.75rem;
-            display: none;
-            z-index: 1000;
-        }
-
-        .color-picker.show {
+        .toolbar-btn .icon {
+            width: 18px;
+            height: 18px;
             display: block;
         }
 
-        .color-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.5rem;
+        .toolbar-btn .icon img,
+        .toolbar-btn .icon svg {
+            width: 100%;
+            height: 100%;
         }
 
-        .color-btn {
-            width: 32px;
-            height: 32px;
-            border: 2px solid transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: transform 0.1s;
+        .btn-label {
+            font-size: 11px;
+            letter-spacing: 0.01em;
         }
 
-        .color-btn:hover {
-            transform: scale(1.1);
+        .location-btn {
+            color: #1c1c1e;
         }
 
-        .color-btn.active {
-            border-color: #333;
-            box-shadow: 0 0 0 2px white, 0 0 0 4px #2563eb;
+        .location-btn.active {
+            background: linear-gradient(180deg, #34C759 0%, #2bb755 100%);
+            border-color: #2BB755;
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(52, 199, 89, 0.35);
         }
 
-        /* Stroke picker */
+        .tool-btn {
+            min-width: 32px;
+        }
+
         .stroke-picker {
-            position: absolute;
-            top: 1rem;
-            right: 5rem;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            padding: 0.75rem;
-            display: none;
-            flex-direction: column;
-            gap: 0.5rem;
-            z-index: 1000;
+            position: relative;
         }
 
-        .stroke-picker.show {
+        .stroke-visual {
+            width: 36px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .stroke-visual::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: calc(100% - 8px);
+            height: var(--stroke-width, 4px);
+            border-radius: 999px;
+            background-color: var(--stroke-color, #007AFF);
+            transform: translate(-50%, -50%);
+        }
+
+        .stroke-popover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: white;
+            border: 1px solid #d0d0d7;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
             display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1002;
+            min-width: 140px;
         }
 
         .stroke-option {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.5rem;
+            gap: 10px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 6px 8px;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 600;
+            color: #1c1c1e;
             cursor: pointer;
-            border-radius: 4px;
-            transition: background 0.2s;
+            transition: background 0.2s, border-color 0.2s;
         }
 
-        .stroke-option:hover {
-            background: #f0f0f0;
+        .stroke-option:hover,
+        .stroke-option:focus-visible {
+            background: #f2f2f7;
+            border-color: #d0d0d7;
+            outline: none;
         }
 
         .stroke-option.active {
-            background: #e3f2fd;
+            border-color: #007AFF;
+            background: rgba(0, 122, 255, 0.12);
         }
 
-        .stroke-preview {
-            width: 60px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .stroke-line {
-            width: 100%;
-            background: #333;
-            border-radius: 2px;
-        }
-
-        .stroke-label {
-            font-size: 0.875rem;
-            color: #666;
-        }
-
-        /* Share panel */
-        .share-panel {
-            position: absolute;
-            bottom: 1rem;
-            left: 1rem;
-            right: 1rem;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            padding: 1rem;
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .share-label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #666;
-            white-space: nowrap;
-        }
-
-        .share-input {
-            flex: 1;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.75rem;
-        }
-
-        .share-btn {
-            padding: 0.5rem 1rem;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            white-space: nowrap;
-            transition: background 0.2s;
-        }
-
-        .share-btn:hover {
-            background: #1d4ed8;
-        }
-
-        .share-btn.copied {
-            background: #10b981;
-        }
-
-        /* Location controls */
-        .location-controls {
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            z-index: 1000;
-        }
-
-        .location-btn {
+        .stroke-option-line {
             width: 40px;
-            height: 40px;
-            background: white;
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            cursor: pointer;
-            display: flex;
+            height: 20px;
+            position: relative;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
-            text-decoration: none;
         }
 
-        .location-btn svg {
-            width: 20px;
-            height: 20px;
-            stroke: #333;
-            fill: none;
+        .stroke-option-line::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: calc(100% - 8px);
+            height: var(--stroke-width, 4px);
+            border-radius: 999px;
+            background-color: var(--stroke-color, #007AFF);
+            transform: translate(-50%, -50%);
+        }
+
+        .color-picker {
+            position: relative;
+        }
+
+        .color-preview {
+            width: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border: 1px solid #c7c7ce;
+            border-radius: 10px;
+            background-color: #f5f5fa;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #1c1c1e;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+
+        .color-preview.active {
+            border-color: #007AFF;
+            box-shadow: 0 3px 10px rgba(0, 122, 255, 0.25);
+        }
+
+        .color-preview:focus-visible {
+            outline: 2px solid #007AFF;
+            outline-offset: 2px;
+        }
+
+        .color-swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+
+        .color-name {
+            font-size: 11px;
+        }
+
+        .color-popover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: #f5f5fa;
+            border: 1px solid #d0d0d7;
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            display: grid;
+            grid-template-columns: repeat(4, 24px);
+            gap: 10px;
+            z-index: 1002;
+        }
+
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+
+        .color-option.active {
+            border-color: #000;
+        }
+
+        .color-option:focus-visible {
+            outline: 2px solid #007AFF;
+            outline-offset: 2px;
+        }
+
+        .picker-overlay {
+            position: fixed;
+            inset: 0;
+            background: transparent;
+            z-index: 1001;
+        }
+
+
+        .url-container {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 1001;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 12px;
+            display: none;
+        }
+
+        .url-container.show {
+            display: block;
+        }
+
+        .url-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+
+        .status {
+            position: absolute;
+            z-index: 1001;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            display: none;
+            max-width: 260px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            pointer-events: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.error {
+            background: rgba(255, 59, 48, 0.9);
+        }
+
+        .status.success {
+            background: rgba(52, 199, 89, 0.9);
+        }
+
+        .preview-line {
             stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+            fill: none;
+            stroke-dasharray: 5,5;
+            pointer-events: none;
         }
 
-        .location-btn:hover {
-            background: #f0f0f0;
+        .preview-circle {
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 5,5;
+            pointer-events: none;
         }
 
-        .location-btn.active {
-            background: #2563eb;
+        .preview-arrow {
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 5,5;
+            pointer-events: none;
         }
 
-        .location-btn.active svg {
-            stroke: white;
+        label {
+            font-size: 11px;
+            color: #666;
         }
 
-        /* Mobile responsive */
         @media (max-width: 768px) {
-            .toolbar {
-                flex-direction: row;
+            .controls {
+                position: fixed;
                 top: auto;
-                bottom: 5rem;
-                right: 0.5rem;
-                left: 0.5rem;
+                bottom: 8px;
+                left: 8px;
+                right: 8px;
+                transform: none;
+                padding: 6px 8px;
+                justify-content: center;
+                gap: 8px;
+                border-radius: 12px;
             }
 
-            .color-picker, .stroke-picker {
-                top: auto;
-                bottom: 10rem;
-                right: 0.5rem;
+            .toolbar-group {
+                flex: 1 1 auto;
+                justify-content: center;
+                gap: 6px;
+                border-left: none !important;
+                padding-left: 0;
             }
 
-            .share-panel {
-                flex-wrap: wrap;
+            .btn-label {
+                display: none;
+            }
+
+            .toolbar-btn {
+                padding: 8px;
+                min-width: 36px;
+            }
+
+            .color-preview {
+                padding: 8px;
+            }
+
+            .color-name {
+                display: none;
+            }
+
+            .stroke-popover {
+                min-width: 120px;
+            }
+
+            .url-container {
+                bottom: 72px;
+                left: 8px;
+                right: 8px;
             }
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <svg id="drawingOverlay"></svg>
-
-    <!-- Location controls -->
-    <div class="location-controls" role="navigation" aria-label="Map navigation controls">
-        <button class="location-btn" id="locateBtn" title="Locate me">
-            <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="3"/>
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="2" x2="12" y2="6"/>
-                <line x1="12" y1="18" x2="12" y2="22"/>
-                <line x1="2" y1="12" x2="6" y2="12"/>
-                <line x1="18" y1="12" x2="22" y2="12"/>
-            </svg>
-        </button>
-        <a href="index.html" class="location-btn" title="Back to tools" aria-label="Back to tools">
-            <svg viewBox="0 0 24 24">
-                <line x1="19" y1="12" x2="5" y2="12"/>
-                <polyline points="12 19 5 12 12 5"/>
-            </svg>
-        </a>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="toolbar">
-        <button class="tool-btn" id="panBtn" title="Pan/Move Map">
-            <svg viewBox="0 0 24 24">
-                <path d="M12 2v7.5M12 14.5V22M2 12h7.5M14.5 12H22"/>
-                <circle cx="12" cy="12" r="3"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="freehandBtn" title="Freehand">
-            <svg viewBox="0 0 24 24">
-                <path d="M12 19l7-7 3 3-7 7-3-3z"/>
-                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
-                <path d="M2 2l7.586 7.586"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="lineBtn" title="Line">
-            <svg viewBox="0 0 24 24">
-                <line x1="5" y1="19" x2="19" y2="5"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="circleBtn" title="Circle">
-            <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="arrowBtn" title="Arrow">
-            <svg viewBox="0 0 24 24">
-                <line x1="5" y1="12" x2="19" y2="12"/>
-                <polyline points="12 5 19 12 12 19"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="selectBtn" title="Select/Move">
-            <svg viewBox="0 0 24 24">
-                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="eraserBtn" title="Eraser">
-            <svg viewBox="0 0 24 24">
-                <path d="M20 20H7L3 16l10-10 8 8-1 6z"/>
-                <path d="M16 6l4 4"/>
-            </svg>
-        </button>
-        <div class="tool-separator"></div>
-        <button class="tool-btn" id="colorBtn" title="Color">
-            <svg viewBox="0 0 24 24">
-                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="strokeBtn" title="Stroke width">
-            <svg viewBox="0 0 24 24">
-                <line x1="4" y1="6" x2="20" y2="6"/>
-                <line x1="4" y1="12" x2="20" y2="12" stroke-width="3"/>
-                <line x1="4" y1="18" x2="20" y2="18" stroke-width="4"/>
-            </svg>
-        </button>
-        <div class="tool-separator"></div>
-        <button class="tool-btn" id="undoBtn" title="Undo">
-            <svg viewBox="0 0 24 24">
-                <polyline points="1 4 1 10 7 10"/>
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="redoBtn" title="Redo">
-            <svg viewBox="0 0 24 24">
-                <polyline points="23 4 23 10 17 10"/>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-        </button>
-        <button class="tool-btn" id="clearBtn" title="Clear all">
-            <svg viewBox="0 0 24 24">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-        </button>
-    </div>
-
-    <!-- Color picker -->
-    <div class="color-picker" id="colorPicker">
-        <div class="color-grid">
-            <div class="color-btn active" data-color="#ef4444" style="background: #ef4444;"></div>
-            <div class="color-btn" data-color="#f97316" style="background: #f97316;"></div>
-            <div class="color-btn" data-color="#f59e0b" style="background: #f59e0b;"></div>
-            <div class="color-btn" data-color="#eab308" style="background: #eab308;"></div>
-            <div class="color-btn" data-color="#84cc16" style="background: #84cc16;"></div>
-            <div class="color-btn" data-color="#22c55e" style="background: #22c55e;"></div>
-            <div class="color-btn" data-color="#10b981" style="background: #10b981;"></div>
-            <div class="color-btn" data-color="#14b8a6" style="background: #14b8a6;"></div>
-            <div class="color-btn" data-color="#06b6d4" style="background: #06b6d4;"></div>
-            <div class="color-btn" data-color="#0ea5e9" style="background: #0ea5e9;"></div>
-            <div class="color-btn" data-color="#3b82f6" style="background: #3b82f6;"></div>
-            <div class="color-btn" data-color="#6366f1" style="background: #6366f1;"></div>
-            <div class="color-btn" data-color="#8b5cf6" style="background: #8b5cf6;"></div>
-            <div class="color-btn" data-color="#a855f7" style="background: #a855f7;"></div>
-            <div class="color-btn" data-color="#d946ef" style="background: #d946ef;"></div>
-            <div class="color-btn" data-color="#ec4899" style="background: #ec4899;"></div>
+    
+    <svg class="drawing-overlay" id="drawingOverlay">
+        <defs id="arrowMarkers"></defs>
+        <g id="drawingGroup"></g>
+        <g id="previewGroup"></g>
+    </svg>
+    
+    <div class="controls" role="toolbar" aria-label="Drawing controls">
+        <div class="toolbar-group">
+            <button id="locationBtn" class="toolbar-btn location-btn" aria-pressed="false" aria-label="Toggle location tracking">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                </span>
+                <span class="btn-label">Locate</span>
+            </button>
+            <button id="shareBtn" class="toolbar-btn" aria-pressed="false" aria-label="Share drawing">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </span>
+                <span class="btn-label">Share</span>
+            </button>
+            <a href="index.html" class="toolbar-btn" title="Back to tools" aria-label="Back to tools" style="text-decoration: none; color: inherit;">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                </span>
+                <span class="btn-label">Back</span>
+            </a>
+        </div>
+        <div class="toolbar-group">
+            <button id="undoBtn" class="toolbar-btn" title="Undo" aria-label="Undo">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                </span>
+                <span class="btn-label">Undo</span>
+            </button>
+            <button id="redoBtn" class="toolbar-btn" title="Redo" aria-label="Redo">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                </span>
+                <span class="btn-label">Redo</span>
+            </button>
+            <button id="clearBtn" class="toolbar-btn" title="Clear drawing" aria-label="Clear drawing">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </span>
+                <span class="btn-label">Clear</span>
+            </button>
+        </div>
+        <div class="toolbar-group">
+            <button id="freehandBtn" class="toolbar-btn tool-btn active" title="Freehand" aria-label="Freehand tool">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
+                </span>
+                <span class="btn-label">Freehand</span>
+            </button>
+            <button id="lineBtn" class="toolbar-btn tool-btn" title="Line" aria-label="Line tool">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+                </span>
+                <span class="btn-label">Line</span>
+            </button>
+            <button id="circleBtn" class="toolbar-btn tool-btn" title="Circle" aria-label="Circle tool">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+                </span>
+                <span class="btn-label">Circle</span>
+            </button>
+            <button id="arrowBtn" class="toolbar-btn tool-btn" title="Arrow" aria-label="Arrow tool">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </span>
+                <span class="btn-label">Arrow</span>
+            </button>
+        </div>
+        <div class="toolbar-group">
+            <div class="stroke-picker">
+                <button type="button" class="toolbar-btn" id="strokePickerBtn" aria-haspopup="true" aria-expanded="false" aria-label="Stroke width">
+                    <span class="icon stroke-visual" id="strokePickerLine" aria-hidden="true"></span>
+                    <span class="btn-label" id="strokePickerLabel">Standard</span>
+                </button>
+            </div>
+            <div class="color-picker">
+                <button type="button" class="color-preview" id="colorPreviewBtn" aria-haspopup="true" aria-expanded="false">
+                    <span class="color-swatch" id="colorPreviewSwatch"></span>
+                    <span class="color-name" id="colorPreviewLabel">Red</span>
+                </button>
+            </div>
         </div>
     </div>
-
-    <!-- Stroke picker -->
-    <div class="stroke-picker" id="strokePicker">
-        <div class="stroke-option active" data-width="2">
-            <div class="stroke-preview"><div class="stroke-line" style="height: 2px;"></div></div>
-            <span class="stroke-label">Fine</span>
-        </div>
-        <div class="stroke-option" data-width="4">
-            <div class="stroke-preview"><div class="stroke-line" style="height: 4px;"></div></div>
-            <span class="stroke-label">Standard</span>
-        </div>
-        <div class="stroke-option" data-width="6">
-            <div class="stroke-preview"><div class="stroke-line" style="height: 6px;"></div></div>
-            <span class="stroke-label">Bold</span>
-        </div>
-        <div class="stroke-option" data-width="10">
-            <div class="stroke-preview"><div class="stroke-line" style="height: 10px;"></div></div>
-            <span class="stroke-label">Heavy</span>
+    
+    <div class="url-container" id="urlContainer">
+        <input type="text" class="url-input" id="shareUrl" readonly>
+        <div class="url-actions">
+            <button type="button" class="toolbar-btn" onclick="copyUrl()">Copy</button>
+            <button type="button" class="toolbar-btn" onclick="hideShare()">Close</button>
         </div>
     </div>
+    
+    <div class="status" id="status"></div>
 
-    <!-- Share panel -->
-    <div class="share-panel">
-        <span class="share-label">Share:</span>
-        <input type="text" class="share-input" id="shareInput" readonly>
-        <button class="share-btn" id="shareBtn">Copy</button>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uzip@0.20201231.0/UZIP.min.js"></script>
+    
     <script>
-        // State
-        let map;
-        let paths = [];
-        let undoStack = [];
-        let redoStack = [];
-        let currentTool = 'freehand';
-        let currentColor = 0; // Index into color array
-        let currentStroke = 4;
-        let isDrawing = false;
-        let currentPath = null;
-        let startPoint = null;
-        let locationMarker = null;
-        let autoSaveTimer = null;
-        let selectedPathIndex = null;
+        class MapDrawingApp {
+            constructor() {
+                this.map = null;
+                this.drawingMode = false;
+                this.currentTool = 'freehand';
+                this.currentPath = null;
+                this.widthOptions = [2, 4, 6, 10];
+                this.widthOptionLabels = ['Fine', 'Standard', 'Bold', 'Heavy'];
+                this.currentWidthIndex = 1;
+                this.currentStroke = this.widthOptions[this.currentWidthIndex];
+                this.paths = [];
+                this.undoStack = [];
+                this.redoStack = [];
+                this.isDrawing = false;
+                this.startPoint = null;
+                this.previewElement = null;
+                this.lastLocation = { lat: 37.7749, lng: -122.4194, zoom: 13 };
+                this.autoSaveTimer = null;
+                this.pendingUndoSnapshot = null;
+                this.didMutatePaths = false;
+                this.cachedCompressedDrawing = '';
+                this.drawingSerializationDirty = true;
+                this.compressInFlight = null;
+                this.colorPalette = [
+                    '#FF3B30', '#FF9500', '#FFCC00', '#4CD964',
+                    '#5AC8FA', '#007AFF', '#5856D6', '#AF52DE',
+                    '#FF2D55', '#8E8E93', '#FF6B81', '#2ECC71',
+                    '#1ABC9C', '#3498DB', '#9B59B6', '#34495E'
+                ];
+                this.colorNames = [
+                    'Red', 'Orange', 'Yellow', 'Lime',
+                    'Sky', 'Blue', 'Indigo', 'Violet',
+                    'Pink', 'Gray', 'Coral', 'Emerald',
+                    'Teal', 'Azure', 'Purple', 'Slate'
+                ];
+                this.currentColorIndex = 0;
+                this.activeDrawingColorIndex = 0;
+                this.pendingShapeColorIndex = null;
+                this.colorPreviewBtn = null;
+                this.colorPreviewSwatch = null;
+                this.colorPreviewLabel = null;
+                this.colorPopover = null;
+                this.colorOverlay = null;
+                this.boundColorPopoverKeyHandler = null;
+                this.boundColorPopoverResize = null;
+                this.boundColorPopoverScroll = null;
+                this.strokePickerBtn = null;
+                this.strokePickerLine = null;
+                this.strokePickerLabel = null;
+                this.strokePopover = null;
+                this.strokeOverlay = null;
+                this.boundStrokePopoverKeyHandler = null;
+                this.boundStrokePopoverResize = null;
+                this.boundStrokePopoverScroll = null;
+                this.locationMarker = null;
+                this.locationAccuracyCircle = null;
+                this.locationWatchId = null;
+                this.isTrackingLocation = false;
+                this.hasCenteredOnLocation = false;
+                this.lastLocationUpdate = 0;
+                this.shareOpen = false;
+                this.statusAnchor = null;
+                this.statusHideTimer = null;
+                this.locationButton = null;
+                this.shareButton = null;
+                this.clearButton = null;
+                this.undoButton = null;
+                this.redoButton = null;
+                this.initMarkers();
 
-        const colors = [
-            '#ef4444', '#f97316', '#f59e0b', '#eab308',
-            '#84cc16', '#22c55e', '#10b981', '#14b8a6',
-            '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
-            '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'
-        ];
+                this.init();
+            }
 
-        // Initialize map
-        map = L.map('map', {
-            zoomControl: false
-        }).setView([51.505, -0.09], 13);
+            init() {
+                this.loadLastState();
+                this.initMap();
+                this.initControls();
+                this.initDrawing();
+                this.loadFromUrl();
+                this.startAutoSave();
+            }
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
+            loadLastState() {
+                // Try to load from memory (session-based storage)
+                // Note: localStorage is not available in Claude.ai artifacts
+                try {
+                    const saved = window.sessionData || {};
+                    if (saved.lastLocation) {
+                        this.lastLocation = saved.lastLocation;
+                    }
+                    if (saved.lastDrawing) {
+                        // Will be loaded after map initializes
+                        this.savedDrawing = saved.lastDrawing;
+                    }
+                } catch (e) {
+                    console.log('Session storage not available, using defaults');
+                }
+            }
 
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
+            saveState() {
+                try {
+                    window.sessionData = window.sessionData || {};
+                    window.sessionData.lastLocation = {
+                        lat: this.map.getCenter().lat,
+                        lng: this.map.getCenter().lng,
+                        zoom: this.map.getZoom()
+                    };
+                    this.compressDrawing().then(drawing => {
+                        window.sessionData.lastDrawing = drawing;
+                    }).catch(() => {
+                        // Ignore compression errors during auto-save
+                    });
+                } catch (e) {
+                    console.log('Could not save state');
+                }
+            }
 
-        const overlay = document.getElementById('drawingOverlay');
+            initMap() {
+                // Initialize map with last known location
+                this.map = L.map('map').setView([this.lastLocation.lat, this.lastLocation.lng], this.lastLocation.zoom);
+                
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(this.map);
 
-        // Update overlay size
-        function updateOverlaySize() {
-            const container = map.getContainer();
-            overlay.setAttribute('width', container.clientWidth);
-            overlay.setAttribute('height', container.clientHeight);
-        }
+                // Handle map events
+                this.map.on('moveend', () => {
+                    this.updateUrl();
+                    this.saveState();
+                });
+                this.map.on('zoomend', () => {
+                    this.updateUrl();
+                    this.saveState();
+                });
+                this.map.on('move', () => {
+                    this.redrawPaths();
+                });
+                this.map.on('zoom', () => {
+                    this.redrawPaths();
+                });
 
-        updateOverlaySize();
-        window.addEventListener('resize', updateOverlaySize);
+                // Load saved drawing if available
+                if (this.savedDrawing) {
+                    setTimeout(() => {
+                        this.decompressDrawing(this.savedDrawing);
+                        delete this.savedDrawing;
+                    }, 100);
+                }
+            }
 
-        // Convert lat/lng to SVG coordinates
-        function latLngToPoint(lat, lng) {
-            const point = map.latLngToContainerPoint([lat, lng]);
-            return point;
-        }
+            initControls() {
+                const attachButton = (id, handler) => {
+                    const el = document.getElementById(id);
+                    if (!el) return null;
+                    el.addEventListener('click', (event) => {
+                        this.statusAnchor = event.currentTarget;
+                        handler(event);
+                    });
+                    return el;
+                };
 
-        // Convert SVG coordinates to lat/lng
-        function pointToLatLng(x, y) {
-            const latLng = map.containerPointToLatLng([x, y]);
-            return latLng;
-        }
+                // Action buttons
+                this.locationButton = attachButton('locationBtn', () => this.goToLocation());
+                this.shareButton = attachButton('shareBtn', () => this.showShare());
+                this.clearButton = attachButton('clearBtn', () => this.clearDrawing());
+                this.undoButton = attachButton('undoBtn', () => this.undo());
+                this.redoButton = attachButton('redoBtn', () => this.redo());
 
-        // Get mouse/touch position
-        function getEventPosition(e) {
-            const rect = overlay.getBoundingClientRect();
-            if (e.touches && e.touches.length > 0) {
+                // Tool buttons
+                attachButton('freehandBtn', () => this.setTool('freehand'));
+                attachButton('lineBtn', () => this.setTool('line'));
+                attachButton('circleBtn', () => this.setTool('circle'));
+                attachButton('arrowBtn', () => this.setTool('arrow'));
+
+                // Stroke width options
+                this.initWidthControls();
+
+                // Color palette
+                this.initColorControls();
+
+                if (!this.statusAnchor) {
+                    this.statusAnchor = this.shareButton || this.locationButton || this.clearButton;
+                }
+
+                this.updateToolButtons();
+                this.updateUndoRedoButtons();
+                this.updateColorButtons();
+                this.updateWidthButtons();
+                this.updateLocationButtonState();
+            }
+
+            setTool(tool) {
+                if (this.currentTool === tool && this.drawingMode) {
+                    this.toggleDrawingMode(false);
+                    return;
+                }
+
+                this.currentTool = tool;
+                this.updateToolButtons();
+
+                if (!this.drawingMode) {
+                    this.toggleDrawingMode(true);
+                }
+            }
+
+            updateToolButtons() {
+                const buttons = document.querySelectorAll('.tool-btn');
+                buttons.forEach(btn => btn.classList.remove('active'));
+                
+                const activeBtn = document.getElementById(this.currentTool + 'Btn');
+                if (activeBtn && this.drawingMode) activeBtn.classList.add('active');
+
+                // Update overlay cursor class
+                const overlay = document.getElementById('drawingOverlay');
+                overlay.setAttribute('class', 'drawing-overlay');
+                if (this.drawingMode) {
+                    overlay.classList.add('drawing-mode', this.currentTool + '-mode');
+                }
+            }
+
+            toggleDrawingMode(enable = null) {
+                this.drawingMode = enable !== null ? enable : !this.drawingMode;
+                
+                const overlay = document.getElementById('drawingOverlay');
+                
+                if (this.drawingMode) {
+                    overlay.classList.add('drawing-mode');
+                    this.map.dragging.disable();
+                    this.map.scrollWheelZoom.disable();
+                    this.map.doubleClickZoom.disable();
+                } else {
+                    overlay.classList.remove('drawing-mode');
+                    this.map.dragging.enable();
+                    this.map.scrollWheelZoom.enable();
+                    this.map.doubleClickZoom.enable();
+                }
+                
+                this.updateToolButtons();
+            }
+
+            initDrawing() {
+                const overlay = document.getElementById('drawingOverlay');
+
+                // Mouse events
+                overlay.addEventListener('mousedown', (e) => this.handleDrawStart(e));
+                overlay.addEventListener('mousemove', (e) => this.handleDrawMove(e));
+                overlay.addEventListener('mouseup', (e) => this.handleDrawEnd(e));
+
+                // Touch events
+                overlay.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.handleDrawStart(e);
+                });
+                overlay.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    this.handleDrawMove(e);
+                });
+                overlay.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.handleDrawEnd(e);
+                });
+
+                // Prevent context menu
+                overlay.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+
+            handleDrawStart(event) {
+                if (!this.drawingMode) return;
+
+                this.closeStrokePopover();
+                this.closeColorPopover();
+                
+                this.captureUndoSnapshot();
+                this.didMutatePaths = false;
+                this.redoStack = [];
+                this.updateUndoRedoButtons();
+
+                this.activeDrawingColorIndex = this.currentColorIndex;
+                this.pendingShapeColorIndex = null;
+
+                this.isDrawing = true;
+                this.startPoint = this.getDrawingPoint(event);
+
+                if (this.currentTool === 'freehand') {
+                    this.startFreehandPath(this.startPoint, this.activeDrawingColorIndex);
+                } else {
+                    this.pendingShapeColorIndex = this.activeDrawingColorIndex;
+                    this.startShapePath(this.startPoint);
+                }
+            }
+
+            handleDrawMove(event) {
+                if (!this.drawingMode || !this.isDrawing) return;
+                
+                const point = this.getDrawingPoint(event);
+
+                if (this.currentTool === 'freehand') {
+                    this.continueFreehandPath(point);
+                } else {
+                    this.updateShapePreview(this.startPoint, point);
+                }
+            }
+
+            handleDrawEnd(event) {
+                if (!this.isDrawing) return;
+                
+                const point = this.getDrawingPoint(event);
+                this.isDrawing = false;
+
+                if (this.currentTool === 'freehand') {
+                    this.endFreehandPath();
+                } else {
+                    this.endShapePath(this.startPoint, point);
+                }
+                
+                this.pendingShapeColorIndex = null;
+                this.clearPreview();
+                this.commitUndoSnapshot();
+                this.updateUrl();
+                this.scheduleAutoSave();
+            }
+
+            getDrawingPoint(event) {
+                const pointer = event.touches && event.touches.length
+                    ? event.touches[0]
+                    : event.changedTouches && event.changedTouches.length
+                        ? event.changedTouches[0]
+                        : event;
+                const rect = this.map.getContainer().getBoundingClientRect();
+                const x = pointer.clientX - rect.left;
+                const y = pointer.clientY - rect.top;
+                const latLng = this.map.containerPointToLatLng([x, y]);
                 return {
-                    x: e.touches[0].clientX - rect.left,
-                    y: e.touches[0].clientY - rect.top
+                    lat: latLng.lat,
+                    lng: latLng.lng,
+                    x,
+                    y
                 };
             }
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-        }
 
-        // Drawing functions
-        function startDrawing(e) {
-            // Don't draw in pan mode
-            if (currentTool === 'pan') {
-                return;
+            startFreehandPath(point, colorIndex) {
+                this.currentPath = {
+                    points: [{ lat: point.lat, lng: point.lng }],
+                    strokeWidth: this.currentStroke,
+                    type: 'freehand',
+                    colorIndex
+                };
+
+                const path = this.createPathElement(colorIndex, this.currentStroke);
+                path.setAttribute('d', this.latLngsToPathData(this.currentPath.points));
+
+                document.getElementById('drawingGroup').appendChild(path);
+                this.currentPath.element = path;
             }
 
-            // Allow multi-touch for map zoom/pan
-            if (e.touches && e.touches.length > 1) {
-                return;
+            continueFreehandPath(point) {
+                if (!this.currentPath) return;
+                
+                this.currentPath.points.push({ lat: point.lat, lng: point.lng });
+                const pathData = this.latLngsToPathData(this.currentPath.points);
+                this.currentPath.element.setAttribute('d', pathData);
             }
 
-            e.preventDefault();
-            const pos = getEventPosition(e);
-
-            // Handle eraser tool
-            if (currentTool === 'eraser') {
-                const pathIndex = findPathAtPoint(pos.x, pos.y);
-                if (pathIndex !== null) {
-                    // Save to undo stack
-                    undoStack.push(JSON.parse(JSON.stringify(paths)));
-                    if (undoStack.length > 20) undoStack.shift();
-                    redoStack = [];
-
-                    // Remove the path
-                    paths.splice(pathIndex, 1);
-                    renderPaths();
-                    updateButtons();
-                    scheduleSave();
+            endFreehandPath() {
+                if (this.currentPath && this.currentPath.points.length > 1) {
+                    this.paths.push({
+                        points: this.currentPath.points.map(p => ({ lat: p.lat, lng: p.lng })),
+                        strokeWidth: this.currentPath.strokeWidth,
+                        type: 'freehand',
+                        colorIndex: this.currentPath.colorIndex
+                    });
+                    this.markPathsMutated();
                 }
-                return;
+                this.currentPath = null;
             }
 
-            // Handle select tool
-            if (currentTool === 'select') {
-                const pathIndex = findPathAtPoint(pos.x, pos.y);
-                selectedPathIndex = pathIndex;
+            startShapePath(point) {
+                this.pendingShapeColorIndex = this.pendingShapeColorIndex ?? this.currentColorIndex;
+            }
 
-                if (pathIndex !== null) {
-                    // Save to undo stack before moving
-                    undoStack.push(JSON.parse(JSON.stringify(paths)));
-                    if (undoStack.length > 20) undoStack.shift();
-                    redoStack = [];
+            updateShapePreview(startPoint, currentPoint) {
+                this.clearPreview();
+                
+                const preview = document.getElementById('previewGroup');
+                let element;
+                const startContainer = this.map.latLngToContainerPoint([startPoint.lat, startPoint.lng]);
+                const currentContainer = this.map.latLngToContainerPoint([currentPoint.lat, currentPoint.lng]);
 
-                    isDrawing = true;
-                    const latLng = pointToLatLng(pos.x, pos.y);
-                    startPoint = latLng;
-                    map.dragging.disable();
-                    renderPaths(); // Re-render to show selection
+                switch (this.currentTool) {
+                    case 'line':
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        element.setAttribute('class', 'preview-line');
+                        element.setAttribute('x1', startContainer.x);
+                        element.setAttribute('y1', startContainer.y);
+                        element.setAttribute('x2', currentContainer.x);
+                        element.setAttribute('y2', currentContainer.y);
+                        element.setAttribute('stroke-width', this.currentStroke);
+                        break;
+
+                    case 'circle':
+                        const radius = Math.sqrt(
+                            Math.pow(currentContainer.x - startContainer.x, 2) + 
+                            Math.pow(currentContainer.y - startContainer.y, 2)
+                        );
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        element.setAttribute('class', 'preview-circle');
+                        element.setAttribute('cx', startContainer.x);
+                        element.setAttribute('cy', startContainer.y);
+                        element.setAttribute('r', radius);
+                        element.setAttribute('stroke-width', this.currentStroke);
+                        break;
+
+                    case 'arrow':
+                        element = this.createArrowElement(startContainer, currentContainer, true, this.activeDrawingColorIndex ?? this.currentColorIndex, this.currentStroke);
+                        break;
                 }
-                return;
+
+                if (element) {
+                    const color = this.getColorHex(this.activeDrawingColorIndex ?? this.currentColorIndex);
+                    element.setAttribute('stroke', color);
+                    if (element.tagName === 'circle') {
+                        element.setAttribute('fill', 'none');
+                    }
+                    preview.appendChild(element);
+                    this.previewElement = element;
+                }
             }
 
-            // Normal drawing tools
-            isDrawing = true;
-            const latLng = pointToLatLng(pos.x, pos.y);
-
-            startPoint = latLng;
-            currentPath = {
-                type: currentTool,
-                color: currentColor,
-                width: currentStroke,
-                points: [[latLng.lat, latLng.lng]]
-            };
-
-            if (currentTool === 'freehand') {
-                map.dragging.disable();
-            }
-        }
-
-        function continueDrawing(e) {
-            if (!isDrawing) return;
-
-            // Allow multi-touch for map zoom/pan
-            if (e.touches && e.touches.length > 1) {
-                stopDrawing(e);
-                return;
-            }
-
-            e.preventDefault();
-
-            const pos = getEventPosition(e);
-            const latLng = pointToLatLng(pos.x, pos.y);
-
-            // Handle select tool dragging
-            if (currentTool === 'select' && selectedPathIndex !== null) {
-                const path = paths[selectedPathIndex];
-                const deltaLat = latLng.lat - startPoint.lat;
-                const deltaLng = latLng.lng - startPoint.lng;
-
-                // Move all points in the path
-                path.points = path.points.map(point => [
-                    point[0] + deltaLat,
-                    point[1] + deltaLng
-                ]);
-
-                startPoint = latLng;
-                renderPaths();
-                return;
-            }
-
-            if (currentTool === 'freehand') {
-                currentPath.points.push([latLng.lat, latLng.lng]);
-            } else {
-                // For line, circle, arrow - update endpoint
-                currentPath.points = [
-                    [startPoint.lat, startPoint.lng],
-                    [latLng.lat, latLng.lng]
+            endShapePath(startPoint, endPoint) {
+                const colorIndex = this.pendingShapeColorIndex ?? this.currentColorIndex;
+                const points = [
+                    { lat: startPoint.lat, lng: startPoint.lng },
+                    { lat: endPoint.lat, lng: endPoint.lng }
                 ];
-            }
+                let pathData = null;
 
-            renderPaths();
-        }
+                switch (this.currentTool) {
+                    case 'line':
+                        pathData = this.latLngsToPathData(points);
+                        break;
 
-        function stopDrawing(e) {
-            if (!isDrawing) return;
-            if (e && e.cancelable) e.preventDefault();
+                    case 'circle':
+                        pathData = this.circlePathFromLatLng(points[0], points[1]);
+                        break;
 
-            // Handle select tool - just schedule save (undo already saved in startDrawing)
-            if (currentTool === 'select' && selectedPathIndex !== null) {
-                scheduleSave();
-            }
-
-            isDrawing = false;
-            map.dragging.enable();
-
-            if (currentPath && currentPath.points.length > 1) {
-                // Save to undo stack
-                undoStack.push(JSON.parse(JSON.stringify(paths)));
-                if (undoStack.length > 20) undoStack.shift();
-                redoStack = [];
-
-                paths.push(currentPath);
-                scheduleSave();
-            }
-
-            currentPath = null;
-            startPoint = null;
-            renderPaths();
-            updateButtons();
-        }
-
-        // Render all paths
-        function renderPaths() {
-            overlay.innerHTML = '';
-
-            // Render saved paths
-            paths.forEach((path, index) => {
-                const isSelected = (currentTool === 'select' && selectedPathIndex === index);
-                renderPath(path, false, isSelected);
-            });
-
-            // Render current path being drawn
-            if (currentPath) {
-                renderPath(currentPath, true, false);
-            }
-        }
-
-        function renderPath(path, isCurrent = false, isSelected = false) {
-            const color = colors[path.color];
-            const width = path.width;
-
-            if (path.points.length < 2) return;
-
-            if (path.type === 'freehand' || path.type === 'line') {
-                const points = path.points.map(p => latLngToPoint(p[0], p[1]));
-                let d = `M ${points[0].x} ${points[0].y}`;
-                for (let i = 1; i < points.length; i++) {
-                    d += ` L ${points[i].x} ${points[i].y}`;
+                    case 'arrow':
+                        pathData = this.latLngsToPathData(points);
+                        break;
                 }
 
-                // Draw selection highlight
-                if (isSelected) {
-                    const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    highlight.setAttribute('d', d);
-                    highlight.setAttribute('stroke', '#2563eb');
-                    highlight.setAttribute('stroke-width', width + 6);
-                    highlight.setAttribute('fill', 'none');
-                    highlight.setAttribute('stroke-linecap', 'round');
-                    highlight.setAttribute('stroke-linejoin', 'round');
-                    highlight.setAttribute('opacity', '0.3');
-                    overlay.appendChild(highlight);
+                if (pathData) {
+                    const element = this.createPathElement(colorIndex, this.currentStroke);
+                    element.setAttribute('d', pathData);
+
+                    if (this.currentTool === 'arrow') {
+                        element.setAttribute('marker-end', `url(#arrowhead-${colorIndex})`);
+                    }
+
+                    document.getElementById('drawingGroup').appendChild(element);
+
+                    this.paths.push({
+                        points: this.currentTool === 'circle'
+                            ? [points[0], points[1]]
+                            : points,
+                        strokeWidth: this.currentStroke,
+                        type: this.currentTool,
+                        colorIndex
+                    });
+                    this.markPathsMutated();
                 }
+            }
 
-                const svgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                svgPath.setAttribute('d', d);
-                svgPath.setAttribute('stroke', color);
-                svgPath.setAttribute('stroke-width', width);
-                svgPath.setAttribute('fill', 'none');
-                svgPath.setAttribute('stroke-linecap', 'round');
-                svgPath.setAttribute('stroke-linejoin', 'round');
-                if (isCurrent) svgPath.setAttribute('opacity', '0.7');
+            createPathElement(colorIndex = this.currentColorIndex, strokeWidth = this.currentStroke) {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', this.getColorHex(colorIndex));
+                path.setAttribute('stroke-width', strokeWidth);
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                return path;
+            }
 
-                overlay.appendChild(svgPath);
-            } else if (path.type === 'circle') {
-                const start = latLngToPoint(path.points[0][0], path.points[0][1]);
-                const end = latLngToPoint(path.points[1][0], path.points[1][1]);
-                const radius = Math.sqrt(
-                    Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
-                );
-
-                // Draw selection highlight
-                if (isSelected) {
-                    const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    highlight.setAttribute('cx', start.x);
-                    highlight.setAttribute('cy', start.y);
-                    highlight.setAttribute('r', radius);
-                    highlight.setAttribute('stroke', '#2563eb');
-                    highlight.setAttribute('stroke-width', width + 6);
-                    highlight.setAttribute('fill', 'none');
-                    highlight.setAttribute('opacity', '0.3');
-                    overlay.appendChild(highlight);
-                }
-
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', start.x);
-                circle.setAttribute('cy', start.y);
-                circle.setAttribute('r', radius);
-                circle.setAttribute('stroke', color);
-                circle.setAttribute('stroke-width', width);
-                circle.setAttribute('fill', 'none');
-                if (isCurrent) circle.setAttribute('opacity', '0.7');
-
-                overlay.appendChild(circle);
-            } else if (path.type === 'arrow') {
-                const start = latLngToPoint(path.points[0][0], path.points[0][1]);
-                const end = latLngToPoint(path.points[1][0], path.points[1][1]);
-
-                // Arrow head calculations
-                const ARROW_HEAD_LENGTH_MULTIPLIER = 3;
-                const ARROW_HEAD_ANGLE_RADIANS = Math.PI / 6;
-                const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                const headLength = width * ARROW_HEAD_LENGTH_MULTIPLIER;
-                const headAngle = ARROW_HEAD_ANGLE_RADIANS;
-
-                const x1 = end.x - headLength * Math.cos(angle - headAngle);
-                const y1 = end.y - headLength * Math.sin(angle - headAngle);
-                const x2 = end.x - headLength * Math.cos(angle + headAngle);
-                const y2 = end.y - headLength * Math.sin(angle + headAngle);
-
-                // Draw selection highlight
-                if (isSelected) {
-                    const highlightLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    highlightLine.setAttribute('x1', start.x);
-                    highlightLine.setAttribute('y1', start.y);
-                    highlightLine.setAttribute('x2', end.x);
-                    highlightLine.setAttribute('y2', end.y);
-                    highlightLine.setAttribute('stroke', '#2563eb');
-                    highlightLine.setAttribute('stroke-width', width + 6);
-                    highlightLine.setAttribute('stroke-linecap', 'round');
-                    highlightLine.setAttribute('opacity', '0.3');
-                    overlay.appendChild(highlightLine);
-
-                    const highlightHead = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    highlightHead.setAttribute('d', `M ${x1} ${y1} L ${end.x} ${end.y} L ${x2} ${y2}`);
-                    highlightHead.setAttribute('stroke', '#2563eb');
-                    highlightHead.setAttribute('stroke-width', width + 6);
-                    highlightHead.setAttribute('fill', 'none');
-                    highlightHead.setAttribute('stroke-linecap', 'round');
-                    highlightHead.setAttribute('stroke-linejoin', 'round');
-                    highlightHead.setAttribute('opacity', '0.3');
-                    overlay.appendChild(highlightHead);
-                }
-
-                // Arrow line
+            createArrowElement(start, end, isPreview = false, colorIndex = this.currentColorIndex, strokeWidth = this.currentStroke) {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('class', isPreview ? 'preview-arrow' : '');
                 line.setAttribute('x1', start.x);
                 line.setAttribute('y1', start.y);
                 line.setAttribute('x2', end.x);
                 line.setAttribute('y2', end.y);
-                line.setAttribute('stroke', color);
-                line.setAttribute('stroke-width', width);
-                line.setAttribute('stroke-linecap', 'round');
-                if (isCurrent) line.setAttribute('opacity', '0.7');
-                overlay.appendChild(line);
-
-                // Arrow head
-                const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                arrowHead.setAttribute('d', `M ${x1} ${y1} L ${end.x} ${end.y} L ${x2} ${y2}`);
-                arrowHead.setAttribute('stroke', color);
-                arrowHead.setAttribute('stroke-width', width);
-                arrowHead.setAttribute('fill', 'none');
-                arrowHead.setAttribute('stroke-linecap', 'round');
-                arrowHead.setAttribute('stroke-linejoin', 'round');
-                if (isCurrent) arrowHead.setAttribute('opacity', '0.7');
-                overlay.appendChild(arrowHead);
+                line.setAttribute('stroke-width', strokeWidth);
+                line.setAttribute('stroke', this.getColorHex(colorIndex));
+                line.setAttribute('fill', 'none');
+                if (!isPreview) {
+                    line.setAttribute('marker-end', `url(#arrowhead-${colorIndex})`);
+                }
+                return line;
             }
-        }
 
-        // Hit detection - find which path was clicked
-        function findPathAtPoint(x, y) {
-            const clickLatLng = pointToLatLng(x, y);
-            const threshold = 10; // pixels
+            circleToPath(cx, cy, r) {
+                return `M${cx-r},${cy} A${r},${r} 0 1,0 ${cx+r},${cy} A${r},${r} 0 1,0 ${cx-r},${cy}`;
+            }
 
-            // Check paths in reverse order (top to bottom)
-            for (let i = paths.length - 1; i >= 0; i--) {
-                const path = paths[i];
+            clearPreview() {
+                const preview = document.getElementById('previewGroup');
+                preview.innerHTML = '';
+                this.previewElement = null;
+            }
 
-                if (path.type === 'freehand' || path.type === 'line') {
-                    // Check if click is near any line segment
-                    for (let j = 0; j < path.points.length - 1; j++) {
-                        const p1 = latLngToPoint(path.points[j][0], path.points[j][1]);
-                        const p2 = latLngToPoint(path.points[j + 1][0], path.points[j + 1][1]);
+            latLngsToPathData(points) {
+                if (!points || points.length === 0) return '';
 
-                        const dist = distanceToSegment(x, y, p1.x, p1.y, p2.x, p2.y);
-                        if (dist < threshold + path.width / 2) {
-                            return i;
-                        }
+                const first = this.map.latLngToContainerPoint([points[0].lat, points[0].lng]);
+                let d = `M${first.x},${first.y}`;
+                for (let i = 1; i < points.length; i++) {
+                    const pt = this.map.latLngToContainerPoint([points[i].lat, points[i].lng]);
+                    d += ` L${pt.x},${pt.y}`;
+                }
+                return d;
+            }
+
+            circlePathFromLatLng(center, edge) {
+                if (!center || !edge) return '';
+                const centerPoint = this.map.latLngToContainerPoint([center.lat, center.lng]);
+                const edgePoint = this.map.latLngToContainerPoint([edge.lat, edge.lng]);
+                const radius = Math.sqrt(
+                    Math.pow(edgePoint.x - centerPoint.x, 2) +
+                    Math.pow(edgePoint.y - centerPoint.y, 2)
+                );
+                return this.circleToPath(centerPoint.x, centerPoint.y, radius);
+            }
+
+            captureUndoSnapshot() {
+                this.pendingUndoSnapshot = JSON.parse(JSON.stringify(this.paths));
+            }
+
+            markPathsMutated() {
+                this.didMutatePaths = true;
+                this.drawingSerializationDirty = true;
+                this.cachedCompressedDrawing = '';
+                this.compressInFlight = null;
+                this.compressionGeneration += 1;
+            }
+
+            commitUndoSnapshot() {
+                if (this.didMutatePaths && this.pendingUndoSnapshot) {
+                    this.undoStack.push(this.pendingUndoSnapshot);
+                    if (this.undoStack.length > 20) {
+                        this.undoStack.shift();
                     }
-                } else if (path.type === 'circle') {
-                    const center = latLngToPoint(path.points[0][0], path.points[0][1]);
-                    const edge = latLngToPoint(path.points[1][0], path.points[1][1]);
-                    const radius = Math.sqrt(
-                        Math.pow(edge.x - center.x, 2) + Math.pow(edge.y - center.y, 2)
-                    );
+                }
+                this.pendingUndoSnapshot = null;
+                this.didMutatePaths = false;
+                this.updateUndoRedoButtons();
+            }
 
-                    const distToCenter = Math.sqrt(
-                        Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2)
-                    );
+            undo() {
+                if (this.undoStack.length === 0) return;
 
-                    // Check if click is near the circle outline
-                    if (Math.abs(distToCenter - radius) < threshold + path.width / 2) {
-                        return i;
-                    }
-                } else if (path.type === 'arrow') {
-                    const start = latLngToPoint(path.points[0][0], path.points[0][1]);
-                    const end = latLngToPoint(path.points[1][0], path.points[1][1]);
+                this.redoStack.push(JSON.parse(JSON.stringify(this.paths)));
+                this.paths = this.undoStack.pop();
+                this.pendingUndoSnapshot = null;
+                this.didMutatePaths = false;
+                this.drawingSerializationDirty = true;
+                this.cachedCompressedDrawing = '';
+                this.compressInFlight = null;
+                this.compressionGeneration += 1;
 
-                    const dist = distanceToSegment(x, y, start.x, start.y, end.x, end.y);
-                    if (dist < threshold + path.width / 2) {
-                        return i;
-                    }
+                this.redrawPaths();
+                this.updateUndoRedoButtons();
+                this.updateUrl();
+                this.scheduleAutoSave();
+            }
+
+            redo() {
+                if (this.redoStack.length === 0) return;
+
+                this.undoStack.push(JSON.parse(JSON.stringify(this.paths)));
+                this.paths = this.redoStack.pop();
+                this.pendingUndoSnapshot = null;
+                this.didMutatePaths = false;
+                this.drawingSerializationDirty = true;
+                this.cachedCompressedDrawing = '';
+                this.compressInFlight = null;
+                this.compressionGeneration += 1;
+
+                this.redrawPaths();
+                this.updateUndoRedoButtons();
+                this.updateUrl();
+                this.scheduleAutoSave();
+            }
+
+            updateUndoRedoButtons() {
+                if (this.undoButton) {
+                    this.undoButton.disabled = this.undoStack.length === 0;
+                }
+                if (this.redoButton) {
+                    this.redoButton.disabled = this.redoStack.length === 0;
                 }
             }
 
-            return null;
-        }
-
-        // Calculate distance from point to line segment
-        function distanceToSegment(px, py, x1, y1, x2, y2) {
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            const lengthSquared = dx * dx + dy * dy;
-
-            if (lengthSquared === 0) {
-                return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
+            clearDrawing() {
+                if (this.paths.length > 0) {
+                    this.captureUndoSnapshot();
+                    this.markPathsMutated();
+                }
+                this.redoStack = [];
+                document.getElementById('drawingGroup').innerHTML = '';
+                this.paths = [];
+                this.commitUndoSnapshot();
+                this.updateUrl();
+                this.scheduleAutoSave();
+                this.showStatus('Drawing cleared', 'success', this.clearButton);
             }
 
-            let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
-            t = Math.max(0, Math.min(1, t));
-
-            const closestX = x1 + t * dx;
-            const closestY = y1 + t * dy;
-
-            return Math.sqrt((px - closestX) * (px - closestX) + (py - closestY) * (py - closestY));
-        }
-
-        // Update overlay when map moves
-        map.on('move', renderPaths);
-        map.on('zoom', () => {
-            updateOverlaySize();
-            renderPaths();
-        });
-
-        // Drawing event listeners
-        overlay.addEventListener('mousedown', startDrawing);
-        overlay.addEventListener('mousemove', continueDrawing);
-        overlay.addEventListener('mouseup', stopDrawing);
-        overlay.addEventListener('mouseleave', stopDrawing);
-
-        overlay.addEventListener('touchstart', startDrawing, { passive: false });
-        overlay.addEventListener('touchmove', continueDrawing, { passive: false });
-        overlay.addEventListener('touchend', stopDrawing, { passive: false });
-        overlay.addEventListener('touchcancel', stopDrawing, { passive: false });
-
-        // Tool selection
-        function selectTool(tool) {
-            currentTool = tool;
-
-            // Clear selection when switching tools
-            selectedPathIndex = null;
-
-            // Enable/disable drawing overlay based on tool
-            // 'pan' mode: disable overlay so map can be fully interacted with
-            // Other tools: enable overlay for drawing
-            overlay.classList.toggle('drawing', tool !== null && tool !== 'pan');
-
-            // Update cursor classes
-            overlay.classList.remove('select-mode', 'eraser-mode');
-            if (tool === 'select') {
-                overlay.classList.add('select-mode');
-            } else if (tool === 'eraser') {
-                overlay.classList.add('eraser-mode');
+            goToLocation() {
+                if (this.isTrackingLocation) {
+                    this.stopLocationTracking();
+                } else {
+                    this.startLocationTracking();
+                }
             }
 
-            document.querySelectorAll('.tool-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            startLocationTracking() {
+                if (!navigator.geolocation) {
+                    this.showStatus('Geolocation not supported by this browser', 'error', this.locationButton);
+                    return;
+                }
 
-            if (tool) {
-                document.getElementById(tool + 'Btn').classList.add('active');
+                if (this.isTrackingLocation) return;
+
+                this.isTrackingLocation = true;
+                this.hasCenteredOnLocation = false;
+                this.lastLocationUpdate = 0;
+                this.updateLocationButtonState();
+                this.showStatus('Tracking your location...', '', this.locationButton);
+
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 15000
+                };
+
+                this.locationWatchId = navigator.geolocation.watchPosition(
+                    (position) => this.handleLocationUpdate(position),
+                    (error) => {
+                        let message = 'Could not get location: ';
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED: message += 'Location access denied by user'; break;
+                            case error.POSITION_UNAVAILABLE: message += 'Location information unavailable'; break;
+                            case error.TIMEOUT: message += 'Location request timed out'; break;
+                            default: message += 'Unknown error occurred'; break;
+                        }
+                        this.showStatus(message, 'error', this.locationButton);
+                        this.stopLocationTracking(true);
+                    },
+                    options
+                );
             }
 
-            // Hide pickers
-            document.getElementById('colorPicker').classList.remove('show');
-            document.getElementById('strokePicker').classList.remove('show');
-
-            // Re-render to clear any selection highlights
-            renderPaths();
-        }
-
-        document.getElementById('panBtn').addEventListener('click', () => selectTool('pan'));
-        document.getElementById('freehandBtn').addEventListener('click', () => selectTool('freehand'));
-        document.getElementById('lineBtn').addEventListener('click', () => selectTool('line'));
-        document.getElementById('circleBtn').addEventListener('click', () => selectTool('circle'));
-        document.getElementById('arrowBtn').addEventListener('click', () => selectTool('arrow'));
-        document.getElementById('selectBtn').addEventListener('click', () => selectTool('select'));
-        document.getElementById('eraserBtn').addEventListener('click', () => selectTool('eraser'));
-
-        // Color picker
-        document.getElementById('colorBtn').addEventListener('click', () => {
-            const picker = document.getElementById('colorPicker');
-            const strokePicker = document.getElementById('strokePicker');
-            strokePicker.classList.remove('show');
-            picker.classList.toggle('show');
-        });
-
-        document.querySelectorAll('.color-btn').forEach((btn, index) => {
-            btn.addEventListener('click', () => {
-                currentColor = index;
-                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-
-        // Stroke picker
-        document.getElementById('strokeBtn').addEventListener('click', () => {
-            const picker = document.getElementById('strokePicker');
-            const colorPicker = document.getElementById('colorPicker');
-            colorPicker.classList.remove('show');
-            picker.classList.toggle('show');
-        });
-
-        document.querySelectorAll('.stroke-option').forEach(option => {
-            option.addEventListener('click', () => {
-                currentStroke = parseInt(option.dataset.width);
-                document.querySelectorAll('.stroke-option').forEach(o => o.classList.remove('active'));
-                option.classList.add('active');
-            });
-        });
-
-        // Undo/Redo
-        function undo() {
-            if (undoStack.length === 0) return;
-            redoStack.push(JSON.parse(JSON.stringify(paths)));
-            paths = undoStack.pop();
-            renderPaths();
-            updateButtons();
-            scheduleSave();
-        }
-
-        function redo() {
-            if (redoStack.length === 0) return;
-            undoStack.push(JSON.parse(JSON.stringify(paths)));
-            paths = redoStack.pop();
-            renderPaths();
-            updateButtons();
-            scheduleSave();
-        }
-
-        function clearAll() {
-            if (paths.length === 0) return;
-            if (!confirm('Clear all drawings?')) return;
-
-            undoStack.push(JSON.parse(JSON.stringify(paths)));
-            redoStack = [];
-            paths = [];
-            renderPaths();
-            updateButtons();
-            scheduleSave();
-        }
-
-        document.getElementById('undoBtn').addEventListener('click', undo);
-        document.getElementById('redoBtn').addEventListener('click', redo);
-        document.getElementById('clearBtn').addEventListener('click', clearAll);
-
-        function updateButtons() {
-            document.getElementById('undoBtn').style.opacity = undoStack.length > 0 ? '1' : '0.5';
-            document.getElementById('redoBtn').style.opacity = redoStack.length > 0 ? '1' : '0.5';
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                e.preventDefault();
-                undo();
-            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-                e.preventDefault();
-                redo();
-            }
-        });
-
-        // Location
-        document.getElementById('locateBtn').addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert('Geolocation not supported');
-                return;
+            stopLocationTracking(silent = false) {
+                if (this.locationWatchId !== null && navigator.geolocation) {
+                    navigator.geolocation.clearWatch(this.locationWatchId);
+                    this.locationWatchId = null;
+                }
+                if (this.locationMarker) {
+                    this.map.removeLayer(this.locationMarker);
+                    this.locationMarker = null;
+                }
+                if (this.locationAccuracyCircle) {
+                    this.map.removeLayer(this.locationAccuracyCircle);
+                    this.locationAccuracyCircle = null;
+                }
+                const wasTracking = this.isTrackingLocation;
+                this.isTrackingLocation = false;
+                this.hasCenteredOnLocation = false;
+                this.lastLocationUpdate = 0;
+                this.updateLocationButtonState();
+                if (wasTracking && !silent) {
+                    this.showStatus('Location tracking disabled', '', this.locationButton);
+                }
             }
 
-            const btn = document.getElementById('locateBtn');
-            btn.classList.add('active');
+            handleLocationUpdate(position) {
+                if (!this.isTrackingLocation) return;
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude, accuracy } = position.coords;
+                const now = Date.now();
+                if (now - this.lastLocationUpdate < 3000) {
+                    return;
+                }
+                this.lastLocationUpdate = now;
 
-                    if (locationMarker) {
-                        map.removeLayer(locationMarker);
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy || 0;
+                const latLng = [lat, lng];
+
+                if (!this.locationMarker) {
+                    this.locationMarker = L.circleMarker(latLng, {
+                        radius: 6,
+                        color: '#007AFF',
+                        fillColor: '#007AFF',
+                        fillOpacity: 0.9,
+                        weight: 2,
+                        opacity: 0.9
+                    }).addTo(this.map);
+                } else {
+                    this.locationMarker.setLatLng(latLng);
+                }
+
+                if (accuracy > 0) {
+                    if (!this.locationAccuracyCircle) {
+                        this.locationAccuracyCircle = L.circle(latLng, {
+                            radius: Math.max(accuracy, 20),
+                            color: '#007AFF',
+                            fillColor: '#007AFF',
+                            fillOpacity: 0.1,
+                            weight: 1,
+                            opacity: 0.2
+                        }).addTo(this.map);
+                    } else {
+                        this.locationAccuracyCircle.setLatLng(latLng);
+                        this.locationAccuracyCircle.setRadius(Math.max(accuracy, 20));
+                    }
+                } else if (this.locationAccuracyCircle) {
+                    this.locationAccuracyCircle.setLatLng(latLng);
+                    this.locationAccuracyCircle.setRadius(20);
+                }
+
+                if (!this.hasCenteredOnLocation) {
+                    this.map.setView(latLng, Math.max(this.map.getZoom(), 15), { animate: true });
+                    this.hasCenteredOnLocation = true;
+                    this.showStatus('Location found!', 'success', this.locationButton);
+                }
+            }
+
+            updateLocationButtonState() {
+                if (!this.locationButton) return;
+                this.locationButton.classList.toggle('active', this.isTrackingLocation);
+                this.locationButton.setAttribute('aria-pressed', String(this.isTrackingLocation));
+            }
+
+            startAutoSave() {
+                this.stopAutoSave();
+                this.autoSaveTimer = setInterval(() => {
+                    this.saveState();
+                }, 30000);
+            }
+
+            stopAutoSave() {
+                if (this.autoSaveTimer) {
+                    clearInterval(this.autoSaveTimer);
+                    this.autoSaveTimer = null;
+                }
+            }
+
+            scheduleAutoSave() {
+                clearTimeout(this.quickSaveTimer);
+                this.quickSaveTimer = setTimeout(() => {
+                    this.saveState();
+                }, 1000);
+            }
+
+            getColorHex(index) {
+                return this.colorPalette[index] || this.colorPalette[0];
+            }
+
+            initColorControls() {
+                const previewBtn = document.getElementById('colorPreviewBtn');
+                const swatch = document.getElementById('colorPreviewSwatch');
+                const label = document.getElementById('colorPreviewLabel');
+                if (!previewBtn || !swatch || !label) return;
+
+                this.colorPreviewBtn = previewBtn;
+                this.colorPreviewSwatch = swatch;
+                this.colorPreviewLabel = label;
+
+                previewBtn.addEventListener('click', (event) => {
+                    this.statusAnchor = event.currentTarget;
+                    this.toggleColorPopover();
+                });
+                previewBtn.setAttribute('aria-expanded', 'false');
+                previewBtn.setAttribute('aria-haspopup', 'true');
+
+                this.renderColorPreview();
+            }
+
+            updateColorButtons() {
+                this.renderColorPreview();
+                if (this.colorPopover) {
+                    const options = this.colorPopover.querySelectorAll('.color-option');
+                    options.forEach((option, index) => {
+                        option.classList.toggle('active', index === this.currentColorIndex);
+                    });
+                }
+            }
+
+            renderColorPreview() {
+                const color = this.getColorHex(this.currentColorIndex);
+                const name = this.colorNames[this.currentColorIndex] || 'Color';
+                if (this.colorPreviewSwatch) {
+                    this.colorPreviewSwatch.style.backgroundColor = color;
+                }
+                if (this.colorPreviewLabel) {
+                    this.colorPreviewLabel.textContent = name;
+                }
+                if (this.colorPreviewBtn) {
+                    this.colorPreviewBtn.setAttribute('aria-label', `Current color ${name}`);
+                    this.colorPreviewBtn.setAttribute('title', `Current color ${name}`);
+                }
+                this.updateWidthPreview();
+            }
+
+            toggleColorPopover() {
+                if (this.colorPopover) {
+                    this.closeColorPopover();
+                } else {
+                    this.openColorPopover();
+                }
+            }
+
+            openColorPopover() {
+                if (!this.colorPreviewBtn || this.colorPopover) return;
+
+                this.closeStrokePopover();
+
+                const overlay = document.createElement('div');
+                overlay.className = 'picker-overlay';
+                overlay.addEventListener('click', () => this.closeColorPopover());
+                document.body.appendChild(overlay);
+                this.colorOverlay = overlay;
+
+                const popover = document.createElement('div');
+                popover.className = 'color-popover';
+                popover.style.position = 'absolute';
+                this.colorPalette.forEach((hex, index) => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'color-option';
+                    option.style.background = hex;
+                    option.style.backgroundColor = hex;
+                    const name = this.colorNames[index] || `Color ${index + 1}`;
+                    option.setAttribute('aria-label', `Choose ${name}`);
+                    option.setAttribute('title', name);
+                    if (index === this.currentColorIndex) {
+                        option.classList.add('active');
+                    }
+                    option.addEventListener('click', () => {
+                        this.setColor(index);
+                        this.closeColorPopover();
+                    });
+                    popover.appendChild(option);
+                });
+                document.body.appendChild(popover);
+                this.colorPopover = popover;
+
+                this.positionColorPopover();
+
+                this.boundColorPopoverResize = () => this.positionColorPopover();
+                this.boundColorPopoverKeyHandler = (event) => {
+                    if (event.key === 'Escape') {
+                        event.preventDefault();
+                        this.closeColorPopover();
+                    }
+                };
+                window.addEventListener('resize', this.boundColorPopoverResize);
+                document.addEventListener('keydown', this.boundColorPopoverKeyHandler, true);
+                this.boundColorPopoverScroll = () => this.positionColorPopover();
+                window.addEventListener('scroll', this.boundColorPopoverScroll, true);
+
+                this.colorPreviewBtn.classList.add('active');
+                this.colorPreviewBtn.setAttribute('aria-expanded', 'true');
+            }
+
+            positionColorPopover() {
+                if (!this.colorPopover || !this.colorPreviewBtn) return;
+                const rect = this.colorPreviewBtn.getBoundingClientRect();
+                const popover = this.colorPopover;
+                popover.style.visibility = 'hidden';
+                popover.style.left = '0px';
+                popover.style.top = '0px';
+                popover.style.bottom = 'auto';
+                const popRect = popover.getBoundingClientRect();
+                const viewportTop = window.scrollY + 8;
+                const viewportBottom = window.scrollY + window.innerHeight - 8;
+                let top = rect.bottom + window.scrollY + 8;
+                if (top + popRect.height > viewportBottom) {
+                    top = rect.top + window.scrollY - popRect.height - 8;
+                    if (top < viewportTop) {
+                        top = Math.max(viewportTop, viewportBottom - popRect.height);
+                    }
+                }
+                let left = rect.left + rect.width / 2 + window.scrollX - popRect.width / 2;
+                const minLeft = window.scrollX + 8;
+                const maxLeft = window.scrollX + window.innerWidth - popRect.width - 8;
+                if (left < minLeft) left = minLeft;
+                if (left > maxLeft) left = maxLeft;
+                popover.style.top = `${top}px`;
+                popover.style.left = `${left}px`;
+                popover.style.visibility = 'visible';
+            }
+
+            closeColorPopover() {
+                if (this.colorOverlay) {
+                    this.colorOverlay.remove();
+                    this.colorOverlay = null;
+                }
+                if (this.colorPopover) {
+                    this.colorPopover.remove();
+                    this.colorPopover = null;
+                }
+                if (this.boundColorPopoverResize) {
+                    window.removeEventListener('resize', this.boundColorPopoverResize);
+                    this.boundColorPopoverResize = null;
+                }
+                if (this.boundColorPopoverScroll) {
+                    window.removeEventListener('scroll', this.boundColorPopoverScroll, true);
+                    this.boundColorPopoverScroll = null;
+                }
+                if (this.boundColorPopoverKeyHandler) {
+                    document.removeEventListener('keydown', this.boundColorPopoverKeyHandler, true);
+                    this.boundColorPopoverKeyHandler = null;
+                }
+                if (this.colorPreviewBtn) {
+                    this.colorPreviewBtn.classList.remove('active');
+                    this.colorPreviewBtn.setAttribute('aria-expanded', 'false');
+                }
+            }
+
+            setColor(index) {
+                if (index < 0 || index >= this.colorPalette.length) return;
+                this.currentColorIndex = index;
+                this.activeDrawingColorIndex = this.currentColorIndex;
+                this.updateColorButtons();
+            }
+
+            initWidthControls() {
+                const pickerBtn = document.getElementById('strokePickerBtn');
+                const line = document.getElementById('strokePickerLine');
+                const label = document.getElementById('strokePickerLabel');
+
+                this.strokePickerBtn = pickerBtn || null;
+                this.strokePickerLine = line || null;
+                this.strokePickerLabel = label || null;
+
+                if (pickerBtn) {
+                    pickerBtn.addEventListener('click', (event) => {
+                        this.statusAnchor = event.currentTarget;
+                        this.toggleStrokePopover();
+                    });
+                    pickerBtn.setAttribute('aria-haspopup', 'true');
+                    pickerBtn.setAttribute('aria-expanded', 'false');
+                }
+
+                this.updateWidthButtons();
+            }
+
+            updateWidthButtons() {
+                const label = this.widthOptionLabels[this.currentWidthIndex] || `${this.currentStroke}px`;
+                if (this.strokePickerLabel) {
+                    this.strokePickerLabel.textContent = label;
+                }
+                if (this.strokePickerBtn) {
+                    this.strokePickerBtn.setAttribute('aria-label', `Stroke width ${label}`);
+                    this.strokePickerBtn.setAttribute('title', `Stroke width ${label}`);
+                    this.strokePickerBtn.setAttribute('aria-expanded', this.strokePopover ? 'true' : 'false');
+                }
+                this.updateWidthPreview();
+            }
+
+            updateWidthPreview() {
+                const color = this.getColorHex(this.currentColorIndex);
+                if (this.strokePickerLine) {
+                    this.strokePickerLine.style.setProperty('--stroke-width', `${this.currentStroke}px`);
+                    this.strokePickerLine.style.setProperty('--stroke-color', color);
+                }
+                if (this.strokePopover) {
+                    const lines = this.strokePopover.querySelectorAll('.stroke-option-line');
+                    lines.forEach((lineEl) => {
+                        const idx = parseInt(lineEl.dataset.index || '0', 10);
+                        const widthValue = this.widthOptions[idx] || this.currentStroke;
+                        lineEl.style.setProperty('--stroke-width', `${widthValue}px`);
+                        lineEl.style.setProperty('--stroke-color', color);
+                    });
+                    const options = this.strokePopover.querySelectorAll('.stroke-option');
+                    options.forEach((option, idx) => {
+                        option.classList.toggle('active', idx === this.currentWidthIndex);
+                    });
+                }
+            }
+
+            toggleStrokePopover() {
+                if (this.strokePopover) {
+                    this.closeStrokePopover();
+                } else {
+                    this.openStrokePopover();
+                }
+            }
+
+            openStrokePopover() {
+                if (!this.strokePickerBtn || this.strokePopover) return;
+
+                this.closeColorPopover();
+
+                const overlay = document.createElement('div');
+                overlay.className = 'picker-overlay';
+                overlay.addEventListener('click', () => this.closeStrokePopover());
+                document.body.appendChild(overlay);
+                this.strokeOverlay = overlay;
+
+                const popover = document.createElement('div');
+                popover.className = 'stroke-popover';
+                this.widthOptions.forEach((value, index) => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'stroke-option';
+                    const name = this.widthOptionLabels[index] || `${value}px`;
+                    option.setAttribute('aria-label', `Select ${name} stroke`);
+                    option.setAttribute('title', `${name} stroke`);
+                    if (index === this.currentWidthIndex) {
+                        option.classList.add('active');
                     }
 
-                    locationMarker = L.layerGroup([
-                        L.circle([latitude, longitude], {
-                            radius: accuracy,
-                            color: '#3b82f6',
-                            fillColor: '#3b82f6',
-                            fillOpacity: 0.15
-                        }),
-                        L.circleMarker([latitude, longitude], {
-                            radius: 8,
-                            color: '#3b82f6',
-                            fillColor: '#3b82f6',
-                            fillOpacity: 0.8
-                        })
-                    ]).addTo(map);
+                    const line = document.createElement('span');
+                    line.className = 'stroke-option-line';
+                    line.dataset.index = String(index);
+                    line.style.setProperty('--stroke-width', `${value}px`);
+                    line.style.setProperty('--stroke-color', this.getColorHex(this.currentColorIndex));
+                    line.setAttribute('aria-hidden', 'true');
 
-                    map.setView([latitude, longitude], 16);
+                    const text = document.createElement('span');
+                    text.textContent = name;
 
-                    setTimeout(() => btn.classList.remove('active'), 2000);
-                },
-                (error) => {
-                    alert('Location error: ' + error.message);
-                    btn.classList.remove('active');
-                },
-                { enableHighAccuracy: true }
-            );
-        });
+                    option.appendChild(line);
+                    option.appendChild(text);
 
-        // Save/Load from URL
-        async function encodeData(data) {
-            const json = JSON.stringify(data);
-            const encoder = new TextEncoder();
-            const bytes = encoder.encode(json);
+                    option.addEventListener('click', () => {
+                        this.setStrokeWidth(index);
+                        this.closeStrokePopover();
+                    });
 
-            const stream = new Response(
-                new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate'))
-            );
+                    popover.appendChild(option);
+                });
+                document.body.appendChild(popover);
+                this.strokePopover = popover;
 
-            const compressed = await stream.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(compressed)));
+                this.positionStrokePopover();
 
-            // URL-safe base64: map '+' → '-', '/' → '_' and remove '=' padding (RFC 4648 §5)
-            return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-        }
+                this.boundStrokePopoverResize = () => this.positionStrokePopover();
+                window.addEventListener('resize', this.boundStrokePopoverResize);
 
-        async function decodeData(encoded) {
-            try {
-                // Reverse URL-safe base64
-                let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
-                while (base64.length % 4) base64 += '=';
+                this.boundStrokePopoverScroll = () => this.positionStrokePopover();
+                window.addEventListener('scroll', this.boundStrokePopoverScroll, true);
 
-                const binary = atob(base64);
+                this.boundStrokePopoverKeyHandler = (event) => {
+                    if (event.key === 'Escape') {
+                        event.stopPropagation();
+                        this.closeStrokePopover();
+                    }
+                };
+                document.addEventListener('keydown', this.boundStrokePopoverKeyHandler, true);
+
+                this.strokePickerBtn.classList.add('active');
+                this.strokePickerBtn.setAttribute('aria-expanded', 'true');
+            }
+
+            positionStrokePopover() {
+                if (!this.strokePopover || !this.strokePickerBtn) return;
+
+                const rect = this.strokePickerBtn.getBoundingClientRect();
+                const popover = this.strokePopover;
+                popover.style.visibility = 'hidden';
+                popover.style.left = '0px';
+                popover.style.top = '0px';
+                popover.style.bottom = 'auto';
+                const popoverRect = popover.getBoundingClientRect();
+                const viewportTop = window.scrollY + 8;
+                const viewportBottom = window.scrollY + window.innerHeight - 8;
+                let top = rect.bottom + window.scrollY + 8;
+                if (top + popoverRect.height > viewportBottom) {
+                    top = rect.top + window.scrollY - popoverRect.height - 8;
+                    if (top < viewportTop) {
+                        top = Math.max(viewportTop, viewportBottom - popoverRect.height);
+                    }
+                }
+                let left = rect.left + rect.width / 2 + window.scrollX - popoverRect.width / 2;
+                const minLeft = window.scrollX + 8;
+                const maxLeft = window.scrollX + window.innerWidth - popoverRect.width - 8;
+                if (left < minLeft) left = minLeft;
+                if (left > maxLeft) left = maxLeft;
+                popover.style.top = `${top}px`;
+                popover.style.left = `${left}px`;
+                popover.style.visibility = 'visible';
+            }
+
+            closeStrokePopover() {
+                if (this.strokeOverlay) {
+                    this.strokeOverlay.remove();
+                    this.strokeOverlay = null;
+                }
+                if (this.strokePopover) {
+                    this.strokePopover.remove();
+                    this.strokePopover = null;
+                }
+                if (this.boundStrokePopoverResize) {
+                    window.removeEventListener('resize', this.boundStrokePopoverResize);
+                    this.boundStrokePopoverResize = null;
+                }
+                if (this.boundStrokePopoverScroll) {
+                    window.removeEventListener('scroll', this.boundStrokePopoverScroll, true);
+                    this.boundStrokePopoverScroll = null;
+                }
+                if (this.boundStrokePopoverKeyHandler) {
+                    document.removeEventListener('keydown', this.boundStrokePopoverKeyHandler, true);
+                    this.boundStrokePopoverKeyHandler = null;
+                }
+                if (this.strokePickerBtn) {
+                    this.strokePickerBtn.classList.remove('active');
+                    this.strokePickerBtn.setAttribute('aria-expanded', 'false');
+                }
+            }
+
+            setStrokeWidth(index) {
+                if (index < 0 || index >= this.widthOptions.length) return;
+                this.currentWidthIndex = index;
+                this.currentStroke = this.widthOptions[index];
+                if (this.strokePopover) {
+                    this.closeStrokePopover();
+                }
+                this.updateWidthButtons();
+            }
+
+            initMarkers() {
+                const defs = document.getElementById('arrowMarkers');
+                if (!defs) return;
+
+                defs.innerHTML = '';
+                this.colorPalette.forEach((color, index) => {
+                    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                    marker.setAttribute('id', `arrowhead-${index}`);
+                    marker.setAttribute('markerWidth', '10');
+                    marker.setAttribute('markerHeight', '7');
+                    marker.setAttribute('refX', '9');
+                    marker.setAttribute('refY', '3.5');
+                    marker.setAttribute('orient', 'auto');
+                    marker.setAttribute('markerUnits', 'strokeWidth');
+
+                    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+                    polygon.setAttribute('fill', color);
+                    marker.appendChild(polygon);
+
+                    defs.appendChild(marker);
+                });
+            }
+
+            writeVarUint(target, value) {
+                let v = value >>> 0;
+                while (v >= 0x80) {
+                    target.push((v & 0x7f) | 0x80);
+                    v >>>= 7;
+                }
+                target.push(v & 0x7f);
+            }
+
+            writeVarInt(target, value) {
+                let zigzag = ((value << 1) ^ (value >> 31)) >>> 0;
+                while (zigzag >= 0x80) {
+                    target.push((zigzag & 0x7f) | 0x80);
+                    zigzag >>>= 7;
+                }
+                target.push(zigzag & 0x7f);
+            }
+
+            readVarUint(bytes, cursor) {
+                let result = 0;
+                let shift = 0;
+                while (true) {
+                    if (cursor.index >= bytes.length || shift > 35) {
+                        throw new Error('Corrupt drawing payload');
+                    }
+                    const byte = bytes[cursor.index++];
+                    result |= (byte & 0x7f) << shift;
+                    if ((byte & 0x80) === 0) {
+                        return result >>> 0;
+                    }
+                    shift += 7;
+                }
+            }
+
+            readVarInt(bytes, cursor) {
+                const raw = this.readVarUint(bytes, cursor);
+                const value = (raw >>> 1) ^ -(raw & 1);
+                return value | 0;
+            }
+
+            toUrlSafeBase64(bytes) {
+                let binary = '';
+                const chunkSize = 0x8000;
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    const chunk = bytes.subarray(i, i + chunkSize);
+                    binary += String.fromCharCode.apply(null, chunk);
+                }
+                return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+            }
+
+            fromUrlSafeBase64(str) {
+                const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+                const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+                const binary = atob(padded);
                 const bytes = new Uint8Array(binary.length);
                 for (let i = 0; i < binary.length; i++) {
                     bytes[i] = binary.charCodeAt(i);
                 }
-
-                const stream = new Response(
-                    new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'))
-                );
-
-                const decompressed = await stream.arrayBuffer();
-                const json = new TextDecoder().decode(decompressed);
-                return JSON.parse(json);
-            } catch (e) {
-                console.error('Decode error:', e);
-                return null;
-            }
-        }
-
-        async function updateURL() {
-            const data = {
-                center: map.getCenter(),
-                zoom: map.getZoom(),
-                paths: paths
-            };
-
-            const encoded = await encodeData(data);
-            const url = window.location.origin + window.location.pathname + '#' + encoded;
-
-            document.getElementById('shareInput').value = url;
-
-            // Update URL without reloading
-            if (window.location.hash !== '#' + encoded) {
-                history.replaceState(null, '', url);
+                return bytes;
             }
 
-            // Save to sessionStorage
-            sessionStorage.setItem('mapDrawData', JSON.stringify(data));
-        }
+            normalizePathPoints(rawPoints, requireTwoPoints = false) {
+                const normalized = [];
+                let lastLat = null;
+                let lastLng = null;
 
-        async function loadFromURL() {
-            const hash = window.location.hash.slice(1);
-
-            if (hash) {
-                const data = await decodeData(hash);
-                if (data) {
-                    paths = data.paths || [];
-                    if (data.center && data.zoom) {
-                        map.setView(data.center, data.zoom);
+                (rawPoints || []).forEach(point => {
+                    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return;
+                    const latInt = Math.round(point.lat * 1e6);
+                    const lngInt = Math.round(point.lng * 1e6);
+                    if (normalized.length === 0 || latInt !== lastLat || lngInt !== lastLng) {
+                        normalized.push({ lat: latInt, lng: lngInt });
+                        lastLat = latInt;
+                        lastLng = lngInt;
                     }
-                    renderPaths();
-                    updateButtons();
+                });
+
+                if (requireTwoPoints && normalized.length < 2) {
+                    return [];
+                }
+
+                return normalized;
+            }
+
+            getClosestWidthIndex(value) {
+                let bestIndex = 0;
+                let bestDiff = Number.POSITIVE_INFINITY;
+                this.widthOptions.forEach((width, index) => {
+                    const diff = Math.abs(width - value);
+                    if (diff < bestDiff) {
+                        bestDiff = diff;
+                        bestIndex = index;
+                    }
+                });
+                return bestIndex;
+            }
+
+            encodePathsToBinary() {
+                const typeToCode = { freehand: 0, line: 1, circle: 2, arrow: 3 };
+                const prepared = [];
+
+                this.paths.forEach(path => {
+                    const requiresTwoPoints = path.type === 'circle' || path.type === 'line' || path.type === 'arrow';
+                    const normalized = this.normalizePathPoints(path.points, requiresTwoPoints);
+                    if (normalized.length === 0) return;
+
+                    const colorIndex = Math.max(0, Math.min(15, Number.isInteger(path.colorIndex) ? path.colorIndex : 0)) % this.colorPalette.length;
+                    const widthIndex = this.getClosestWidthIndex(path.strokeWidth || this.widthOptions[this.currentWidthIndex]);
+                    const snappedWidth = this.widthOptions[widthIndex];
+                    const typeCode = typeToCode[path.type] ?? typeToCode.freehand;
+
+                    path.colorIndex = colorIndex;
+                    path.strokeWidth = snappedWidth;
+
+                    prepared.push({
+                        typeCode,
+                        widthIndex,
+                        colorIndex,
+                        points: normalized
+                    });
+                });
+
+                const bytes = [];
+                bytes.push(2); // version
+                this.writeVarUint(bytes, prepared.length);
+
+                prepared.forEach(path => {
+                    const meta = ((path.typeCode & 0x03) << 6) | ((path.widthIndex & 0x03) << 4) | (path.colorIndex & 0x0f);
+                    bytes.push(meta & 0xff);
+                    this.writeVarUint(bytes, path.points.length);
+
+                    let prevLat = 0;
+                    let prevLng = 0;
+                    path.points.forEach((point, index) => {
+                        const lat = point.lat | 0;
+                        const lng = point.lng | 0;
+                        if (index === 0) {
+                            this.writeVarInt(bytes, lat);
+                            this.writeVarInt(bytes, lng);
+                        } else {
+                            this.writeVarInt(bytes, lat - prevLat);
+                            this.writeVarInt(bytes, lng - prevLng);
+                        }
+                        prevLat = lat;
+                        prevLng = lng;
+                    });
+                });
+
+                return new Uint8Array(bytes);
+            }
+
+            decodePathsFromBinary(bytes) {
+                if (!bytes || bytes.length < 2) {
+                    throw new Error('Corrupt drawing payload');
+                }
+
+                const cursor = { index: 0 };
+                const version = bytes[cursor.index++];
+                if (version !== 2) {
+                    throw new Error('Unsupported drawing format');
+                }
+
+                const pathCount = this.readVarUint(bytes, cursor);
+                const codeToType = ['freehand', 'line', 'circle', 'arrow'];
+                const paths = [];
+
+                for (let i = 0; i < pathCount; i++) {
+                    if (cursor.index >= bytes.length) {
+                        throw new Error('Corrupt drawing payload');
+                    }
+
+                    const meta = bytes[cursor.index++];
+                    const typeCode = (meta >> 6) & 0x03;
+                    const widthIndex = (meta >> 4) & 0x03;
+                    const colorIndex = meta & 0x0f;
+
+                    const pointCount = this.readVarUint(bytes, cursor);
+                    const points = [];
+                    let lat = 0;
+                    let lng = 0;
+                    for (let p = 0; p < pointCount; p++) {
+                        const deltaLat = this.readVarInt(bytes, cursor);
+                        const deltaLng = this.readVarInt(bytes, cursor);
+                        if (p === 0) {
+                            lat = deltaLat;
+                            lng = deltaLng;
+                        } else {
+                            lat += deltaLat;
+                            lng += deltaLng;
+                        }
+                        points.push({ lat: lat / 1e6, lng: lng / 1e6 });
+                    }
+
+                    const strokeWidth = this.widthOptions[widthIndex] ?? this.widthOptions[0];
+
+                    paths.push({
+                        type: codeToType[typeCode] || 'freehand',
+                        strokeWidth,
+                        colorIndex: colorIndex % this.colorPalette.length,
+                        points
+                    });
+                }
+
+                return paths;
+            }
+
+            compressDrawing() {
+                if (this.paths.length === 0) {
+                    this.cachedCompressedDrawing = '';
+                    this.drawingSerializationDirty = false;
+                    this.compressInFlight = null;
+                    return Promise.resolve('');
+                }
+
+                if (!this.drawingSerializationDirty && this.cachedCompressedDrawing && !this.compressInFlight) {
+                    return Promise.resolve(this.cachedCompressedDrawing);
+                }
+
+                if (this.compressInFlight) {
+                    return this.compressInFlight;
+                }
+
+                if (!window.UZIP || typeof window.UZIP.deflateRaw !== 'function') {
+                    return Promise.reject(new Error('UZIP library unavailable'));
+                }
+
+                const targetGeneration = this.compressionGeneration;
+
+                this.compressInFlight = new Promise((resolve, reject) => {
+                    try {
+                        const binary = this.encodePathsToBinary();
+                        const compressed = window.UZIP.deflateRaw(binary);
+                        const compressedBytes = compressed instanceof Uint8Array ? compressed : new Uint8Array(compressed);
+                        const encoded = this.toUrlSafeBase64(compressedBytes);
+
+                        if (this.compressionGeneration === targetGeneration) {
+                            this.cachedCompressedDrawing = encoded;
+                            this.drawingSerializationDirty = false;
+                        }
+
+                        resolve(encoded);
+                    } catch (error) {
+                        reject(error);
+                    }
+                }).finally(() => {
+                    this.compressInFlight = null;
+                });
+
+                return this.compressInFlight;
+            }
+
+            decompressDrawing(encoded) {
+                if (!encoded) return;
+
+                if (!window.UZIP || typeof window.UZIP.inflateRaw !== 'function') {
+                    console.error('UZIP library unavailable');
+                    this.showStatus('Failed to load drawing', 'error', this.shareButton);
                     return;
                 }
+
+                try {
+                    this.initMarkers();
+                    const compressedBytes = this.fromUrlSafeBase64(encoded);
+                    const inflated = window.UZIP.inflateRaw(compressedBytes);
+                    const binary = inflated instanceof Uint8Array ? inflated : new Uint8Array(inflated);
+                    const paths = this.decodePathsFromBinary(binary);
+
+                    this.paths = paths;
+                    this.undoStack = [];
+                    this.redoStack = [];
+                    this.pendingUndoSnapshot = null;
+                    this.didMutatePaths = false;
+                    this.drawingSerializationDirty = false;
+                    this.cachedCompressedDrawing = encoded;
+                    this.compressInFlight = null;
+                    this.compressionGeneration += 1;
+                    this.pendingShapeColorIndex = null;
+
+                    this.redrawPaths();
+                    this.updateUndoRedoButtons();
+                    this.updateToolButtons();
+                    this.updateColorButtons();
+                    this.updateWidthButtons();
+                    this.showStatus('Drawing loaded', 'success', this.shareButton);
+                } catch (error) {
+                    console.error('Failed to decompress drawing:', error);
+                    this.showStatus('Failed to load drawing', 'error', this.shareButton);
+                }
             }
 
-            // Try sessionStorage
-            const saved = sessionStorage.getItem('mapDrawData');
-            if (saved) {
-                try {
-                    const data = JSON.parse(saved);
-                    paths = data.paths || [];
-                    if (data.center && data.zoom) {
-                        map.setView(data.center, data.zoom);
+
+            redrawPaths() {
+                const group = document.getElementById('drawingGroup');
+                group.innerHTML = '';
+                
+                this.paths.forEach(path => {
+                    const colorIndex = Math.max(0, Math.min(15, Number.isInteger(path.colorIndex) ? path.colorIndex : 0)) % this.colorPalette.length;
+                    const widthIndex = this.getClosestWidthIndex(path.strokeWidth || this.widthOptions[this.currentWidthIndex]);
+                    const strokeWidth = this.widthOptions[widthIndex];
+                    path.colorIndex = colorIndex;
+                    path.strokeWidth = strokeWidth;
+                    const pathElement = this.createPathElement(colorIndex, strokeWidth);
+                    let pathData = '';
+
+                    switch (path.type) {
+                        case 'freehand':
+                            pathData = this.latLngsToPathData(path.points);
+                            break;
+                        case 'circle':
+                            if (path.points && path.points.length >= 2) {
+                                pathData = this.circlePathFromLatLng(path.points[0], path.points[1]);
+                            }
+                            break;
+                        case 'arrow':
+                        case 'line':
+                            if (path.points && path.points.length >= 2) {
+                                pathData = this.latLngsToPathData(path.points.slice(0, 2));
+                            }
+                            break;
                     }
-                    renderPaths();
-                    updateButtons();
+
+                    if (path.type === 'arrow') {
+                        pathElement.setAttribute('marker-end', `url(#arrowhead-${colorIndex})`);
+                    }
+
+                    if (pathData) {
+                        pathElement.setAttribute('d', pathData);
+                        group.appendChild(pathElement);
+                    }
+                });
+            }
+
+            async updateUrl() {
+                try {
+                    const center = this.map.getCenter();
+                    const zoom = this.map.getZoom();
+                    const drawing = await this.compressDrawing();
+                    
+                    const params = new URLSearchParams();
+                    params.set('l', `${center.lat.toFixed(6)},${center.lng.toFixed(6)}`);
+                    params.set('z', zoom.toString());
+                    if (drawing) params.set('d', drawing);
+                    
+                    const newUrl = `${window.location.origin}${window.location.pathname}#${params.toString()}`;
+                    history.replaceState(null, '', newUrl);
+
+                    if (this.shareOpen) {
+                        const shareUrl = document.getElementById('shareUrl');
+                        if (shareUrl) {
+                            shareUrl.value = newUrl;
+                        }
+                        const shareBtn = document.getElementById('shareBtn');
+                        if (shareBtn) {
+                            shareBtn.classList.add('active');
+                            shareBtn.setAttribute('aria-pressed', 'true');
+                        }
+                    }
+
+                    return newUrl;
                 } catch (e) {
-                    console.error('Load error:', e);
+                    console.error('Failed to update URL:', e);
+                    return undefined;
+                }
+            }
+
+            loadFromUrl() {
+                const hash = window.location.hash.substring(1);
+                if (!hash) return;
+                
+                try {
+                    const params = new URLSearchParams(hash);
+                    const loc = params.get('l') || '';
+                    const [latStr, lngStr] = loc.split(',');
+                    let lat = parseFloat(latStr);
+                    let lng = parseFloat(lngStr);
+                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                        lat = parseFloat(params.get('lat'));
+                        lng = parseFloat(params.get('lng'));
+                    }
+                    const zoomStr = params.get('z') ?? params.get('zoom');
+                    const zoom = zoomStr ? parseInt(zoomStr) : undefined;
+                    const drawing = params.get('d') || params.get('drawing');
+                    
+                    if (Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(zoom)) {
+                        this.map.setView([lat, lng], zoom);
+                    } else if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                        this.map.setView([lat, lng], this.map.getZoom());
+                    }
+                    
+                    if (drawing) {
+                        setTimeout(() => {
+                            this.decompressDrawing(drawing);
+                        }, 200);
+                    }
+                } catch (e) {
+                    console.error('Failed to load from URL:', e);
+                }
+            }
+
+            async showShare() {
+                const urlContainer = document.getElementById('urlContainer');
+                const shareUrl = document.getElementById('shareUrl');
+                this.shareOpen = true;
+                this.closeColorPopover();
+                this.closeStrokePopover();
+                const shareBtn = document.getElementById('shareBtn');
+                if (shareBtn) {
+                    this.statusAnchor = shareBtn;
+                }
+                if (shareBtn) {
+                    shareBtn.classList.add('active');
+                    shareBtn.setAttribute('aria-pressed', 'true');
+                }
+
+                const updated = await this.updateUrl();
+                const url = updated || window.location.href;
+                if (shareUrl) {
+                    shareUrl.value = url;
+                }
+                if (urlContainer) {
+                    urlContainer.classList.add('show');
+                }
+                
+                // Show URL length info
+                const length = url.length;
+                this.showStatus(`Share URL generated (${length} characters)`, length < 2000 ? 'success' : 'error', shareBtn);
+            }
+
+            showStatus(message, type = '', anchor = null) {
+                const status = document.getElementById('status');
+                if (!status) return;
+                if (this.statusHideTimer) {
+                    clearTimeout(this.statusHideTimer);
+                    this.statusHideTimer = null;
+                }
+                status.textContent = message;
+                status.className = 'status show';
+                if (type) status.classList.add(type);
+
+                status.style.opacity = '0';
+                status.style.visibility = 'hidden';
+                status.style.removeProperty('top');
+                status.style.removeProperty('left');
+                status.style.removeProperty('bottom');
+                status.style.removeProperty('transform');
+
+                requestAnimationFrame(() => {
+                    const isMobile = window.innerWidth <= 768;
+                    const controls = document.querySelector('.controls');
+                    const shareContainer = document.getElementById('urlContainer');
+                    const shareVisible = shareContainer && shareContainer.classList.contains('show');
+                    const statusRect = status.getBoundingClientRect();
+
+                    if (isMobile) {
+                        let hostRect = null;
+                        if (shareVisible) {
+                            hostRect = shareContainer.getBoundingClientRect();
+                        } else if (controls) {
+                            hostRect = controls.getBoundingClientRect();
+                        }
+                        if (hostRect) {
+                            let top = hostRect.top + window.scrollY - statusRect.height - 12;
+                            const minTop = window.scrollY + 16;
+                            if (top < minTop) {
+                                top = minTop;
+                            }
+                            const left = window.scrollX + window.innerWidth / 2;
+                            status.style.top = `${top}px`;
+                            status.style.left = `${left}px`;
+                            status.style.transform = 'translateX(-50%)';
+                            status.style.bottom = 'auto';
+                        } else {
+                            status.style.left = '50%';
+                            status.style.bottom = '96px';
+                            status.style.transform = 'translateX(-50%)';
+                        }
+                    } else {
+                        if (controls) {
+                            const rect = controls.getBoundingClientRect();
+                            const left = rect.left + rect.width / 2 + window.scrollX;
+                            const top = rect.bottom + window.scrollY + 12;
+                            status.style.top = `${top}px`;
+                            status.style.left = `${left}px`;
+                            status.style.transform = 'translateX(-50%)';
+                            status.style.bottom = 'auto';
+                        } else {
+                            status.style.left = '50%';
+                            status.style.bottom = '80px';
+                            status.style.transform = 'translateX(-50%)';
+                        }
+                    }
+
+                    status.style.visibility = 'visible';
+                    status.style.opacity = '1';
+                });
+
+                this.statusHideTimer = setTimeout(() => {
+                    status.classList.remove('show');
+                    status.style.visibility = 'hidden';
+                    status.style.opacity = '0';
+                }, 3000);
+            }
+        }
+
+        // Global functions
+        function copyUrl() {
+            const shareUrl = document.getElementById('shareUrl');
+            if (!shareUrl) return;
+
+            const anchor = app && app.shareButton ? app.shareButton : document.getElementById('shareBtn');
+
+            const performCopy = () => {
+                shareUrl.select();
+                shareUrl.setSelectionRange(0, 99999);
+                try {
+                    document.execCommand('copy');
+                    if (app) {
+                        app.showStatus('URL copied to clipboard!', 'success', anchor);
+                    }
+                } catch (e) {
+                    if (app) {
+                        app.showStatus('Failed to copy URL', 'error', anchor);
+                    }
+                }
+            };
+
+            if (app) {
+                Promise.resolve(app.updateUrl()).finally(performCopy);
+            } else {
+                performCopy();
+            }
+        }
+
+        function hideShare() {
+            const container = document.getElementById('urlContainer');
+            if (container) {
+                container.classList.remove('show');
+            }
+            if (app) {
+                app.shareOpen = false;
+                app.closeColorPopover();
+                app.closeStrokePopover();
+                const shareBtn = document.getElementById('shareBtn');
+                if (shareBtn) {
+                    shareBtn.classList.remove('active');
+                    shareBtn.setAttribute('aria-pressed', 'false');
                 }
             }
         }
 
-        const AUTO_SAVE_DELAY = 1000;
+        // Initialize app
+        let app;
+        window.addEventListener('DOMContentLoaded', () => {
+            app = new MapDrawingApp();
+        });
 
-        function scheduleSave() {
-            if (autoSaveTimer) clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(updateURL, AUTO_SAVE_DELAY);
-        }
-
-        // Share button
-        document.getElementById('shareBtn').addEventListener('click', async () => {
-            const input = document.getElementById('shareInput');
-            const btn = document.getElementById('shareBtn');
-
-            try {
-                await navigator.clipboard.writeText(input.value);
-                btn.textContent = 'Copied!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = 'Copy';
-                    btn.classList.remove('copied');
-                }, 2000);
-            } catch (e) {
-                input.select();
+        // Handle page visibility for auto-save
+        document.addEventListener('visibilitychange', () => {
+            if (app && document.visibilityState === 'hidden') {
+                app.saveState();
             }
         });
 
-        // Initialize
-        selectTool('pan');
-        loadFromURL();
-        updateURL();
-
-        // Save on map move
-        map.on('moveend', scheduleSave);
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            if (app) {
+                app.stopLocationTracking(true);
+                app.saveState();
+            }
+        });
     </script>
 </body>
 </html>
