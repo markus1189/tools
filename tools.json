@@ -19,6 +19,11 @@
       "id": "map-annotator",
       "title": "Map Annotator",
       "description": "Annotate maps with drawings, shapes, and markers, shareable via link"
+    },
+    {
+      "id": "random-picker",
+      "title": "Random Picker",
+      "description": "Cryptographically secure random selection tool with confetti celebration"
     }
   ]
 }
