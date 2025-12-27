@@ -876,6 +876,10 @@
                 <p id="diag-image-dimensions">-</p>
             </div>
             <div class="diagnostic-section">
+                <h4>Image Preview</h4>
+                <img id="diag-image-preview" style="max-width: 100%; height: auto; border-radius: 4px; background: white; padding: 0.5rem;" alt="Uploaded image preview">
+            </div>
+            <div class="diagnostic-section">
                 <h4>Progress</h4>
                 <p class="diagnostic-progress" id="diag-progress">Initializing...</p>
             </div>
@@ -1665,8 +1669,8 @@
             // Show diagnostic overlay
             showDiagnosticOverlay();
 
-            // Update file diagnostics
-            updateDiagnosticFile(file.name, file.size, file.type);
+            // Update file diagnostics (including image preview)
+            updateDiagnosticFile(file);
 
             // Log file diagnostics (for desktop users)
             console.log('=== File Upload Diagnostics ===');
@@ -1743,10 +1747,11 @@
 
         async function attemptFileScan(file, tempDiv, progressCallback) {
             // Optimized scanning strategies - most effective preprocessing methods
-            // Reduced from 19 to 7 strategies for faster processing
+            // Now includes color inversion for white-on-black QR codes
             const strategies = [
                 { name: 'Standard scan (all formats)', fn: () => basicScan(file, tempDiv, true) },
                 { name: 'QR-only mode', fn: () => basicScan(file, tempDiv, false) },
+                { name: 'Inverted colors', fn: () => scanWithInversion(file, tempDiv) },
                 { name: '2x upscaling', fn: () => scanWithScale(file, tempDiv, 2.0) },
                 { name: 'Contrast enhancement', fn: () => scanWithContrast(file, tempDiv, 1.5) },
                 { name: 'Sharpening filter', fn: () => scanWithSharpening(file, tempDiv) },
@@ -1808,6 +1813,15 @@
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             const result = await scanner.scanFile(scaledFile, true);
+            await scanner.clear().catch(() => {});
+            return { decodedText: result, format: null };
+        }
+
+        async function scanWithInversion(file, tempDiv) {
+            const invertedFile = await invertImageColors(file);
+            tempDiv.innerHTML = '';
+            const scanner = new Html5Qrcode("temp-qr-reader");
+            const result = await scanner.scanFile(invertedFile, true);
             await scanner.clear().catch(() => {});
             return { decodedText: result, format: null };
         }
@@ -1915,6 +1929,34 @@
             // Use high-quality scaling
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            return await canvasToBlob(canvas);
+        }
+
+        async function invertImageColors(file) {
+            const dataUrl = await readFileAsDataUrl(file);
+            const img = await loadImage(dataUrl);
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            ctx.drawImage(img, 0, 0);
+
+            // Invert colors
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];         // R
+                data[i + 1] = 255 - data[i + 1]; // G
+                data[i + 2] = 255 - data[i + 2]; // B
+                // Alpha channel (i+3) stays the same
+            }
+
+            ctx.putImageData(imageData, 0, 0);
 
             return await canvasToBlob(canvas);
         }
@@ -2742,10 +2784,14 @@ self.addEventListener('fetch', (event) => {
             overlay.classList.add('hidden');
         }
 
-        function updateDiagnosticFile(name, size, type) {
-            document.getElementById('diag-file-name').textContent = `Name: ${name}`;
-            document.getElementById('diag-file-size').textContent = `Size: ${(size / 1024).toFixed(2)} KB`;
-            document.getElementById('diag-file-type').textContent = `Type: ${type}`;
+        async function updateDiagnosticFile(file) {
+            document.getElementById('diag-file-name').textContent = `Name: ${file.name}`;
+            document.getElementById('diag-file-size').textContent = `Size: ${(file.size / 1024).toFixed(2)} KB`;
+            document.getElementById('diag-file-type').textContent = `Type: ${file.type}`;
+
+            // Load and display image preview
+            const dataUrl = await readFileAsDataUrl(file);
+            document.getElementById('diag-image-preview').src = dataUrl;
         }
 
         function updateDiagnosticDimensions(dimensions) {
