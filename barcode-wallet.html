@@ -2458,7 +2458,11 @@
 
         function canvasToBlob(canvas) {
             return new Promise((resolve) => {
-                canvas.toBlob(resolve, 'image/png');
+                canvas.toBlob((blob) => {
+                    // Convert Blob to File - Html5Qrcode.scanFile() requires a File object
+                    const file = new File([blob], 'processed-image.png', { type: 'image/png' });
+                    resolve(file);
+                }, 'image/png');
             });
         }
 
