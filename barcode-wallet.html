@@ -664,22 +664,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="scan-modal-title">Scan Barcode</h2>
-                <p>Point your camera at a barcode or upload an image file</p>
+                <p>Point your camera at a barcode</p>
             </div>
             <div class="modal-body">
                 <div id="qr-reader"></div>
-                <div style="text-align: center; margin: 1rem 0;">
-                    <span style="color: var(--text-muted); font-size: 0.875rem;">OR</span>
-                </div>
-                <input type="file" id="barcode-file-input" accept="image/*" style="display: none;">
-                <button id="upload-file-btn" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    Upload Image File
-                </button>
             </div>
             <div class="modal-footer">
                 <button id="close-scan-btn">Cancel</button>
@@ -692,9 +680,21 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="add-modal-title">Add Barcode</h2>
-                <p>Enter barcode details manually</p>
+                <p>Upload an image or enter details manually</p>
             </div>
             <div class="modal-body">
+                <input type="file" id="barcode-file-input" accept="image/*" style="display: none;">
+                <button id="upload-file-btn" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Upload Image File
+                </button>
+                <div style="text-align: center; margin: 1rem 0;">
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">OR</span>
+                </div>
                 <form id="add-form">
                     <div class="form-group">
                         <label for="barcode-name">Name *</label>
@@ -1516,14 +1516,6 @@
         }
 
         function handleFileUpload() {
-            // Stop any active camera scanning before file upload
-            if (isScanning && html5QrCode) {
-                isScanning = false;
-                html5QrCode.stop().catch(() => {
-                    // Ignore errors when stopping
-                });
-            }
-
             const fileInput = document.getElementById('barcode-file-input');
             fileInput.click();
         }
@@ -1551,20 +1543,18 @@
                             navigator.vibrate(200);
                         }
 
-                        // Close scan modal
-                        hideModal('scan-modal');
-
                         // Detect barcode type
                         const detectedType = detectBarcodeType(decodedText);
 
-                        // Pre-fill add modal
+                        // Pre-fill form fields (add modal is already open)
                         document.getElementById('add-modal-title').textContent = 'Scanned Barcode from File';
                         document.getElementById('barcode-type').value = detectedType;
                         document.getElementById('barcode-data').value = decodedText;
-                        document.getElementById('barcode-name').value = '';
-                        document.getElementById('barcode-notes').value = '';
+                        // Keep existing name and notes if user already entered them
+                        if (!document.getElementById('barcode-name').value) {
+                            document.getElementById('barcode-name').value = '';
+                        }
 
-                        showModal('add-modal');
                         announce('Barcode scanned successfully from file');
                     })
                     .catch(err => {
@@ -1574,7 +1564,7 @@
                         }
 
                         console.error('File scan error:', err);
-                        alert('Could not read barcode from image. Please try a different image or use camera scan.');
+                        alert('Could not read barcode from image. Please try a different image or enter manually.');
                     });
             } catch (err) {
                 // Cleanup temp element if initialization failed
