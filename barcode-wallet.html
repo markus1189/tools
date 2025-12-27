@@ -1652,10 +1652,14 @@
         }
 
         function processUploadedFile(file) {
-            if (!file) return;
+            if (!file) {
+                console.error('No file provided to processUploadedFile');
+                return;
+            }
 
             // Validate file type
             if (!file.type.startsWith('image/')) {
+                console.error('Invalid file type:', file.type);
                 alert('Please select an image file.');
                 return;
             }
@@ -1677,6 +1681,10 @@
             console.log('File name:', file.name);
             console.log('File size:', (file.size / 1024).toFixed(2), 'KB');
             console.log('File type:', file.type);
+
+            // Add file validation to diagnostic log
+            addDiagnosticLog(`File accepted: ${file.name}`, 'success');
+            addDiagnosticLog(`Type: ${file.type}, Size: ${(file.size / 1024).toFixed(2)} KB`, 'info');
 
             // Create a temporary element for file scanning to avoid conflicts
             const tempDiv = document.createElement('div');
@@ -1780,8 +1788,10 @@
                     return result;
                 } catch (err) {
                     const duration = (performance.now() - startTime).toFixed(0);
-                    console.log(`✗ Failed: ${strategy.name} (${duration}ms) -`, err.message);
+                    const errorMsg = err.message || String(err);
+                    console.log(`✗ Failed: ${strategy.name} (${duration}ms) -`, errorMsg);
                     addDiagnosticLog(`✗ ${strategy.name} (${duration}ms)`, 'error');
+                    addDiagnosticLog(`  Error: ${errorMsg}`, 'error');
                     // Continue to next strategy
                 }
             }
@@ -1793,60 +1803,89 @@
 
         async function basicScan(file, tempDiv, decodeAllFormats) {
             // Load image and normalize to PNG blob for consistent processing
+            console.log(`  Loading image from file (${file.type}, ${(file.size / 1024).toFixed(2)} KB)...`);
+            addDiagnosticLog(`  Loading image...`, 'info');
+
             const dataUrl = await readFileAsDataUrl(file);
+            console.log(`  Image loaded as data URL (${(dataUrl.length / 1024).toFixed(2)} KB)`);
+
             const img = await loadImage(dataUrl);
             const dimensions = `${img.width}x${img.height}px`;
             console.log(`  Image dimensions: ${dimensions}`);
             updateDiagnosticDimensions(dimensions);
+            addDiagnosticLog(`  Image loaded: ${dimensions}`, 'info');
 
             // Convert to PNG blob to ensure Html5Qrcode can handle the format
+            console.log(`  Normalizing to PNG format...`);
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
             const normalizedBlob = await canvasToBlob(canvas);
+            console.log(`  PNG blob created (${(normalizedBlob.size / 1024).toFixed(2)} KB)`);
+            addDiagnosticLog(`  PNG normalized: ${(normalizedBlob.size / 1024).toFixed(2)} KB`, 'info');
 
+            console.log(`  Initializing Html5Qrcode scanner...`);
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
-            console.log(`  Scanning with decodeAllFormats=${decodeAllFormats}`);
+            console.log(`  Scanner initialized, starting decode (decodeAllFormats=${decodeAllFormats})...`);
+            addDiagnosticLog(`  Decoding image...`, 'info');
+
             const result = await scanner.scanFile(normalizedBlob, decodeAllFormats);
             await scanner.clear().catch(() => {});
             console.log(`  Decoded result:`, result);
+            addDiagnosticLog(`  Decode successful!`, 'success');
             return { decodedText: result, format: null };
         }
 
         async function scanWithScale(file, tempDiv, scale) {
+            addDiagnosticLog(`  Preprocessing: ${scale}x upscaling...`, 'info');
             const scaledFile = await preprocessAndScaleImage(file, scale);
+            console.log(`  Scaled image size: ${(scaledFile.size / 1024).toFixed(2)} KB`);
+            addDiagnosticLog(`  Scaled to ${(scaledFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
+            addDiagnosticLog(`  Decoding scaled image...`, 'info');
             const result = await scanner.scanFile(scaledFile, true);
             await scanner.clear().catch(() => {});
             return { decodedText: result, format: null };
         }
 
         async function scanWithInversion(file, tempDiv) {
+            addDiagnosticLog(`  Preprocessing: inverting colors...`, 'info');
             const invertedFile = await invertImageColors(file);
+            console.log(`  Inverted image size: ${(invertedFile.size / 1024).toFixed(2)} KB`);
+            addDiagnosticLog(`  Colors inverted: ${(invertedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
+            addDiagnosticLog(`  Decoding inverted image...`, 'info');
             const result = await scanner.scanFile(invertedFile, true);
             await scanner.clear().catch(() => {});
             return { decodedText: result, format: null };
         }
 
         async function scanWithContrast(file, tempDiv, contrastLevel) {
+            addDiagnosticLog(`  Preprocessing: enhancing contrast (${contrastLevel}x)...`, 'info');
             const enhancedFile = await enhanceImageContrast(file, contrastLevel);
+            console.log(`  Contrast-enhanced size: ${(enhancedFile.size / 1024).toFixed(2)} KB`);
+            addDiagnosticLog(`  Contrast enhanced: ${(enhancedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
+            addDiagnosticLog(`  Decoding enhanced image...`, 'info');
             const result = await scanner.scanFile(enhancedFile, true);
             await scanner.clear().catch(() => {});
             return { decodedText: result, format: null };
         }
 
         async function scanWithSharpening(file, tempDiv) {
+            addDiagnosticLog(`  Preprocessing: applying sharpening...`, 'info');
             const sharpenedFile = await applySharpeningFilter(file);
+            console.log(`  Sharpened image size: ${(sharpenedFile.size / 1024).toFixed(2)} KB`);
+            addDiagnosticLog(`  Sharpened: ${(sharpenedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
+            addDiagnosticLog(`  Decoding sharpened image...`, 'info');
             const result = await scanner.scanFile(sharpenedFile, true);
             await scanner.clear().catch(() => {});
             return { decodedText: result, format: null };
@@ -1898,18 +1937,26 @@
         }
 
         async function scanWithCombinedProcessing(file, tempDiv) {
+            addDiagnosticLog(`  Preprocessing: combined processing...`, 'info');
             const processedFile = await applyCombinedProcessing(file);
+            console.log(`  Combined processed size: ${(processedFile.size / 1024).toFixed(2)} KB`);
+            addDiagnosticLog(`  Combined processed: ${(processedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
+            addDiagnosticLog(`  Decoding processed image...`, 'info');
             const result = await scanner.scanFile(processedFile, true);
             await scanner.clear().catch(() => {});
             return { decodedText: result, format: null };
         }
 
         async function scanWithRotation(file, tempDiv, degrees) {
+            addDiagnosticLog(`  Preprocessing: rotating ${degrees}°...`, 'info');
             const rotatedFile = await rotateImage(file, degrees);
+            console.log(`  Rotated image size: ${(rotatedFile.size / 1024).toFixed(2)} KB`);
+            addDiagnosticLog(`  Rotated ${degrees}°: ${(rotatedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
+            addDiagnosticLog(`  Decoding rotated image...`, 'info');
             const result = await scanner.scanFile(rotatedFile, true);
             await scanner.clear().catch(() => {});
             return { decodedText: result, format: null };
