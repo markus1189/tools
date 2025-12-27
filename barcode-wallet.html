@@ -202,6 +202,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            padding: 0.25rem;
+        }
+
+        .barcode-preview canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
 
         .barcode-card-info {
@@ -849,6 +857,25 @@
             }
         }
 
+        function generateBarcodePreview(canvas, item) {
+            try {
+                const format = item.type.toUpperCase().replace('UPC', 'UPC');
+
+                JsBarcode(canvas, item.data, {
+                    format: format === 'QR' ? 'CODE128' : format,
+                    width: 1,
+                    height: 30,
+                    displayValue: false,
+                    fontSize: 8,
+                    margin: 2,
+                    background: '#ffffff'
+                });
+            } catch (err) {
+                console.error('Barcode preview generation failed:', err);
+                showFallbackDisplay(canvas, item);
+            }
+        }
+
         function showFallbackDisplay(canvas, item) {
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#ffffff';
@@ -956,13 +983,13 @@
                 const canvas = card.querySelector('canvas');
                 try {
                     if (item.type === 'qr') {
-                        canvas.width = 100;
-                        canvas.height = 100;
+                        canvas.width = 80;
+                        canvas.height = 80;
                         generateQRCode(canvas, item.data);
                     } else {
-                        canvas.width = 120;
-                        canvas.height = 60;
-                        generateBarcode(canvas, item);
+                        canvas.width = 110;
+                        canvas.height = 50;
+                        generateBarcodePreview(canvas, item);
                     }
                 } catch (err) {
                     console.error('Preview generation failed:', err);
