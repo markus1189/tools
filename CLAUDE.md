@@ -80,3 +80,19 @@ All tools are registered in `tools.json`:
 
 **Optional fields:**
 - `dateUpdated`: ISO 8601 date - only include when tool receives significant updates
+
+## Deployment
+
+Changes pushed to `main` are automatically deployed to GitHub Pages (~30-40 seconds).
+
+**Optional: Monitor deployment progress**
+```bash
+# View latest workflow run
+gh run list --limit 1
+
+# Watch specific run (blocking until complete)
+gh run watch <RUN_ID>
+
+# Watch latest run
+gh run watch $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
+```
