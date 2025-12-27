@@ -481,20 +481,20 @@
         /* Navigation arrows */
         .nav-arrow {
             position: fixed;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.6);
+            bottom: 7rem;
+            background: rgba(0, 0, 0, 0.5);
             color: white;
             border: none;
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1001;
+            transition: background 0.2s;
         }
 
         .nav-arrow:hover {
@@ -502,16 +502,16 @@
         }
 
         .nav-arrow.disabled {
-            opacity: 0.3;
+            opacity: 0.2;
             pointer-events: none;
         }
 
         .nav-arrow-left {
-            left: 1rem;
+            left: 0.5rem;
         }
 
         .nav-arrow-right {
-            right: 1rem;
+            right: 0.5rem;
         }
 
         /* Scanner Container */
@@ -1516,6 +1516,14 @@
         }
 
         function handleFileUpload() {
+            // Stop any active camera scanning before file upload
+            if (isScanning && html5QrCode) {
+                isScanning = false;
+                html5QrCode.stop().catch(() => {
+                    // Ignore errors when stopping
+                });
+            }
+
             const fileInput = document.getElementById('barcode-file-input');
             fileInput.click();
         }
@@ -1523,36 +1531,59 @@
         function processUploadedFile(file) {
             if (!file) return;
 
-            // Create Html5Qrcode instance for file scanning
-            const html5QrcodeScanner = new Html5Qrcode("qr-reader");
+            // Create a temporary element for file scanning to avoid conflicts
+            const tempDiv = document.createElement('div');
+            tempDiv.id = 'temp-qr-reader';
+            tempDiv.style.display = 'none';
+            document.body.appendChild(tempDiv);
 
-            html5QrcodeScanner.scanFile(file, true)
-                .then(decodedText => {
-                    // Vibrate if supported
-                    if (navigator.vibrate) {
-                        navigator.vibrate(200);
-                    }
+            try {
+                // Create Html5Qrcode instance for file scanning
+                const html5QrcodeScanner = new Html5Qrcode("temp-qr-reader");
 
-                    // Stop any active scanning
-                    stopScan();
+                html5QrcodeScanner.scanFile(file, true)
+                    .then(decodedText => {
+                        // Cleanup temp element
+                        document.body.removeChild(tempDiv);
 
-                    // Detect barcode type
-                    const detectedType = detectBarcodeType(decodedText);
+                        // Vibrate if supported
+                        if (navigator.vibrate) {
+                            navigator.vibrate(200);
+                        }
 
-                    // Pre-fill add modal
-                    document.getElementById('add-modal-title').textContent = 'Scanned Barcode from File';
-                    document.getElementById('barcode-type').value = detectedType;
-                    document.getElementById('barcode-data').value = decodedText;
-                    document.getElementById('barcode-name').value = '';
-                    document.getElementById('barcode-notes').value = '';
+                        // Close scan modal
+                        hideModal('scan-modal');
 
-                    showModal('add-modal');
-                    announce('Barcode scanned successfully from file');
-                })
-                .catch(err => {
-                    console.error('File scan error:', err);
-                    alert('Could not read barcode from image. Please try a different image or use camera scan.');
-                });
+                        // Detect barcode type
+                        const detectedType = detectBarcodeType(decodedText);
+
+                        // Pre-fill add modal
+                        document.getElementById('add-modal-title').textContent = 'Scanned Barcode from File';
+                        document.getElementById('barcode-type').value = detectedType;
+                        document.getElementById('barcode-data').value = decodedText;
+                        document.getElementById('barcode-name').value = '';
+                        document.getElementById('barcode-notes').value = '';
+
+                        showModal('add-modal');
+                        announce('Barcode scanned successfully from file');
+                    })
+                    .catch(err => {
+                        // Cleanup temp element
+                        if (document.body.contains(tempDiv)) {
+                            document.body.removeChild(tempDiv);
+                        }
+
+                        console.error('File scan error:', err);
+                        alert('Could not read barcode from image. Please try a different image or use camera scan.');
+                    });
+            } catch (err) {
+                // Cleanup temp element if initialization failed
+                if (document.body.contains(tempDiv)) {
+                    document.body.removeChild(tempDiv);
+                }
+                console.error('File scan initialization error:', err);
+                alert('Could not initialize barcode scanner. Please try again.');
+            }
         }
 
         function detectBarcodeType(data, scannedFormat) {
@@ -1585,36 +1616,7 @@
         // ===========================
         // Touch/Swipe Support
         // ===========================
-        let touchStartX = 0;
-        let touchEndX = 0;
-
-        function handleSwipe() {
-            const swipeThreshold = 50;
-            const diff = touchStartX - touchEndX;
-
-            if (Math.abs(diff) > swipeThreshold) {
-                if (diff > 0) {
-                    // Swipe left - next
-                    navigateBarcode(1);
-                } else {
-                    // Swipe right - previous
-                    navigateBarcode(-1);
-                }
-            }
-        }
-
-        function initSwipeListeners() {
-            const modal = document.getElementById('display-modal');
-
-            modal.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX;
-            }, { passive: true });
-
-            modal.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
-            }, { passive: true });
-        }
+        // Swipe gestures removed - use navigation arrows instead
 
         // ===========================
         // Event Listeners
@@ -1696,9 +1698,6 @@
                     }
                 }
             });
-
-            // Swipe gestures
-            initSwipeListeners();
         }
 
         // ===========================
