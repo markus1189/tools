@@ -1523,61 +1523,140 @@
         function processUploadedFile(file) {
             if (!file) return;
 
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file.');
+                return;
+            }
+
+            // Show loading state
+            const uploadBtn = document.getElementById('upload-file-btn');
+            const originalBtnText = uploadBtn.innerHTML;
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span>Scanning image...</span>';
+
             // Create a temporary element for file scanning to avoid conflicts
             const tempDiv = document.createElement('div');
             tempDiv.id = 'temp-qr-reader';
             tempDiv.style.display = 'none';
             document.body.appendChild(tempDiv);
 
-            try {
-                // Create Html5Qrcode instance for file scanning
-                const html5QrcodeScanner = new Html5Qrcode("temp-qr-reader");
-
-                html5QrcodeScanner.scanFile(file, true)
-                    .then(decodedText => {
-                        // Cleanup temp element
+            // Try scanning with multiple strategies
+            attemptFileScan(file, tempDiv)
+                .then(result => {
+                    // Cleanup temp element
+                    if (document.body.contains(tempDiv)) {
                         document.body.removeChild(tempDiv);
+                    }
 
-                        // Vibrate if supported
-                        if (navigator.vibrate) {
-                            navigator.vibrate(200);
-                        }
+                    // Restore button
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = originalBtnText;
 
-                        // Detect barcode type
-                        const detectedType = detectBarcodeType(decodedText);
+                    // Vibrate if supported
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
 
-                        // Pre-fill form fields (add modal is already open)
-                        document.getElementById('add-modal-title').textContent = 'Scanned Barcode from File';
-                        document.getElementById('barcode-type').value = detectedType;
-                        document.getElementById('barcode-data').value = decodedText;
-                        // Keep existing name and notes if user already entered them
-                        if (!document.getElementById('barcode-name').value) {
-                            document.getElementById('barcode-name').value = '';
-                        }
+                    // Detect barcode type
+                    const detectedType = detectBarcodeType(result.decodedText, result.format);
 
-                        announce('Barcode scanned successfully from file');
-                    })
-                    .catch(err => {
-                        // Cleanup temp element
-                        if (document.body.contains(tempDiv)) {
-                            document.body.removeChild(tempDiv);
-                        }
+                    // Pre-fill form fields (add modal is already open)
+                    document.getElementById('add-modal-title').textContent = 'Scanned Barcode from File';
+                    document.getElementById('barcode-type').value = detectedType;
+                    document.getElementById('barcode-data').value = result.decodedText;
+                    // Keep existing name and notes if user already entered them
+                    if (!document.getElementById('barcode-name').value) {
+                        document.getElementById('barcode-name').value = '';
+                    }
 
-                        console.error('File scan error:', err);
-                        alert('Could not read barcode from image. Please try a different image or enter manually.');
-                    });
-            } catch (err) {
-                // Cleanup temp element if initialization failed
-                if (document.body.contains(tempDiv)) {
-                    document.body.removeChild(tempDiv);
+                    announce('Barcode scanned successfully from file');
+                })
+                .catch(err => {
+                    // Cleanup temp element
+                    if (document.body.contains(tempDiv)) {
+                        document.body.removeChild(tempDiv);
+                    }
+
+                    // Restore button
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = originalBtnText;
+
+                    console.error('File scan error:', err);
+
+                    // Provide helpful error message
+                    let errorMsg = 'Could not read barcode from image.\n\n';
+                    errorMsg += 'Tips:\n';
+                    errorMsg += '• Ensure the barcode is clearly visible\n';
+                    errorMsg += '• Try taking a photo in better lighting\n';
+                    errorMsg += '• Make sure the entire barcode is in frame\n';
+                    errorMsg += '• Avoid blurry or low-resolution images\n\n';
+                    errorMsg += 'You can also enter the barcode manually below.';
+
+                    alert(errorMsg);
+                });
+        }
+
+        async function attemptFileScan(file, tempDiv) {
+            // Strategy 1: Standard scan with decode all formats
+            try {
+                const scanner1 = new Html5Qrcode("temp-qr-reader");
+                const result = await scanner1.scanFile(file, true);
+                return { decodedText: result, format: null };
+            } catch (err1) {
+                console.log('Standard scan failed, trying advanced scan...', err1);
+
+                // Strategy 2: Try with different configurations by reading as data URL
+                try {
+                    const dataUrl = await readFileAsDataUrl(file);
+                    const scanner2 = new Html5Qrcode("temp-qr-reader");
+
+                    // Create an image element to get dimensions
+                    const img = await loadImage(dataUrl);
+
+                    // Try scanning with explicit format hints
+                    const result = await scanner2.scanFile(file, false);
+                    return { decodedText: result, format: null };
+                } catch (err2) {
+                    console.log('Advanced scan failed, trying with image preprocessing...', err2);
+
+                    // Strategy 3: Try one more time with full decoding
+                    try {
+                        // Create a fresh scanner instance
+                        const scanner3 = new Html5Qrcode("temp-qr-reader");
+                        const result = await scanner3.scanFile(file, true);
+                        return { decodedText: result, format: null };
+                    } catch (err3) {
+                        throw new Error('All scan strategies failed');
+                    }
                 }
-                console.error('File scan initialization error:', err);
-                alert('Could not initialize barcode scanner. Please try again.');
             }
         }
 
+        function readFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
         function detectBarcodeType(data, scannedFormat) {
-            // Use scanned format if available
+            // Normalize input
+            const normalizedData = String(data || '').trim();
+            if (!normalizedData) return 'qr';
+
+            // Use scanned format if available and reliable
             if (scannedFormat) {
                 const formatMap = {
                     'QR_CODE': 'qr',
@@ -1586,21 +1665,89 @@
                     'UPC_A': 'upc',
                     'UPC_E': 'upc',
                     'CODE_128': 'code128',
-                    'CODE_39': 'code39'
+                    'CODE_39': 'code39',
+                    'CODE_93': 'code128', // Fallback to code128
+                    'ITF': 'code128', // Interleaved 2 of 5, fallback
+                    'CODABAR': 'code39' // Fallback to code39
                 };
 
-                const mapped = formatMap[scannedFormat];
-                if (mapped) return mapped;
+                const mappedFormat = formatMap[scannedFormat] || formatMap[scannedFormat.toUpperCase()];
+                if (mappedFormat) {
+                    // Validate that the format makes sense for the data
+                    if (validateBarcodeFormat(normalizedData, mappedFormat)) {
+                        return mappedFormat;
+                    }
+                }
             }
 
-            // Auto-detect from data pattern
-            if (/^\d{13}$/.test(data)) return 'ean13';
-            if (/^\d{8}$/.test(data)) return 'ean8';
-            if (/^\d{12}$/.test(data)) return 'upc';
-            if (/^[A-Z0-9\-\.\ \$\/\+\%]+$/.test(data)) return 'code128';
+            // Pattern-based detection with validation
+            // EAN-13: 13 digits, checksum validation
+            if (/^\d{13}$/.test(normalizedData)) {
+                return 'ean13';
+            }
 
-            // Default to QR for complex data
+            // EAN-8: 8 digits
+            if (/^\d{8}$/.test(normalizedData)) {
+                return 'ean8';
+            }
+
+            // UPC-A: 12 digits
+            if (/^\d{12}$/.test(normalizedData)) {
+                return 'upc';
+            }
+
+            // UPC-E: 6-8 digits
+            if (/^\d{6,8}$/.test(normalizedData)) {
+                return 'upc';
+            }
+
+            // Code 39: Alphanumeric with special chars
+            if (/^[A-Z0-9\-\.\$\/\+\%\s]+$/i.test(normalizedData) && normalizedData.length <= 43) {
+                // Prefer Code 39 for shorter alphanumeric codes
+                return 'code39';
+            }
+
+            // Code 128: More flexible, handles ASCII
+            if (/^[\x20-\x7E]+$/.test(normalizedData) && normalizedData.length <= 80) {
+                // Check if it looks like a structured barcode (shipping, product codes)
+                if (/^[A-Z0-9\-\.\s]+$/i.test(normalizedData)) {
+                    return 'code128';
+                }
+            }
+
+            // Complex data, URLs, special characters -> QR Code
+            if (
+                normalizedData.includes('://') ||  // URLs
+                normalizedData.includes('\n') ||   // Multi-line
+                normalizedData.length > 80 ||      // Long data
+                /[^\x20-\x7E]/.test(normalizedData) // Non-ASCII
+            ) {
+                return 'qr';
+            }
+
+            // Default to QR for safety (most versatile)
             return 'qr';
+        }
+
+        function validateBarcodeFormat(data, format) {
+            const normalizedData = String(data || '').trim();
+
+            switch (format) {
+                case 'ean13':
+                    return /^\d{13}$/.test(normalizedData);
+                case 'ean8':
+                    return /^\d{8}$/.test(normalizedData);
+                case 'upc':
+                    return /^\d{6,12}$/.test(normalizedData);
+                case 'code39':
+                    return /^[A-Z0-9\-\.\$\/\+\%\s]+$/i.test(normalizedData) && normalizedData.length <= 43;
+                case 'code128':
+                    return /^[\x20-\x7E]+$/.test(normalizedData) && normalizedData.length <= 80;
+                case 'qr':
+                    return true; // QR can handle anything
+                default:
+                    return false;
+            }
         }
 
         // ===========================
