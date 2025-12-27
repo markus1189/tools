@@ -664,10 +664,22 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="scan-modal-title">Scan Barcode</h2>
-                <p>Point your camera at a barcode or QR code</p>
+                <p>Point your camera at a barcode or upload an image file</p>
             </div>
             <div class="modal-body">
                 <div id="qr-reader"></div>
+                <div style="text-align: center; margin: 1rem 0;">
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">OR</span>
+                </div>
+                <input type="file" id="barcode-file-input" accept="image/*" style="display: none;">
+                <button id="upload-file-btn" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Upload Image File
+                </button>
             </div>
             <div class="modal-footer">
                 <button id="close-scan-btn">Cancel</button>
@@ -1503,6 +1515,46 @@
             }
         }
 
+        function handleFileUpload() {
+            const fileInput = document.getElementById('barcode-file-input');
+            fileInput.click();
+        }
+
+        function processUploadedFile(file) {
+            if (!file) return;
+
+            // Create Html5Qrcode instance for file scanning
+            const html5QrcodeScanner = new Html5Qrcode("qr-reader");
+
+            html5QrcodeScanner.scanFile(file, true)
+                .then(decodedText => {
+                    // Vibrate if supported
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+
+                    // Stop any active scanning
+                    stopScan();
+
+                    // Detect barcode type
+                    const detectedType = detectBarcodeType(decodedText);
+
+                    // Pre-fill add modal
+                    document.getElementById('add-modal-title').textContent = 'Scanned Barcode from File';
+                    document.getElementById('barcode-type').value = detectedType;
+                    document.getElementById('barcode-data').value = decodedText;
+                    document.getElementById('barcode-name').value = '';
+                    document.getElementById('barcode-notes').value = '';
+
+                    showModal('add-modal');
+                    announce('Barcode scanned successfully from file');
+                })
+                .catch(err => {
+                    console.error('File scan error:', err);
+                    alert('Could not read barcode from image. Please try a different image or use camera scan.');
+                });
+        }
+
         function detectBarcodeType(data, scannedFormat) {
             // Use scanned format if available
             if (scannedFormat) {
@@ -1578,6 +1630,17 @@
 
             document.getElementById('add-manual-btn').addEventListener('click', showAddModal);
             document.getElementById('add-first-btn').addEventListener('click', showAddModal);
+
+            // File upload
+            document.getElementById('upload-file-btn').addEventListener('click', handleFileUpload);
+            document.getElementById('barcode-file-input').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    processUploadedFile(file);
+                }
+                // Reset input so same file can be selected again
+                e.target.value = '';
+            });
 
             // Modal buttons
             document.getElementById('save-barcode-btn').addEventListener('click', handleSaveBarcode);
