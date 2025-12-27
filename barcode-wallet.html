@@ -118,6 +118,38 @@
             justify-content: center;
         }
 
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: -2px;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            background: transparent;
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
         /* Search */
         .search-container {
             margin-bottom: 1.5rem;
@@ -171,7 +203,7 @@
         /* Grid View */
         .grid-view {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
         }
@@ -186,12 +218,25 @@
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+            position: relative;
         }
 
         .barcode-card:hover {
             background: var(--bg-card-hover);
             border-color: var(--accent);
             transform: translateY(-2px);
+        }
+
+        .barcode-card.favorite {
+            border-color: #fbbf24;
+        }
+
+        .favorite-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            color: #fbbf24;
+            font-size: 1rem;
         }
 
         .barcode-preview {
@@ -433,6 +478,42 @@
             border: none;
         }
 
+        /* Navigation arrows */
+        .nav-arrow {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+
+        .nav-arrow:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .nav-arrow.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .nav-arrow-left {
+            left: 1rem;
+        }
+
+        .nav-arrow-right {
+            right: 1rem;
+        }
+
         /* Scanner Container */
         #qr-reader {
             width: 100%;
@@ -528,6 +609,12 @@
                 </button>
             </div>
         </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button id="tab-active" class="tab active" data-tab="active">Active</button>
+            <button id="tab-archived" class="tab" data-tab="archived">Archived</button>
+        </div>
 
         <!-- Search -->
         <div class="search-container">
@@ -646,7 +733,13 @@
                 <div class="barcode-note" id="display-barcode-note"></div>
             </div>
 
+            <!-- Navigation Arrows -->
+            <button id="nav-prev" class="nav-arrow nav-arrow-left" aria-label="Previous barcode">‹</button>
+            <button id="nav-next" class="nav-arrow nav-arrow-right" aria-label="Next barcode">›</button>
+
             <div class="display-actions">
+                <button id="favorite-barcode-btn">⭐ Favorite</button>
+                <button id="archive-barcode-btn">📦 Archive</button>
                 <button id="delete-barcode-btn" class="btn-danger">Delete</button>
                 <button id="close-display-btn">Close</button>
             </div>
@@ -679,7 +772,9 @@
                 sortOrder: 'desc'
             },
             currentItem: null,
-            searchQuery: ''
+            currentItemIndex: -1,
+            searchQuery: '',
+            activeTab: 'active' // 'active' or 'archived'
         };
 
         // ===========================
@@ -745,6 +840,8 @@
                 name: escapeHtml(String(item.name || 'Unnamed').substring(0, 100)),
                 data: String(item.data).substring(0, 2000),
                 notes: item.notes ? escapeHtml(String(item.notes).substring(0, 500)) : '',
+                favorite: Boolean(item.favorite),
+                archived: Boolean(item.archived),
                 createdAt: parseInt(item.createdAt) || Date.now(),
                 updatedAt: parseInt(item.updatedAt) || Date.now()
             };
@@ -766,6 +863,37 @@
 
         function generateId() {
             return Date.now().toString(36) + Math.random().toString(36).substring(2);
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day} @ ${hours}:${minutes}`;
+        }
+
+        function timeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+            if (seconds < 60) return 'just now';
+
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+
+            const days = Math.floor(hours / 24);
+            if (days < 30) return `${days} day${days !== 1 ? 's' : ''} ago`;
+
+            const months = Math.floor(days / 30);
+            if (months < 12) return `${months} month${months !== 1 ? 's' : ''} ago`;
+
+            const years = Math.floor(days / 365);
+            return `${years} year${years !== 1 ? 's' : ''} ago`;
         }
 
         // ===========================
@@ -902,20 +1030,45 @@
         // Rendering
         // ===========================
         function render() {
-            const hasItems = state.items.length > 0;
             const filteredItems = getFilteredItems();
+            const hasFilteredItems = filteredItems.length > 0;
 
             // Toggle empty state vs grid
-            document.getElementById('empty-state').classList.toggle('hidden', hasItems);
-            document.getElementById('grid-view').classList.toggle('hidden', !hasItems);
+            document.getElementById('empty-state').classList.toggle('hidden', hasFilteredItems);
+            document.getElementById('grid-view').classList.toggle('hidden', !hasFilteredItems);
 
-            if (hasItems) {
+            if (hasFilteredItems) {
                 renderGrid(filteredItems);
+            } else {
+                // Update empty state message based on tab
+                const emptyState = document.getElementById('empty-state');
+                const h2 = emptyState.querySelector('h2');
+                const p = emptyState.querySelector('p');
+
+                if (state.activeTab === 'archived') {
+                    h2.textContent = 'No archived barcodes';
+                    p.textContent = 'Archived barcodes will appear here';
+                } else if (state.searchQuery) {
+                    h2.textContent = 'No results';
+                    p.textContent = 'Try a different search term';
+                } else {
+                    h2.textContent = 'No barcodes yet';
+                    p.textContent = 'Scan or add your first barcode to get started';
+                }
             }
         }
 
         function getFilteredItems() {
             let items = [...state.items];
+
+            // Apply archive filter
+            items = items.filter(item => {
+                if (state.activeTab === 'archived') {
+                    return item.archived === true;
+                } else {
+                    return !item.archived;
+                }
+            });
 
             // Apply search filter
             if (state.searchQuery) {
@@ -927,12 +1080,14 @@
                 );
             }
 
-            // Apply sorting
+            // Sort: favorites first, then by createdAt
             items.sort((a, b) => {
-                const aVal = a[state.settings.sortBy];
-                const bVal = b[state.settings.sortBy];
-                const order = state.settings.sortOrder === 'asc' ? 1 : -1;
-                return aVal > bVal ? order : -order;
+                // Favorites first
+                if (a.favorite && !b.favorite) return -1;
+                if (!a.favorite && b.favorite) return 1;
+
+                // Then by date (newest first)
+                return b.createdAt - a.createdAt;
             });
 
             return items;
@@ -955,18 +1110,26 @@
 
         function createBarcodeCard(item) {
             const card = document.createElement('div');
-            card.className = 'barcode-card';
+            card.className = 'barcode-card' + (item.favorite ? ' favorite' : '');
             card.setAttribute('role', 'button');
             card.setAttribute('tabindex', '0');
             card.setAttribute('aria-label', `View ${item.name}`);
 
+            const favoriteIcon = item.favorite ? '<span class="favorite-badge">⭐</span>' : '';
+            const dateStr = formatDate(item.createdAt);
+            const timeAgoStr = timeAgo(item.createdAt);
+
             card.innerHTML = `
+                ${favoriteIcon}
                 <div class="barcode-preview">
                     <canvas data-id="${item.id}"></canvas>
                 </div>
                 <div class="barcode-card-info">
                     <div class="barcode-name">${item.name}</div>
                     <div class="barcode-type">${item.type.toUpperCase()}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        ${dateStr}<br>${timeAgoStr}
+                    </div>
                 </div>
             `;
 
@@ -1023,10 +1186,28 @@
         function displayBarcode(item) {
             state.currentItem = item;
 
+            // Find index in filtered items for navigation
+            const filteredItems = getFilteredItems();
+            state.currentItemIndex = filteredItems.findIndex(i => i.id === item.id);
+
             // Update display modal
             document.getElementById('display-barcode-name').textContent = item.name;
             document.getElementById('display-barcode-data').textContent = item.data;
             document.getElementById('display-barcode-note').textContent = item.notes || '';
+
+            // Update favorite button
+            const favoriteBtn = document.getElementById('favorite-barcode-btn');
+            favoriteBtn.textContent = item.favorite ? '⭐ Unfavorite' : '⭐ Favorite';
+
+            // Update archive button
+            const archiveBtn = document.getElementById('archive-barcode-btn');
+            archiveBtn.textContent = item.archived ? '📤 Unarchive' : '📦 Archive';
+
+            // Update navigation arrows
+            const prevBtn = document.getElementById('nav-prev');
+            const nextBtn = document.getElementById('nav-next');
+            prevBtn.classList.toggle('disabled', state.currentItemIndex <= 0);
+            nextBtn.classList.toggle('disabled', state.currentItemIndex >= filteredItems.length - 1);
 
             // Generate barcode
             const canvas = document.getElementById('barcode-canvas');
@@ -1037,6 +1218,15 @@
 
             // Request wake lock if supported
             requestWakeLock();
+        }
+
+        function navigateBarcode(direction) {
+            const filteredItems = getFilteredItems();
+            const newIndex = state.currentItemIndex + direction;
+
+            if (newIndex >= 0 && newIndex < filteredItems.length) {
+                displayBarcode(filteredItems[newIndex]);
+            }
         }
 
         let wakeLock = null;
@@ -1081,6 +1271,49 @@
 
             addItem({ name, type, data, notes });
             hideModal('add-modal');
+        }
+
+        function toggleFavorite() {
+            if (!state.currentItem) return;
+
+            updateItem(state.currentItem.id, {
+                favorite: !state.currentItem.favorite
+            });
+
+            // Update current item reference
+            state.currentItem.favorite = !state.currentItem.favorite;
+
+            // Update button text
+            const favoriteBtn = document.getElementById('favorite-barcode-btn');
+            favoriteBtn.textContent = state.currentItem.favorite ? '⭐ Unfavorite' : '⭐ Favorite';
+
+            announce(state.currentItem.favorite ? 'Added to favorites' : 'Removed from favorites');
+        }
+
+        function toggleArchive() {
+            if (!state.currentItem) return;
+
+            const willArchive = !state.currentItem.archived;
+
+            updateItem(state.currentItem.id, {
+                archived: willArchive
+            });
+
+            hideModal('display-modal');
+            releaseWakeLock();
+
+            announce(willArchive ? 'Archived' : 'Unarchived');
+        }
+
+        function switchTab(tab) {
+            state.activeTab = tab;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
+            });
+
+            render();
         }
 
         // ===========================
@@ -1298,9 +1531,47 @@
         }
 
         // ===========================
+        // Touch/Swipe Support
+        // ===========================
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swipe left - next
+                    navigateBarcode(1);
+                } else {
+                    // Swipe right - previous
+                    navigateBarcode(-1);
+                }
+            }
+        }
+
+        function initSwipeListeners() {
+            const modal = document.getElementById('display-modal');
+
+            modal.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            modal.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, { passive: true });
+        }
+
+        // ===========================
         // Event Listeners
         // ===========================
         function initEventListeners() {
+            // Tabs
+            document.getElementById('tab-active').addEventListener('click', () => switchTab('active'));
+            document.getElementById('tab-archived').addEventListener('click', () => switchTab('archived'));
+
             // Action buttons
             document.getElementById('scan-btn').addEventListener('click', startScan);
             document.getElementById('close-scan-btn').addEventListener('click', stopScan);
@@ -1311,6 +1582,9 @@
             // Modal buttons
             document.getElementById('save-barcode-btn').addEventListener('click', handleSaveBarcode);
             document.getElementById('cancel-add-btn').addEventListener('click', () => hideModal('add-modal'));
+
+            document.getElementById('favorite-barcode-btn').addEventListener('click', toggleFavorite);
+            document.getElementById('archive-barcode-btn').addEventListener('click', toggleArchive);
 
             document.getElementById('close-display-btn').addEventListener('click', () => {
                 hideModal('display-modal');
@@ -1324,6 +1598,10 @@
                     releaseWakeLock();
                 }
             });
+
+            // Navigation arrows
+            document.getElementById('nav-prev').addEventListener('click', () => navigateBarcode(-1));
+            document.getElementById('nav-next').addEventListener('click', () => navigateBarcode(1));
 
             // Search
             document.getElementById('search-input').addEventListener('input', (e) => {
@@ -1343,7 +1621,21 @@
                     hideModal('display-modal');
                     releaseWakeLock();
                 }
+
+                // Arrow keys for navigation in display modal
+                if (!document.getElementById('display-modal').classList.contains('hidden')) {
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        navigateBarcode(-1);
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        navigateBarcode(1);
+                    }
+                }
             });
+
+            // Swipe gestures
+            initSwipeListeners();
         }
 
         // ===========================
