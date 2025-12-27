@@ -34,6 +34,11 @@
       "id": "markdown-preview",
       "title": "Markdown Preview",
       "description": "Live markdown editor with split-screen preview and HTML export"
+    },
+    {
+      "id": "barcode-wallet",
+      "title": "Barcode Wallet",
+      "description": "Store and display loyalty cards, tickets, and membership barcodes offline as a PWA"
     }
   ]
 }
