@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f97316">
+    <title>Barcode Wallet</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --bg-input: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #f97316;
+            --accent-hover: #fb923c;
+            --accent-dim: #c2410c;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 768px;
+            margin: 0 auto;
+            padding: 1rem;
+            padding-bottom: 120px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem 0;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Buttons */
+        button {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+            border-color: var(--danger-hover);
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Search */
+        .search-container {
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="text"],
+        input[type="search"] {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            outline: none;
+            font-family: inherit;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+            opacity: 0.3;
+        }
+
+        .empty-state h2 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state p {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        /* Grid View */
+        .grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .barcode-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .barcode-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .barcode-preview {
+            width: 100%;
+            height: 100px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .barcode-card-info {
+            flex: 1;
+        }
+
+        .barcode-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .barcode-type {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Action Bar (Fixed Bottom) */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 1rem;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .action-bar button {
+            flex: 1;
+            max-width: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .action-bar svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content.fullscreen {
+            max-width: 100%;
+            max-height: 100%;
+            height: 100%;
+            border-radius: 0;
+            background: #ffffff;
+            color: #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-header p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .modal-body {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--accent);
+        }
+
+        /* Display Modal */
+        #display-modal .barcode-display {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #display-modal canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        #display-modal .barcode-info {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        #display-modal .barcode-info h2 {
+            font-size: 1.5rem;
+            color: #000;
+            margin-bottom: 0.5rem;
+        }
+
+        #display-modal .barcode-info .barcode-data {
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        #display-modal .barcode-info .barcode-note {
+            font-size: 0.875rem;
+            color: #888;
+            font-style: italic;
+        }
+
+        #display-modal .brightness-notice {
+            background: #fff3cd;
+            color: #856404;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        #display-modal .display-actions {
+            position: fixed;
+            bottom: 2rem;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            padding: 0 1rem;
+        }
+
+        #display-modal .display-actions button {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+        }
+
+        /* Scanner Container */
+        #qr-reader {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        #qr-reader video {
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        /* Utilities */
+        .hidden {
+            display: none !important;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Install Button */
+        #install-btn {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 0.5rem 1rem;
+        }
+
+        #install-btn:hover {
+            background: #16a34a;
+            border-color: #16a34a;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .app-container {
+                padding: 0.5rem;
+                padding-bottom: 100px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .grid-view {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 0.75rem;
+            }
+
+            .action-bar {
+                padding: 0.75rem;
+            }
+
+            .action-bar button {
+                font-size: 0.75rem;
+                padding: 0.625rem 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <h1>Barcode Wallet</h1>
+            <div class="header-actions">
+                <button id="install-btn" class="hidden" aria-label="Install app">Install</button>
+                <button id="import-btn" class="btn-icon" aria-label="Import barcodes" title="Import">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                </button>
+                <button id="export-btn" class="btn-icon" aria-label="Export barcodes" title="Export">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Search -->
+        <div class="search-container">
+            <input type="search" id="search-input" placeholder="Search barcodes..." aria-label="Search barcodes">
+        </div>
+
+        <!-- Main View -->
+        <main id="main-view">
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <h2>No barcodes yet</h2>
+                <p>Scan or add your first barcode to get started</p>
+                <button id="add-first-btn" class="btn-primary">Add Your First Barcode</button>
+            </div>
+
+            <!-- Grid View -->
+            <div id="grid-view" class="grid-view hidden">
+                <!-- Barcode cards will be rendered here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="action-bar">
+        <button id="scan-btn" class="btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            Scan
+        </button>
+        <button id="add-manual-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Manually
+        </button>
+    </div>
+
+    <!-- Scan Modal -->
+    <div id="scan-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="scan-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="scan-modal-title">Scan Barcode</h2>
+                <p>Point your camera at a barcode or QR code</p>
+            </div>
+            <div class="modal-body">
+                <div id="qr-reader"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-scan-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="add-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="add-modal-title">Add Barcode</h2>
+                <p>Enter barcode details manually</p>
+            </div>
+            <div class="modal-body">
+                <form id="add-form">
+                    <div class="form-group">
+                        <label for="barcode-name">Name *</label>
+                        <input type="text" id="barcode-name" placeholder="e.g., Gym Membership" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="barcode-type">Type</label>
+                        <select id="barcode-type" required>
+                            <option value="qr">QR Code</option>
+                            <option value="ean13">EAN-13</option>
+                            <option value="ean8">EAN-8</option>
+                            <option value="upc">UPC-A</option>
+                            <option value="code128">Code 128</option>
+                            <option value="code39">Code 39</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="barcode-data">Barcode Data *</label>
+                        <input type="text" id="barcode-data" placeholder="e.g., 1234567890123" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="barcode-notes">Notes (optional)</label>
+                        <textarea id="barcode-notes" placeholder="Add any notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-add-btn">Cancel</button>
+                <button id="save-barcode-btn" class="btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Display Modal -->
+    <div id="display-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="display-modal-title">
+        <div class="modal-content fullscreen">
+            <div class="brightness-notice">
+                Please maximize screen brightness for best scanning
+            </div>
+
+            <div class="barcode-display">
+                <canvas id="barcode-canvas"></canvas>
+            </div>
+
+            <div class="barcode-info">
+                <h2 id="display-barcode-name"></h2>
+                <div class="barcode-data" id="display-barcode-data"></div>
+                <div class="barcode-note" id="display-barcode-note"></div>
+            </div>
+
+            <div class="display-actions">
+                <button id="delete-barcode-btn" class="btn-danger">Delete</button>
+                <button id="close-display-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen Reader Announcements -->
+    <div aria-live="polite" aria-atomic="true" class="sr-only" id="announcer"></div>
+
+    <!-- Barcode Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <script>
+        // ===========================
+        // Constants & Configuration
+        // ===========================
+        const STORAGE_KEY = 'barcode-wallet-items';
+        const SETTINGS_KEY = 'barcode-wallet-settings';
+        const VERSION = 1;
+
+        // ===========================
+        // State Management
+        // ===========================
+        const state = {
+            items: [],
+            settings: {
+                sortBy: 'createdAt',
+                sortOrder: 'desc'
+            },
+            currentItem: null,
+            searchQuery: ''
+        };
+
+        // ===========================
+        // localStorage Operations
+        // ===========================
+        function loadData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (!saved) return [];
+
+                const data = JSON.parse(saved);
+
+                // Validate and sanitize items
+                if (!Array.isArray(data)) {
+                    console.warn('Invalid data format, resetting');
+                    return [];
+                }
+
+                return data.filter(item => item.id && item.type && item.data).map(sanitizeItem);
+            } catch (e) {
+                console.error('Failed to load data:', e);
+                return [];
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items));
+            } catch (e) {
+                console.error('Failed to save data:', e);
+                if (e.name === 'QuotaExceededError') {
+                    alert('Storage full! Please delete some items or export your data.');
+                }
+            }
+        }
+
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem(SETTINGS_KEY);
+                if (!saved) return state.settings;
+                return { ...state.settings, ...JSON.parse(saved) };
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+                return state.settings;
+            }
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+            } catch (e) {
+                console.error('Failed to save settings:', e);
+            }
+        }
+
+        // ===========================
+        // Data Sanitization
+        // ===========================
+        function sanitizeItem(item) {
+            return {
+                id: String(item.id).substring(0, 36),
+                type: sanitizeBarcodeType(item.type),
+                name: escapeHtml(String(item.name || 'Unnamed').substring(0, 100)),
+                data: String(item.data).substring(0, 2000),
+                notes: item.notes ? escapeHtml(String(item.notes).substring(0, 500)) : '',
+                createdAt: parseInt(item.createdAt) || Date.now(),
+                updatedAt: parseInt(item.updatedAt) || Date.now()
+            };
+        }
+
+        function sanitizeBarcodeType(type) {
+            const validTypes = ['qr', 'ean13', 'ean8', 'upc', 'code128', 'code39'];
+            return validTypes.includes(type) ? type : 'qr';
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2);
+        }
+
+        // ===========================
+        // CRUD Operations
+        // ===========================
+        function addItem(item) {
+            const newItem = sanitizeItem({
+                ...item,
+                id: generateId(),
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            });
+
+            state.items.unshift(newItem);
+            saveData();
+            render();
+            announce(`${newItem.name} added`);
+        }
+
+        function deleteItem(id) {
+            const item = state.items.find(i => i.id === id);
+            if (!item) return;
+
+            if (!confirm(`Delete "${item.name}"?`)) return;
+
+            state.items = state.items.filter(i => i.id !== id);
+            saveData();
+            render();
+            announce(`${item.name} deleted`);
+        }
+
+        function updateItem(id, updates) {
+            const index = state.items.findIndex(i => i.id === id);
+            if (index === -1) return;
+
+            state.items[index] = sanitizeItem({
+                ...state.items[index],
+                ...updates,
+                updatedAt: Date.now()
+            });
+
+            saveData();
+            render();
+            announce(`${state.items[index].name} updated`);
+        }
+
+        // ===========================
+        // Barcode Generation
+        // ===========================
+        function generateQRCode(canvas, data) {
+            const qr = qrcode(0, 'M');
+            qr.addData(data);
+            qr.make();
+
+            const ctx = canvas.getContext('2d');
+            const moduleCount = qr.getModuleCount();
+            const cellSize = canvas.width / moduleCount;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#000000';
+            for (let row = 0; row < moduleCount; row++) {
+                for (let col = 0; col < moduleCount; col++) {
+                    if (qr.isDark(row, col)) {
+                        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+        }
+
+        function generateBarcode(canvas, item) {
+            try {
+                const format = item.type.toUpperCase().replace('UPC', 'UPC');
+
+                JsBarcode(canvas, item.data, {
+                    format: format === 'QR' ? 'CODE128' : format,
+                    width: 2,
+                    height: 100,
+                    displayValue: true,
+                    fontSize: 14,
+                    margin: 10,
+                    background: '#ffffff'
+                });
+            } catch (err) {
+                console.error('Barcode generation failed:', err);
+                showFallbackDisplay(canvas, item);
+            }
+        }
+
+        function showFallbackDisplay(canvas, item) {
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000';
+            ctx.font = '16px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(item.data, canvas.width / 2, canvas.height / 2);
+        }
+
+        function renderBarcodeToCanvas(canvas, item) {
+            if (item.type === 'qr') {
+                canvas.width = 300;
+                canvas.height = 300;
+                generateQRCode(canvas, item.data);
+            } else {
+                canvas.width = 400;
+                canvas.height = 200;
+                generateBarcode(canvas, item);
+            }
+        }
+
+        // ===========================
+        // Rendering
+        // ===========================
+        function render() {
+            const hasItems = state.items.length > 0;
+            const filteredItems = getFilteredItems();
+
+            // Toggle empty state vs grid
+            document.getElementById('empty-state').classList.toggle('hidden', hasItems);
+            document.getElementById('grid-view').classList.toggle('hidden', !hasItems);
+
+            if (hasItems) {
+                renderGrid(filteredItems);
+            }
+        }
+
+        function getFilteredItems() {
+            let items = [...state.items];
+
+            // Apply search filter
+            if (state.searchQuery) {
+                const query = state.searchQuery.toLowerCase();
+                items = items.filter(item =>
+                    item.name.toLowerCase().includes(query) ||
+                    item.data.toLowerCase().includes(query) ||
+                    (item.notes && item.notes.toLowerCase().includes(query))
+                );
+            }
+
+            // Apply sorting
+            items.sort((a, b) => {
+                const aVal = a[state.settings.sortBy];
+                const bVal = b[state.settings.sortBy];
+                const order = state.settings.sortOrder === 'asc' ? 1 : -1;
+                return aVal > bVal ? order : -order;
+            });
+
+            return items;
+        }
+
+        function renderGrid(items) {
+            const grid = document.getElementById('grid-view');
+            grid.innerHTML = '';
+
+            if (items.length === 0 && state.searchQuery) {
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">No barcodes match your search</p>';
+                return;
+            }
+
+            items.forEach(item => {
+                const card = createBarcodeCard(item);
+                grid.appendChild(card);
+            });
+        }
+
+        function createBarcodeCard(item) {
+            const card = document.createElement('div');
+            card.className = 'barcode-card';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-label', `View ${item.name}`);
+
+            card.innerHTML = `
+                <div class="barcode-preview">
+                    <canvas data-id="${item.id}"></canvas>
+                </div>
+                <div class="barcode-card-info">
+                    <div class="barcode-name">${item.name}</div>
+                    <div class="barcode-type">${item.type.toUpperCase()}</div>
+                </div>
+            `;
+
+            card.addEventListener('click', () => displayBarcode(item));
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    displayBarcode(item);
+                }
+            });
+
+            // Generate preview in next frame
+            requestAnimationFrame(() => {
+                const canvas = card.querySelector('canvas');
+                try {
+                    if (item.type === 'qr') {
+                        canvas.width = 100;
+                        canvas.height = 100;
+                        generateQRCode(canvas, item.data);
+                    } else {
+                        canvas.width = 120;
+                        canvas.height = 60;
+                        generateBarcode(canvas, item);
+                    }
+                } catch (err) {
+                    console.error('Preview generation failed:', err);
+                }
+            });
+
+            return card;
+        }
+
+        // ===========================
+        // Modal Management
+        // ===========================
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+
+            // Focus first interactive element
+            const focusable = modal.querySelectorAll('button, input, select, textarea');
+            if (focusable.length) {
+                setTimeout(() => focusable[0].focus(), 100);
+            }
+        }
+
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        function displayBarcode(item) {
+            state.currentItem = item;
+
+            // Update display modal
+            document.getElementById('display-barcode-name').textContent = item.name;
+            document.getElementById('display-barcode-data').textContent = item.data;
+            document.getElementById('display-barcode-note').textContent = item.notes || '';
+
+            // Generate barcode
+            const canvas = document.getElementById('barcode-canvas');
+            renderBarcodeToCanvas(canvas, item);
+
+            showModal('display-modal');
+            announce(`Displaying ${item.name}`);
+
+            // Request wake lock if supported
+            requestWakeLock();
+        }
+
+        let wakeLock = null;
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake lock active');
+                } catch (err) {
+                    console.warn('Wake lock failed:', err);
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
+        // ===========================
+        // Add/Edit Form
+        // ===========================
+        function showAddModal() {
+            document.getElementById('add-modal-title').textContent = 'Add Barcode';
+            document.getElementById('add-form').reset();
+            showModal('add-modal');
+        }
+
+        function handleSaveBarcode() {
+            const name = document.getElementById('barcode-name').value.trim();
+            const type = document.getElementById('barcode-type').value;
+            const data = document.getElementById('barcode-data').value.trim();
+            const notes = document.getElementById('barcode-notes').value.trim();
+
+            if (!name || !data) {
+                alert('Please fill in required fields');
+                return;
+            }
+
+            addItem({ name, type, data, notes });
+            hideModal('add-modal');
+        }
+
+        // ===========================
+        // Export/Import
+        // ===========================
+        function exportData() {
+            if (state.items.length === 0) {
+                alert('No barcodes to export');
+                return;
+            }
+
+            const data = {
+                version: VERSION,
+                exportedAt: new Date().toISOString(),
+                items: state.items
+            };
+
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `barcode-wallet-${Date.now()}.json`;
+            a.click();
+
+            URL.revokeObjectURL(url);
+            announce('Data exported successfully');
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json,.json';
+
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+
+                        // Validate structure
+                        if (!data.items || !Array.isArray(data.items)) {
+                            throw new Error('Invalid file format');
+                        }
+
+                        // Confirm before importing
+                        const count = data.items.length;
+                        const message = state.items.length > 0
+                            ? `Import ${count} barcodes? This will ADD to your existing ${state.items.length} barcodes.`
+                            : `Import ${count} barcodes?`;
+
+                        if (!confirm(message)) return;
+
+                        // Import items
+                        let imported = 0;
+                        data.items.forEach(item => {
+                            if (item.name && item.data && item.type) {
+                                const newItem = sanitizeItem({
+                                    ...item,
+                                    id: generateId(), // Generate new IDs
+                                    createdAt: Date.now(),
+                                    updatedAt: Date.now()
+                                });
+                                state.items.unshift(newItem);
+                                imported++;
+                            }
+                        });
+
+                        saveData();
+                        render();
+                        announce(`Imported ${imported} barcodes`);
+                        alert(`Successfully imported ${imported} barcodes`);
+
+                    } catch (err) {
+                        console.error('Import failed:', err);
+                        alert('Import failed: Invalid file format');
+                    }
+                };
+
+                reader.readAsText(file);
+            });
+
+            input.click();
+        }
+
+        // ===========================
+        // Screen Reader Announcements
+        // ===========================
+        function announce(message) {
+            const announcer = document.getElementById('announcer');
+            announcer.textContent = message;
+            setTimeout(() => announcer.textContent = '', 1000);
+        }
+
+        // ===========================
+        // Camera Scanning
+        // ===========================
+        let html5QrCode = null;
+        let isScanning = false;
+
+        function startScan() {
+            // Check for HTTPS
+            if (location.protocol !== 'https:' && !location.hostname.includes('localhost') && location.hostname !== '127.0.0.1') {
+                alert('Camera scanning requires HTTPS. Please use "Add Manually" instead.');
+                return;
+            }
+
+            showModal('scan-modal');
+            isScanning = true;
+
+            html5QrCode = new Html5Qrcode("qr-reader");
+
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+
+            html5QrCode.start(
+                { facingMode: "environment" }, // Rear camera
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).catch(err => {
+                console.error('Camera error:', err);
+                let message = 'Camera access failed. ';
+
+                if (err.name === 'NotAllowedError') {
+                    message += 'Please grant camera permissions and try again.';
+                } else if (err.name === 'NotFoundError') {
+                    message += 'No camera found.';
+                } else {
+                    message += 'Please use "Add Manually" instead.';
+                }
+
+                alert(message);
+                stopScan();
+            });
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (!isScanning) return;
+
+            // Vibrate if supported
+            if (navigator.vibrate) {
+                navigator.vibrate(200);
+            }
+
+            // Stop scanning
+            stopScan();
+
+            // Detect barcode type
+            const detectedType = detectBarcodeType(decodedText, decodedResult.result?.format);
+
+            // Pre-fill add modal
+            document.getElementById('add-modal-title').textContent = 'Scanned Barcode';
+            document.getElementById('barcode-type').value = detectedType;
+            document.getElementById('barcode-data').value = decodedText;
+            document.getElementById('barcode-name').value = '';
+            document.getElementById('barcode-notes').value = '';
+
+            showModal('add-modal');
+            announce('Barcode scanned successfully');
+        }
+
+        function onScanFailure(error) {
+            // Silent - scanning in progress
+        }
+
+        function stopScan() {
+            isScanning = false;
+
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    hideModal('scan-modal');
+                }).catch(err => {
+                    console.error('Error stopping scan:', err);
+                    hideModal('scan-modal');
+                });
+            } else {
+                hideModal('scan-modal');
+            }
+        }
+
+        function detectBarcodeType(data, scannedFormat) {
+            // Use scanned format if available
+            if (scannedFormat) {
+                const formatMap = {
+                    'QR_CODE': 'qr',
+                    'EAN_13': 'ean13',
+                    'EAN_8': 'ean8',
+                    'UPC_A': 'upc',
+                    'UPC_E': 'upc',
+                    'CODE_128': 'code128',
+                    'CODE_39': 'code39'
+                };
+
+                const mapped = formatMap[scannedFormat];
+                if (mapped) return mapped;
+            }
+
+            // Auto-detect from data pattern
+            if (/^\d{13}$/.test(data)) return 'ean13';
+            if (/^\d{8}$/.test(data)) return 'ean8';
+            if (/^\d{12}$/.test(data)) return 'upc';
+            if (/^[A-Z0-9\-\.\ \$\/\+\%]+$/.test(data)) return 'code128';
+
+            // Default to QR for complex data
+            return 'qr';
+        }
+
+        // ===========================
+        // Event Listeners
+        // ===========================
+        function initEventListeners() {
+            // Action buttons
+            document.getElementById('scan-btn').addEventListener('click', startScan);
+            document.getElementById('close-scan-btn').addEventListener('click', stopScan);
+
+            document.getElementById('add-manual-btn').addEventListener('click', showAddModal);
+            document.getElementById('add-first-btn').addEventListener('click', showAddModal);
+
+            // Modal buttons
+            document.getElementById('save-barcode-btn').addEventListener('click', handleSaveBarcode);
+            document.getElementById('cancel-add-btn').addEventListener('click', () => hideModal('add-modal'));
+
+            document.getElementById('close-display-btn').addEventListener('click', () => {
+                hideModal('display-modal');
+                releaseWakeLock();
+            });
+
+            document.getElementById('delete-barcode-btn').addEventListener('click', () => {
+                if (state.currentItem) {
+                    deleteItem(state.currentItem.id);
+                    hideModal('display-modal');
+                    releaseWakeLock();
+                }
+            });
+
+            // Search
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                state.searchQuery = e.target.value;
+                render();
+            });
+
+            // Export/Import
+            document.getElementById('export-btn').addEventListener('click', exportData);
+            document.getElementById('import-btn').addEventListener('click', importData);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideModal('scan-modal');
+                    hideModal('add-modal');
+                    hideModal('display-modal');
+                    releaseWakeLock();
+                }
+            });
+        }
+
+        // ===========================
+        // PWA Features
+        // ===========================
+        function generateManifest() {
+            const manifest = {
+                name: "Barcode Wallet",
+                short_name: "Barcodes",
+                description: "Store and display loyalty cards, membership barcodes, and QR codes offline",
+                start_url: window.location.pathname,
+                scope: window.location.pathname.replace('barcode-wallet.html', ''),
+                display: "standalone",
+                orientation: "portrait",
+                theme_color: "#f97316",
+                background_color: "#0a0a0a",
+                categories: ["utilities", "lifestyle"],
+                icons: [
+                    {
+                        src: generateIconDataUrl(),
+                        sizes: "512x512",
+                        type: "image/svg+xml",
+                        purpose: "any maskable"
+                    }
+                ]
+            };
+
+            const json = JSON.stringify(manifest);
+            const base64 = btoa(unescape(encodeURIComponent(json)));
+            const dataUrl = `data:application/json;charset=utf-8;base64,${base64}`;
+
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = dataUrl;
+            document.head.appendChild(link);
+        }
+
+        function generateIconDataUrl() {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                <rect fill="#f97316" width="512" height="512" rx="64"/>
+                <rect x="80" y="80" width="352" height="352" rx="16" fill="none" stroke="#ffffff" stroke-width="24"/>
+                <rect x="120" y="120" width="80" height="80" fill="#ffffff"/>
+                <rect x="216" y="120" width="80" height="80" fill="#ffffff"/>
+                <rect x="312" y="120" width="80" height="80" fill="#ffffff"/>
+                <rect x="120" y="216" width="80" height="80" fill="#ffffff"/>
+                <rect x="312" y="216" width="80" height="80" fill="#ffffff"/>
+                <rect x="120" y="312" width="80" height="80" fill="#ffffff"/>
+                <rect x="216" y="312" width="80" height="80" fill="#ffffff"/>
+                <rect x="312" y="312" width="80" height="80" fill="#ffffff"/>
+            </svg>`;
+
+            return `data:image/svg+xml;base64,${btoa(svg)}`;
+        }
+
+        function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                console.log('Service Worker not supported');
+                return;
+            }
+
+            const swCode = `
+const CACHE_NAME = 'barcode-wallet-v1';
+const ASSETS = [];
+
+self.addEventListener('install', (event) => {
+    console.log('Service Worker installing');
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.addAll(ASSETS);
+        })
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    console.log('Service Worker activating');
+    event.waitUntil(
+        caches.keys().then(keys => {
+            return Promise.all(
+                keys.map(key => {
+                    if (key !== CACHE_NAME) {
+                        console.log('Deleting old cache:', key);
+                        return caches.delete(key);
+                    }
+                })
+            );
+        })
+    );
+    self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+    // Network-first strategy
+    event.respondWith(
+        fetch(event.request)
+            .catch(() => caches.match(event.request))
+    );
+});
+`;
+
+            try {
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => {
+                        console.log('Service Worker registered:', reg);
+                    })
+                    .catch(err => {
+                        console.error('Service Worker registration failed:', err);
+                    });
+            } catch (err) {
+                console.error('Service Worker setup failed:', err);
+            }
+        }
+
+        // Install prompt handling
+        let deferredPrompt;
+
+        function setupInstallPrompt() {
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                showInstallButton();
+            });
+
+            window.addEventListener('appinstalled', () => {
+                console.log('PWA installed');
+                deferredPrompt = null;
+                hideInstallButton();
+                announce('App installed successfully');
+            });
+        }
+
+        function showInstallButton() {
+            const btn = document.getElementById('install-btn');
+            btn.classList.remove('hidden');
+            btn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Install outcome:', outcome);
+
+                if (outcome === 'accepted') {
+                    announce('Installing app...');
+                }
+
+                deferredPrompt = null;
+                hideInstallButton();
+            });
+        }
+
+        function hideInstallButton() {
+            const btn = document.getElementById('install-btn');
+            btn.classList.add('hidden');
+        }
+
+        // ===========================
+        // Initialization
+        // ===========================
+        function init() {
+            // Load data
+            state.items = loadData();
+            state.settings = loadSettings();
+
+            // Setup PWA
+            generateManifest();
+            registerServiceWorker();
+            setupInstallPrompt();
+
+            // Setup event listeners
+            initEventListeners();
+
+            // Initial render
+            render();
+
+            console.log('Barcode Wallet initialized');
+            console.log(`Loaded ${state.items.length} items`);
+        }
+
+        // Start app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
