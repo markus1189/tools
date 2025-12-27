@@ -584,6 +584,106 @@
                 padding: 0.625rem 0.875rem;
             }
         }
+
+        /* Diagnostic Overlay for Mobile */
+        .diagnostic-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .diagnostic-overlay.hidden {
+            display: none;
+        }
+
+        .diagnostic-content {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .diagnostic-header {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .diagnostic-header h3 {
+            color: var(--accent);
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .diagnostic-section {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-input);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .diagnostic-section h4 {
+            color: var(--text);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .diagnostic-section p {
+            color: var(--text-muted);
+            margin: 0.25rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .diagnostic-progress {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .diagnostic-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--bg);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+        }
+
+        .diagnostic-log-entry {
+            margin: 0.25rem 0;
+            padding: 0.25rem 0;
+        }
+
+        .diagnostic-log-entry.success {
+            color: var(--success);
+        }
+
+        .diagnostic-log-entry.error {
+            color: var(--danger);
+        }
+
+        .diagnostic-log-entry.info {
+            color: var(--text-muted);
+        }
+
+        .diagnostic-close {
+            margin-top: 1rem;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -762,6 +862,33 @@
     <div aria-live="polite" aria-atomic="true" class="sr-only" id="announcer"></div>
 
     <!-- Barcode Libraries -->
+    <!-- Diagnostic Overlay for Mobile -->
+    <div id="diagnostic-overlay" class="diagnostic-overlay hidden">
+        <div class="diagnostic-content">
+            <div class="diagnostic-header">
+                <h3>Scan Diagnostics</h3>
+            </div>
+            <div class="diagnostic-section">
+                <h4>File Info</h4>
+                <p id="diag-file-name">-</p>
+                <p id="diag-file-size">-</p>
+                <p id="diag-file-type">-</p>
+                <p id="diag-image-dimensions">-</p>
+            </div>
+            <div class="diagnostic-section">
+                <h4>Progress</h4>
+                <p class="diagnostic-progress" id="diag-progress">Initializing...</p>
+            </div>
+            <div class="diagnostic-section">
+                <h4>Detection Log</h4>
+                <div class="diagnostic-log" id="diag-log">
+                    <div class="diagnostic-log-entry info">Ready to scan...</div>
+                </div>
+            </div>
+            <button id="close-diagnostic-btn" class="diagnostic-close btn-secondary">Close</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -1535,7 +1662,13 @@
             uploadBtn.disabled = true;
             uploadBtn.innerHTML = '<span>Scanning image...</span>';
 
-            // Log file diagnostics
+            // Show diagnostic overlay
+            showDiagnosticOverlay();
+
+            // Update file diagnostics
+            updateDiagnosticFile(file.name, file.size, file.type);
+
+            // Log file diagnostics (for desktop users)
             console.log('=== File Upload Diagnostics ===');
             console.log('File name:', file.name);
             console.log('File size:', (file.size / 1024).toFixed(2), 'KB');
@@ -1550,6 +1683,7 @@
             // Progress callback to update UI
             const updateProgress = (current, total, strategyName) => {
                 uploadBtn.innerHTML = `<span>Trying ${current}/${total}: ${strategyName}</span>`;
+                updateDiagnosticProgress(current, total, strategyName);
             };
 
             // Try scanning with multiple strategies
@@ -1563,6 +1697,9 @@
                     // Restore button
                     uploadBtn.disabled = false;
                     uploadBtn.innerHTML = originalBtnText;
+
+                    // Hide diagnostic overlay on success
+                    hideDiagnosticOverlay();
 
                     // Vibrate if supported
                     if (navigator.vibrate) {
@@ -1595,16 +1732,12 @@
 
                     console.error('File scan error:', err);
 
-                    // Provide helpful error message
-                    let errorMsg = 'Could not read barcode from image.\n\n';
-                    errorMsg += 'Tips:\n';
-                    errorMsg += '• Ensure the barcode is clearly visible\n';
-                    errorMsg += '• Try taking a photo in better lighting\n';
-                    errorMsg += '• Make sure the entire barcode is in frame\n';
-                    errorMsg += '• Avoid blurry or low-resolution images\n\n';
-                    errorMsg += 'You can also enter the barcode manually below.';
+                    // Update diagnostic with error
+                    addDiagnosticLog('❌ All strategies failed', 'error');
+                    updateDiagnosticProgress(0, 0, 'Detection failed - see log above');
 
-                    alert(errorMsg);
+                    // Keep diagnostic overlay open so user can see what happened
+                    // They can close it manually with the close button
                 });
         }
 
@@ -1622,6 +1755,7 @@
             ];
 
             console.log(`Starting scan with ${strategies.length} strategies...`);
+            addDiagnosticLog(`Starting scan with ${strategies.length} strategies...`, 'info');
 
             // Try each strategy sequentially
             for (let i = 0; i < strategies.length; i++) {
@@ -1637,10 +1771,12 @@
                     const result = await strategy.fn();
                     const duration = (performance.now() - startTime).toFixed(0);
                     console.log(`✓ Success with: ${strategy.name} (${duration}ms)`);
+                    addDiagnosticLog(`✓ ${strategy.name} (${duration}ms)`, 'success');
                     return result;
                 } catch (err) {
                     const duration = (performance.now() - startTime).toFixed(0);
                     console.log(`✗ Failed: ${strategy.name} (${duration}ms) -`, err.message);
+                    addDiagnosticLog(`✗ ${strategy.name} (${duration}ms)`, 'error');
                     // Continue to next strategy
                 }
             }
@@ -1654,7 +1790,9 @@
             // Load image to get dimensions for diagnostics
             const dataUrl = await readFileAsDataUrl(file);
             const img = await loadImage(dataUrl);
-            console.log(`  Image dimensions: ${img.width}x${img.height}px`);
+            const dimensions = `${img.width}x${img.height}px`;
+            console.log(`  Image dimensions: ${dimensions}`);
+            updateDiagnosticDimensions(dimensions);
 
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
@@ -2360,6 +2498,7 @@
             // Action buttons
             document.getElementById('scan-btn').addEventListener('click', startScan);
             document.getElementById('close-scan-btn').addEventListener('click', stopScan);
+            document.getElementById('close-diagnostic-btn').addEventListener('click', hideDiagnosticOverlay);
 
             document.getElementById('add-manual-btn').addEventListener('click', showAddModal);
             document.getElementById('add-first-btn').addEventListener('click', showAddModal);
@@ -2585,6 +2724,54 @@ self.addEventListener('fetch', (event) => {
         function hideInstallButton() {
             const btn = document.getElementById('install-btn');
             btn.classList.add('hidden');
+        }
+
+        // ===========================
+        // Diagnostic Overlay Functions
+        // ===========================
+        function showDiagnosticOverlay() {
+            const overlay = document.getElementById('diagnostic-overlay');
+            overlay.classList.remove('hidden');
+            // Reset log
+            const log = document.getElementById('diag-log');
+            log.innerHTML = '<div class="diagnostic-log-entry info">Initializing scan...</div>';
+        }
+
+        function hideDiagnosticOverlay() {
+            const overlay = document.getElementById('diagnostic-overlay');
+            overlay.classList.add('hidden');
+        }
+
+        function updateDiagnosticFile(name, size, type) {
+            document.getElementById('diag-file-name').textContent = `Name: ${name}`;
+            document.getElementById('diag-file-size').textContent = `Size: ${(size / 1024).toFixed(2)} KB`;
+            document.getElementById('diag-file-type').textContent = `Type: ${type}`;
+        }
+
+        function updateDiagnosticDimensions(dimensions) {
+            document.getElementById('diag-image-dimensions').textContent = `Dimensions: ${dimensions}`;
+        }
+
+        function updateDiagnosticProgress(current, total, strategyName) {
+            const progress = document.getElementById('diag-progress');
+            if (current === 0 && total === 0) {
+                // Error state
+                progress.textContent = strategyName;
+                progress.style.color = 'var(--danger)';
+            } else {
+                progress.textContent = `${current}/${total}: ${strategyName}`;
+                progress.style.color = 'var(--accent)';
+            }
+        }
+
+        function addDiagnosticLog(message, type = 'info') {
+            const log = document.getElementById('diag-log');
+            const entry = document.createElement('div');
+            entry.className = `diagnostic-log-entry ${type}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            // Auto-scroll to bottom
+            log.scrollTop = log.scrollHeight;
         }
 
         // ===========================
