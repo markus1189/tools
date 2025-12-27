@@ -1837,7 +1837,8 @@
             addDiagnosticLog(`  Decoding image...`, 'info');
 
             const result = await scanner.scanFile(normalizedBlob, false);
-            await scanner.clear().catch(() => {});
+            // Clean up scanner (for file scanning, clear() may not return a Promise)
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             console.log(`  Decoded result:`, result);
             addDiagnosticLog(`  Decode successful!`, 'success');
             return { decodedText: result, format: null };
@@ -1852,7 +1853,7 @@
             const scanner = new Html5Qrcode("temp-qr-reader");
             addDiagnosticLog(`  Decoding scaled image...`, 'info');
             const result = await scanner.scanFile(scaledFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1865,7 +1866,7 @@
             const scanner = new Html5Qrcode("temp-qr-reader");
             addDiagnosticLog(`  Decoding inverted image...`, 'info');
             const result = await scanner.scanFile(invertedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1878,7 +1879,7 @@
             const scanner = new Html5Qrcode("temp-qr-reader");
             addDiagnosticLog(`  Decoding enhanced image...`, 'info');
             const result = await scanner.scanFile(enhancedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1891,7 +1892,7 @@
             const scanner = new Html5Qrcode("temp-qr-reader");
             addDiagnosticLog(`  Decoding sharpened image...`, 'info');
             const result = await scanner.scanFile(sharpenedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1900,7 +1901,7 @@
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             const result = await scanner.scanFile(grayscaleFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1909,7 +1910,7 @@
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             const result = await scanner.scanFile(thresholdFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1918,7 +1919,7 @@
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             const result = await scanner.scanFile(normalizedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1927,7 +1928,7 @@
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             const result = await scanner.scanFile(correctedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1936,7 +1937,7 @@
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             const result = await scanner.scanFile(enhancedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1949,7 +1950,7 @@
             const scanner = new Html5Qrcode("temp-qr-reader");
             addDiagnosticLog(`  Decoding processed image...`, 'info');
             const result = await scanner.scanFile(processedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1962,7 +1963,7 @@
             const scanner = new Html5Qrcode("temp-qr-reader");
             addDiagnosticLog(`  Decoding rotated image...`, 'info');
             const result = await scanner.scanFile(rotatedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
@@ -1971,7 +1972,7 @@
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             const result = await scanner.scanFile(equalizedFile, false);
-            await scanner.clear().catch(() => {});
+            try { await scanner.clear(); } catch (e) { /* ignore */ }
             return { decodedText: result, format: null };
         }
 
