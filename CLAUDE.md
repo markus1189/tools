@@ -42,9 +42,14 @@ Minimal required structure for each tool:
    {
      "id": "tool-name",
      "title": "Tool Name",
-     "description": "Brief description of what the tool does"
+     "description": "Brief description of what the tool does",
+     "icon": "lucide-icon-name",
+     "dateAdded": "YYYY-MM-DD"
    }
    ```
+   - `icon`: Lucide icon name from https://lucide.dev/icons/ (required)
+   - `dateAdded`: ISO 8601 date (YYYY-MM-DD) when tool was created (required)
+   - `dateUpdated`: Optional - only add when tool receives significant updates
 3. The `index.html` reads from `tools.json` dynamically - no manual update needed
 
 ## Manifest: tools.json
@@ -57,10 +62,21 @@ All tools are registered in `tools.json`:
     {
       "id": "tool-name",
       "title": "Tool Name",
-      "description": "Brief description"
+      "description": "Brief description",
+      "icon": "lucide-icon-name",
+      "dateAdded": "YYYY-MM-DD",
+      "dateUpdated": "YYYY-MM-DD"
     }
   ]
 }
 ```
 
-The `id` must match the filename (without `.html` extension).
+**Required fields:**
+- `id`: Must match the filename (without `.html` extension)
+- `title`: Display name of the tool
+- `description`: Brief description shown on the index page
+- `icon`: Lucide icon name from https://lucide.dev/icons/
+- `dateAdded`: ISO 8601 date (YYYY-MM-DD) when tool was created
+
+**Optional fields:**
+- `dateUpdated`: ISO 8601 date - only include when tool receives significant updates

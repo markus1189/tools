@@ -3,42 +3,58 @@
     {
       "id": "exercise-timer",
       "title": "Exercise Timer",
-      "description": "Stopwatch, countdown, and interval timer for workouts with audio cues"
+      "description": "Stopwatch, countdown, and interval timer for workouts with audio cues",
+      "icon": "timer",
+      "dateAdded": "2025-12-24"
     },
     {
       "id": "video-delay",
       "title": "Video Delay",
-      "description": "Compare live and delayed video side-by-side for form checking and movement analysis"
+      "description": "Compare live and delayed video side-by-side for form checking and movement analysis",
+      "icon": "video",
+      "dateAdded": "2025-12-24"
     },
     {
       "id": "stopwatch-media-control",
       "title": "Stopwatch Media Control",
-      "description": "Control stopwatch using media controls on smartwatch or device (POC)"
+      "description": "Control stopwatch using media controls on smartwatch or device (POC)",
+      "icon": "play-circle",
+      "dateAdded": "2025-12-24"
     },
     {
       "id": "map-annotator",
       "title": "Map Annotator",
-      "description": "Annotate maps with drawings, shapes, and markers, shareable via link"
+      "description": "Annotate maps with drawings, shapes, and markers, shareable via link",
+      "icon": "map",
+      "dateAdded": "2025-12-25"
     },
     {
       "id": "random-picker",
       "title": "Random Picker",
-      "description": "Cryptographically secure random selection tool with confetti celebration"
+      "description": "Cryptographically secure random selection tool with confetti celebration",
+      "icon": "shuffle",
+      "dateAdded": "2025-12-26"
     },
     {
       "id": "gpx-viewer",
       "title": "GPX Viewer",
-      "description": "View GPX tracks with elevation analysis and climb/descent segmentation"
+      "description": "View GPX tracks with elevation analysis and climb/descent segmentation",
+      "icon": "route",
+      "dateAdded": "2025-12-26"
     },
     {
       "id": "markdown-preview",
       "title": "Markdown Preview",
-      "description": "Live markdown editor with split-screen preview and HTML export"
+      "description": "Live markdown editor with split-screen preview and HTML export",
+      "icon": "file-text",
+      "dateAdded": "2025-12-26"
     },
     {
       "id": "barcode-wallet",
       "title": "Barcode Wallet",
-      "description": "Store and display loyalty cards, tickets, and membership barcodes offline as a PWA"
+      "description": "Store and display loyalty cards, tickets, and membership barcodes offline as a PWA",
+      "icon": "scan",
+      "dateAdded": "2025-12-27"
     }
   ]
 }

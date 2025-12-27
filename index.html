@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tools</title>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -31,13 +33,28 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 4rem 1.5rem;
         }
 
         header {
-            margin-bottom: 3rem;
+            background: var(--bg);
+            padding-bottom: 2rem;
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: box-shadow 0.2s;
+        }
+
+        header.stuck {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            padding-top: 1rem;
+        }
+
+        .header-content {
+            margin-bottom: 1.5rem;
         }
 
         h1 {
@@ -56,9 +73,92 @@
             font-size: 1rem;
         }
 
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.95rem;
+            transition: border-color 0.15s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent-dim);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .sort-controls {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.25rem;
+        }
+
+        .sort-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .sort-btn:hover {
+            color: var(--text);
+            background: var(--bg-card-hover);
+        }
+
+        .sort-btn.active {
+            color: var(--accent);
+            background: var(--bg);
+        }
+
         .tools-grid {
             display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                min-width: 100%;
+            }
+
+            .sort-controls {
+                justify-content: center;
+            }
         }
 
         .tool-card {
@@ -69,19 +169,44 @@
             padding: 1.25rem 1.5rem;
             text-decoration: none;
             color: inherit;
-            transition: background 0.15s, border-color 0.15s;
+            transition: all 0.2s;
         }
 
         .tool-card:hover {
             background: var(--bg-card-hover);
             border-color: var(--accent-dim);
+            transform: translateY(-2px);
+        }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tool-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            border-radius: 8px;
+            color: var(--accent);
+        }
+
+        .tool-card:hover .tool-icon {
+            background: var(--accent-dim);
+            color: var(--bg);
         }
 
         .tool-card h2 {
             font-size: 1.1rem;
             font-weight: 500;
-            margin-bottom: 0.35rem;
             color: var(--text);
+            flex: 1;
         }
 
         .tool-card:hover h2 {
@@ -91,7 +216,28 @@
         .tool-card p {
             font-size: 0.9rem;
             color: var(--text-muted);
-            margin: 0;
+            margin: 0 0 0.75rem 0;
+            line-height: 1.5;
+        }
+
+        .tool-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .tool-date-relative {
+            opacity: 0.8;
+        }
+
+        .tool-date-absolute {
+            opacity: 0.5;
+        }
+
+        .tool-date-separator {
+            opacity: 0.3;
         }
 
         .empty-state {
@@ -112,9 +258,22 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1><span>/</span>tools</h1>
-            <p class="subtitle">Self-contained HTML utilities</p>
+        <header id="header">
+            <div class="header-content">
+                <h1><span>/</span>tools</h1>
+                <p class="subtitle">Self-contained HTML utilities</p>
+            </div>
+            <div class="controls">
+                <div class="search-box">
+                    <input type="text" id="search" placeholder="Search tools..." autocomplete="off">
+                </div>
+                <div class="sort-controls">
+                    <button class="sort-btn active" data-sort="alpha-asc">A-Z</button>
+                    <button class="sort-btn" data-sort="alpha-desc">Z-A</button>
+                    <button class="sort-btn" data-sort="date-desc">Newest</button>
+                    <button class="sort-btn" data-sort="date-asc">Oldest</button>
+                </div>
+            </div>
         </header>
 
         <main id="tools-container">
@@ -125,15 +284,29 @@
     <script>
         (async function() {
             const container = document.getElementById('tools-container');
-            
+            const searchInput = document.getElementById('search');
+            const sortButtons = document.querySelectorAll('.sort-btn');
+            const header = document.getElementById('header');
+
+            let allTools = [];
+            let fuse = null;
+            let currentSort = 'alpha-asc';
+
+            // Sticky header effect
+            const observer = new IntersectionObserver(
+                ([e]) => header.classList.toggle('stuck', e.intersectionRatio < 1),
+                { threshold: [1], rootMargin: '-1px 0px 0px 0px' }
+            );
+            observer.observe(header);
+
             try {
                 const res = await fetch('tools.json');
                 if (!res.ok) throw new Error('Failed to load tools.json');
-                
-                const data = await res.json();
-                const tools = data.tools || [];
 
-                if (tools.length === 0) {
+                const data = await res.json();
+                allTools = data.tools || [];
+
+                if (allTools.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
                             No tools yet. Add entries to <code>tools.json</code> to get started.
@@ -142,22 +315,44 @@
                     return;
                 }
 
-                const grid = document.createElement('div');
-                grid.className = 'tools-grid';
+                // Initialize Fuse.js for fuzzy search
+                fuse = new Fuse(allTools, {
+                    keys: ['title', 'description'],
+                    threshold: 0.3,
+                    ignoreLocation: true
+                });
 
-                for (const tool of tools) {
-                    const card = document.createElement('a');
-                    card.href = `${tool.id}.html`;
-                    card.className = 'tool-card';
-                    card.innerHTML = `
-                        <h2>${escapeHtml(tool.title)}</h2>
-                        <p>${escapeHtml(tool.description)}</p>
-                    `;
-                    grid.appendChild(card);
-                }
+                // Render tools initially
+                renderTools(allTools);
 
-                container.innerHTML = '';
-                container.appendChild(grid);
+                // Search functionality
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.trim();
+
+                    if (query === '') {
+                        renderTools(allTools);
+                    } else {
+                        const results = fuse.search(query);
+                        const filteredTools = results.map(r => r.item);
+                        renderTools(filteredTools);
+                    }
+                });
+
+                // Sort functionality
+                sortButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        sortButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentSort = btn.dataset.sort;
+
+                        const query = searchInput.value.trim();
+                        const toolsToRender = query === ''
+                            ? allTools
+                            : fuse.search(query).map(r => r.item);
+
+                        renderTools(toolsToRender);
+                    });
+                });
 
             } catch (err) {
                 container.innerHTML = `
@@ -166,13 +361,107 @@
                     </div>
                 `;
             }
-        })();
 
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
+            function renderTools(tools) {
+                if (tools.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            No tools found matching your search.
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Sort tools
+                const sorted = [...tools].sort((a, b) => {
+                    switch (currentSort) {
+                        case 'alpha-asc':
+                            return a.title.localeCompare(b.title);
+                        case 'alpha-desc':
+                            return b.title.localeCompare(a.title);
+                        case 'date-desc':
+                            return (b.dateAdded || '').localeCompare(a.dateAdded || '');
+                        case 'date-asc':
+                            return (a.dateAdded || '').localeCompare(b.dateAdded || '');
+                        default:
+                            return 0;
+                    }
+                });
+
+                const grid = document.createElement('div');
+                grid.className = 'tools-grid';
+
+                for (const tool of sorted) {
+                    const card = document.createElement('a');
+                    card.href = `${tool.id}.html`;
+                    card.className = 'tool-card';
+
+                    const iconHtml = tool.icon
+                        ? `<div class="tool-icon"><i data-lucide="${escapeHtml(tool.icon)}"></i></div>`
+                        : '';
+
+                    const dateHtml = tool.dateAdded
+                        ? `<div class="tool-meta">
+                             <span class="tool-date-relative">${getRelativeDate(tool.dateAdded)}</span>
+                             <span class="tool-date-separator">·</span>
+                             <span class="tool-date-absolute">${formatDate(tool.dateAdded)}</span>
+                           </div>`
+                        : '';
+
+                    card.innerHTML = `
+                        <div class="tool-header">
+                            ${iconHtml}
+                            <h2>${escapeHtml(tool.title)}</h2>
+                        </div>
+                        <p>${escapeHtml(tool.description)}</p>
+                        ${dateHtml}
+                    `;
+                    grid.appendChild(card);
+                }
+
+                container.innerHTML = '';
+                container.appendChild(grid);
+
+                // Initialize Lucide icons
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }
+
+            function getRelativeDate(dateStr) {
+                const date = new Date(dateStr);
+                const now = new Date();
+                const diffTime = now - date;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 0) return 'Today';
+                if (diffDays === 1) return 'Yesterday';
+                if (diffDays < 7) return `${diffDays} days ago`;
+                if (diffDays < 30) {
+                    const weeks = Math.floor(diffDays / 7);
+                    return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+                }
+                if (diffDays < 365) {
+                    const months = Math.floor(diffDays / 30);
+                    return months === 1 ? '1 month ago' : `${months} months ago`;
+                }
+                const years = Math.floor(diffDays / 365);
+                return years === 1 ? '1 year ago' : `${years} years ago`;
+            }
+
+            function formatDate(dateStr) {
+                const date = new Date(dateStr);
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+        })();
     </script>
 </body>
 </html>
