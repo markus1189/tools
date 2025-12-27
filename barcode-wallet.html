@@ -1792,17 +1792,25 @@
         }
 
         async function basicScan(file, tempDiv, decodeAllFormats) {
-            // Load image to get dimensions for diagnostics
+            // Load image and normalize to PNG blob for consistent processing
             const dataUrl = await readFileAsDataUrl(file);
             const img = await loadImage(dataUrl);
             const dimensions = `${img.width}x${img.height}px`;
             console.log(`  Image dimensions: ${dimensions}`);
             updateDiagnosticDimensions(dimensions);
 
+            // Convert to PNG blob to ensure Html5Qrcode can handle the format
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const normalizedBlob = await canvasToBlob(canvas);
+
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
             console.log(`  Scanning with decodeAllFormats=${decodeAllFormats}`);
-            const result = await scanner.scanFile(file, decodeAllFormats);
+            const result = await scanner.scanFile(normalizedBlob, decodeAllFormats);
             await scanner.clear().catch(() => {});
             console.log(`  Decoded result:`, result);
             return { decodedText: result, format: null };
