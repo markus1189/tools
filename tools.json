@@ -57,7 +57,7 @@
       "dateAdded": "2025-12-27"
     },
     {
-      "id": "stack-runner",
+      "id": "interval-timer",
       "title": "Interval Timer",
       "description": "Interval timer for work/rest workouts with customizable blocks and ramp generator",
       "icon": "layers",
