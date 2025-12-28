@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#121212">
+    <title>Interval Timer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #1e1e1e;
+            --primary: #bb86fc;
+            --work: #00c853;
+            --rest: #d50000;
+            --text: #ffffff;
+            --text-sec: #b0b0b0;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        /* UTILS */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .center { align-items: center; justify-content: center; }
+        .btn { border: none; background: var(--surface); color: var(--text); padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; active: scale(0.98); }
+        .btn-primary { background: var(--primary); color: #000; }
+        .icon-btn { background: transparent; padding: 8px; font-size: 1.2rem; }
+
+        /* EDITOR VIEW */
+        #editor { height: 100%; display: flex; flex-direction: column; }
+
+        header { padding: 15px; background: var(--surface); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .stats { font-size: 0.9rem; color: var(--text-sec); }
+
+        #stack-list { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 80px; }
+
+        .stack-item { background: var(--surface); margin-bottom: 8px; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; }
+        .stack-item.work { border-left-color: var(--work); }
+        .stack-item.rest { border-left-color: var(--rest); }
+        .stack-item h3 { margin: 0; font-size: 1rem; }
+        .stack-item p { margin: 0; font-size: 0.8rem; color: var(--text-sec); }
+        .item-time { font-family: monospace; font-size: 1.2rem; }
+        .delete-btn { color: #ff5555; margin-left: 10px; background: transparent; border: none; font-size: 1.2rem; }
+
+        /* FOOTER ACTIONS */
+        #toolbar { position: absolute; bottom: 0; width: 100%; background: #1a1a1a; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #333; z-index: 10; }
+        #toolbar button { flex: 1; }
+        #start-btn { flex: 2; background: var(--work); color: white; }
+
+        /* MODALS */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; display: flex; align-items: flex-end; }
+        .modal-content { background: var(--surface); width: 100%; border-radius: 20px 20px 0 0; padding: 25px; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; color: var(--text-sec); font-size: 0.9rem; }
+        .input-group input, .input-group select { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 6px; font-size: 1.1rem; }
+        .row { display: flex; gap: 10px; }
+
+        /* ACTIVE RUNNER VIEW */
+        #runner { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; display: flex; flex-direction: column; transition: background 0.3s; }
+        #runner.work-bg { background: var(--work); }
+        #runner.rest-bg { background: var(--rest); }
+        #runner.paused-bg { background: #333 !important; }
+
+        .runner-top { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; }
+        .runner-label { font-size: 12vw; font-weight: 900; text-transform: uppercase; opacity: 0.8; margin-bottom: 10px; text-align: center; line-height: 1; }
+        .runner-timer { font-size: 35vw; font-weight: 700; font-family: monospace; line-height: 0.9; }
+
+        .runner-tape { height: 25vh; background: rgba(0,0,0,0.3); padding: 20px; overflow: hidden; display: flex; flex-direction: column; }
+        .tape-label { color: rgba(255,255,255,0.6); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 10px; }
+        .tape-next { font-size: 1.5rem; display: flex; align-items: center; margin-bottom: 10px; opacity: 0.5; }
+        .tape-next.next-up { opacity: 1; font-weight: bold; font-size: 1.8rem; }
+
+        #pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); }
+        .pause-text { font-size: 3rem; font-weight: 900; letter-spacing: 5px; margin-bottom: 30px; }
+        .pause-controls { display: flex; gap: 20px; }
+        .control-btn { width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; background: transparent; color: white; font-size: 1.5rem; }
+
+    </style>
+</head>
+<body>
+
+    <div id="editor">
+        <header>
+            <div class="stats" id="total-stats">Total: 00:00</div>
+            <button class="icon-btn" onclick="shareWorkout()">🔗</button>
+        </header>
+
+        <div id="stack-list">
+            </div>
+
+        <div id="toolbar">
+            <button class="btn" onclick="openAddModal()">+ Add</button>
+            <button class="btn" onclick="openRampModal()">🪄 Ramp</button>
+            <button id="start-btn" class="btn" onclick="startWorkout()">▶ START</button>
+        </div>
+    </div>
+
+    <div id="add-modal" class="modal hidden" onclick="if(event.target===this) closeModals()">
+        <div class="modal-content">
+            <h3>Add Block</h3>
+            <div class="input-group">
+                <label>Type</label>
+                <select id="new-type"><option value="work">Work</option><option value="rest">Rest</option></select>
+            </div>
+            <div class="input-group">
+                <label>Duration (sec)</label>
+                <input type="number" id="new-duration" value="30" pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="row">
+                <button class="btn" style="flex:1" onclick="closeModals()">Cancel</button>
+                <button class="btn btn-primary" style="flex:1" onclick="addSingleBlock()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ramp-modal" class="modal hidden" onclick="if(event.target===this) closeModals()">
+        <div class="modal-content">
+            <h3>Magic Ramp Generator</h3>
+            <div class="row">
+                <div class="input-group" style="flex:1">
+                    <label>Start (s)</label>
+                    <input type="number" id="ramp-start" value="10">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label>End (s)</label>
+                    <input type="number" id="ramp-end" value="60">
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-group" style="flex:1">
+                    <label>Step (s)</label>
+                    <input type="number" id="ramp-step" value="10">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label>Rest (s)</label>
+                    <input type="number" id="ramp-rest" value="15">
+                </div>
+            </div>
+            <div class="row">
+                <button class="btn" style="flex:1" onclick="closeModals()">Cancel</button>
+                <button class="btn btn-primary" style="flex:1" onclick="generateRamp()">Generate</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="runner" class="hidden" onclick="togglePause()">
+        <div class="runner-top">
+            <div class="runner-label" id="run-label">WORK</div>
+            <div class="runner-timer" id="run-time">30</div>
+
+            <div id="pause-overlay" class="hidden">
+                <div class="pause-text">PAUSED</div>
+                <div class="pause-controls">
+                    <button class="control-btn" onclick="event.stopPropagation(); restartInterval()">↺</button>
+                    <button class="control-btn" onclick="event.stopPropagation(); stopWorkout()">✕</button>
+                    <button class="control-btn" onclick="event.stopPropagation(); skipInterval()">»</button>
+                </div>
+            </div>
+        </div>
+        <div class="runner-tape" id="tape-container">
+            <div class="tape-label">Up Next</div>
+            <div id="tape-list"></div>
+        </div>
+    </div>
+
+<script>
+    // --- STATE MANAGEMENT ---
+    let stack = [];
+    let wakeLock = null;
+    let timerInterval = null;
+    let currentIdx = 0;
+    let timeLeft = 0;
+    let isPaused = false;
+    let isWork = true;
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+        // Check URL for hash data
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+            try {
+                const decompressed = LZString.decompressFromEncodedURIComponent(hash);
+                if (decompressed) stack = JSON.parse(decompressed);
+            } catch (e) { console.error("Invalid URL data"); }
+        }
+
+        // Default workout if empty
+        if (stack.length === 0) {
+            stack = [
+                { type: 'work', duration: 10, name: 'Warmup' },
+                { type: 'rest', duration: 5, name: 'Rest' }
+            ];
+        }
+        renderStack();
+    };
+
+    // --- RENDER LOGIC ---
+    function renderStack() {
+        const list = document.getElementById('stack-list');
+        list.innerHTML = '';
+        let totalSecs = 0;
+
+        stack.forEach((item, idx) => {
+            totalSecs += parseInt(item.duration);
+            const el = document.createElement('div');
+            el.className = `stack-item ${item.type}`;
+            el.innerHTML = `
+                <div>
+                    <h3>${item.type === 'work' ? 'Work' : 'Rest'}</h3>
+                    <p>${formatTime(item.duration)}</p>
+                </div>
+                <div class="flex center">
+                    <span class="item-time">${item.duration}s</span>
+                    <button class="delete-btn" onclick="removeBlock(${idx})">×</button>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+
+        document.getElementById('total-stats').innerText = `Total: ${formatTime(totalSecs)}`;
+        updateURL();
+    }
+
+    function renderTape() {
+        const tape = document.getElementById('tape-list');
+        tape.innerHTML = '';
+        // Show next 3 items
+        for (let i = currentIdx + 1; i < Math.min(currentIdx + 4, stack.length); i++) {
+            const item = stack[i];
+            const div = document.createElement('div');
+            div.className = `tape-next ${i === currentIdx + 1 ? 'next-up' : ''}`;
+            div.innerText = `${i === currentIdx + 1 ? '>> ' : ''}${item.type.toUpperCase()} (${item.duration}s)`;
+            tape.appendChild(div);
+        }
+        if (currentIdx >= stack.length - 1) {
+             tape.innerHTML = '<div class="tape-next">FINISH</div>';
+        }
+    }
+
+    // --- EDITOR ACTIONS ---
+    function addSingleBlock() {
+        const type = document.getElementById('new-type').value;
+        const dur = parseInt(document.getElementById('new-duration').value);
+        stack.push({ type, duration: dur, name: type });
+        renderStack();
+        closeModals();
+    }
+
+    function generateRamp() {
+        const start = parseInt(document.getElementById('ramp-start').value);
+        const end = parseInt(document.getElementById('ramp-end').value);
+        const step = parseInt(document.getElementById('ramp-step').value);
+        const rest = parseInt(document.getElementById('ramp-rest').value);
+
+        if (step === 0) return;
+
+        // Determine direction
+        const isUp = end > start;
+
+        for (let t = start; isUp ? t <= end : t >= end; t += (isUp ? step : -step)) {
+            stack.push({ type: 'work', duration: t, name: 'Ramp' });
+            if (rest > 0 && t !== end) {
+                stack.push({ type: 'rest', duration: rest, name: 'Rest' });
+            }
+        }
+        renderStack();
+        closeModals();
+    }
+
+    function removeBlock(idx) {
+        stack.splice(idx, 1);
+        renderStack();
+    }
+
+    // --- RUNNER LOGIC ---
+    async function startWorkout() {
+        if (stack.length === 0) return;
+
+        // Wakelock
+        try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+
+        // Fullscreen
+        const el = document.documentElement;
+        if(el.requestFullscreen) el.requestFullscreen();
+        else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+
+        // UI Setup
+        document.getElementById('editor').classList.add('hidden');
+        document.getElementById('runner').classList.remove('hidden');
+
+        currentIdx = 0;
+        startInterval(currentIdx);
+    }
+
+    function startInterval(idx) {
+        if (idx >= stack.length) {
+            stopWorkout();
+            speak("Workout Complete");
+            return;
+        }
+
+        const item = stack[idx];
+        timeLeft = item.duration;
+        isWork = item.type === 'work';
+
+        // Visuals
+        const runner = document.getElementById('runner');
+        runner.className = isWork ? 'work-bg' : 'rest-bg';
+        document.getElementById('run-label').innerText = isWork ? "GO" : "REST";
+        updateTimerDisplay();
+        renderTape();
+
+        // Audio
+        speak(`${item.type}, ${item.duration} seconds`);
+
+        // Loop
+        isPaused = false;
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (!isPaused) {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    currentIdx++;
+                    startInterval(currentIdx);
+                }
+                // Countdown beeps last 3 seconds
+                if (timeLeft > 0 && timeLeft <= 3) beep();
+            }
+        }, 1000);
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        const runner = document.getElementById('runner');
+        const overlay = document.getElementById('pause-overlay');
+
+        if (isPaused) {
+            runner.classList.add('paused-bg');
+            overlay.classList.remove('hidden');
+        } else {
+            runner.classList.remove('paused-bg');
+            overlay.classList.add('hidden');
+            // Resume visuals
+            runner.className = isWork ? 'work-bg' : 'rest-bg';
+        }
+    }
+
+    function skipInterval() {
+        clearInterval(timerInterval);
+        currentIdx++;
+        startInterval(currentIdx);
+        // Force unpause UI
+        isPaused = false;
+        document.getElementById('pause-overlay').classList.add('hidden');
+    }
+
+    function restartInterval() {
+        clearInterval(timerInterval);
+        startInterval(currentIdx);
+        isPaused = false;
+        document.getElementById('pause-overlay').classList.add('hidden');
+    }
+
+    async function stopWorkout() {
+        clearInterval(timerInterval);
+        if (document.exitFullscreen) document.exitFullscreen();
+        if (wakeLock) {
+            try {
+                await wakeLock.release();
+            } catch (err) {
+                console.error('Failed to release wake lock:', err);
+            } finally {
+                wakeLock = null;
+            }
+        }
+
+        document.getElementById('runner').classList.add('hidden');
+        document.getElementById('editor').classList.remove('hidden');
+    }
+
+    // --- UTILS ---
+    function updateTimerDisplay() {
+        document.getElementById('run-time').innerText = timeLeft;
+    }
+
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function updateURL() {
+        const json = JSON.stringify(stack);
+        const compressed = LZString.compressToEncodedURIComponent(json);
+        history.replaceState(null, null, '#' + compressed);
+    }
+
+    function shareWorkout() {
+        updateURL();
+        if (navigator.share) {
+            navigator.share({
+                title: 'My Stack Workout',
+                url: window.location.href
+            });
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+            alert("Link copied to clipboard!");
+        }
+    }
+
+    // --- AUDIO & TTS ---
+    const synth = window.speechSynthesis;
+    function speak(text) {
+        if (synth.speaking) synth.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.rate = 1.2;
+        synth.speak(utter);
+    }
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 800;
+        osc.type = 'sine';
+        gain.gain.value = 0.1;
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    // UI Helpers
+    function openAddModal() { document.getElementById('add-modal').classList.remove('hidden'); }
+    function openRampModal() { document.getElementById('ramp-modal').classList.remove('hidden'); }
+    function closeModals() {
+        document.querySelectorAll('.modal').forEach(el => el.classList.add('hidden'));
+    }
+</script>
+</body>
+</html>
