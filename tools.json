@@ -55,6 +55,13 @@
       "description": "Store and display loyalty cards, tickets, and membership barcodes offline as a PWA",
       "icon": "scan",
       "dateAdded": "2025-12-27"
+    },
+    {
+      "id": "stack-runner",
+      "title": "Stack Runner",
+      "description": "Interval timer for work/rest workouts with customizable blocks and ramp generator",
+      "icon": "layers",
+      "dateAdded": "2025-12-28"
     }
   ]
 }
