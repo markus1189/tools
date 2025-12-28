@@ -238,7 +238,7 @@
             div.innerText = `${i === currentIdx + 1 ? '>> ' : ''}${item.type.toUpperCase()} (${item.duration}s)`;
             tape.appendChild(div);
         }
-        if (currentIdx >= stack.length -1) {
+        if (currentIdx >= stack.length - 1) {
              tape.innerHTML = '<div class="tape-next">FINISH</div>';
         }
     }
