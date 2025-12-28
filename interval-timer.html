@@ -369,10 +369,18 @@
         document.getElementById('pause-overlay').classList.add('hidden');
     }
 
-    function stopWorkout() {
+    async function stopWorkout() {
         clearInterval(timerInterval);
         if (document.exitFullscreen) document.exitFullscreen();
-        if (wakeLock) wakeLock.release();
+        if (wakeLock) {
+            try {
+                await wakeLock.release();
+            } catch (err) {
+                console.error('Failed to release wake lock:', err);
+            } finally {
+                wakeLock = null;
+            }
+        }
 
         document.getElementById('runner').classList.add('hidden');
         document.getElementById('editor').classList.remove('hidden');
