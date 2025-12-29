@@ -1266,16 +1266,18 @@
                 logDebug('✓ Notifications enabled', 'success');
 
                 // Get biodata characteristic (for biorhythm data)
-                logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
-                biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                logDebug('✓ Got biodata characteristic', 'success');
-                logDebug(`  Properties: ${Array.from(biodataCharacteristic.properties).join(', ')}`, 'info');
-
-                // Subscribe to biodata notifications
-                logDebug('Starting biodata notifications...', 'info');
-                await biodataCharacteristic.startNotifications();
-                biodataCharacteristic.addEventListener('characteristicvaluechanged', handleBiodataUpdate);
-                logDebug('✓ Biodata notifications enabled', 'success');
+                // Note: biodata is optional and only needed for loading biorhythms
+                try {
+                    logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
+                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
+                    logDebug('✓ Got biodata characteristic', 'success');
+                    logDebug(`  Properties: ${Array.from(biodataCharacteristic.properties).join(', ')}`, 'info');
+                    logDebug('Note: Biodata notifications will be enabled when loading biorhythms', 'info');
+                } catch (error) {
+                    logDebug(`⚠ Could not get biodata characteristic: ${error.message}`, 'warn');
+                    logDebug('  Biorhythm loading will not be available', 'warn');
+                    biodataCharacteristic = null;
+                }
 
                 // Read device name
                 try {
@@ -1393,16 +1395,17 @@
                 statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
                 logDebug('✓ Notifications enabled', 'success');
 
-                // Get biodata characteristic
-                logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
-                biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                logDebug('✓ Got biodata characteristic', 'success');
-
-                // Subscribe to biodata notifications
-                logDebug('Starting biodata notifications...', 'info');
-                await biodataCharacteristic.startNotifications();
-                biodataCharacteristic.addEventListener('characteristicvaluechanged', handleBiodataUpdate);
-                logDebug('✓ Biodata notifications enabled', 'success');
+                // Get biodata characteristic (optional)
+                try {
+                    logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
+                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
+                    logDebug('✓ Got biodata characteristic', 'success');
+                    logDebug('Note: Biodata notifications will be enabled when loading biorhythms', 'info');
+                } catch (error) {
+                    logDebug(`⚠ Could not get biodata characteristic: ${error.message}`, 'warn');
+                    logDebug('  Biorhythm loading will not be available', 'warn');
+                    biodataCharacteristic = null;
+                }
 
                 // Read device name
                 try {
@@ -1495,9 +1498,12 @@
                     await statusCharacteristic.startNotifications();
                     statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
 
-                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                    await biodataCharacteristic.startNotifications();
-                    biodataCharacteristic.addEventListener('characteristicvaluechanged', handleBiodataUpdate);
+                    // Get biodata characteristic (optional)
+                    try {
+                        biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
+                    } catch (error) {
+                        biodataCharacteristic = null;
+                    }
 
                     // Update UI
                     updateConnectionStatus(true);
@@ -1937,6 +1943,25 @@
             logDebug('=== Loading All Biorhythms ===', 'info');
 
             try {
+                // Check if biodata characteristic is available
+                if (!biodataCharacteristic) {
+                    showError('Biodata characteristic not available. Your BedJet may not support biorhythm data.');
+                    logDebug('❌ Biodata characteristic not available', 'error');
+                    return;
+                }
+
+                // Enable biodata notifications if not already enabled
+                try {
+                    logDebug('Starting biodata notifications...', 'info');
+                    await biodataCharacteristic.startNotifications();
+                    biodataCharacteristic.addEventListener('characteristicvaluechanged', handleBiodataUpdate);
+                    logDebug('✓ Biodata notifications enabled', 'success');
+                } catch (error) {
+                    showError(`Failed to enable biodata notifications: ${error.message}`);
+                    logDebug(`❌ Failed to enable biodata notifications: ${error.message}`, 'error');
+                    return;
+                }
+
                 // First load names
                 logDebug('Requesting biorhythm names...', 'info');
                 const namesData = await requestBioPacket(4);
