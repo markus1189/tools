@@ -512,10 +512,6 @@
         <h1>🛏️ BedJet Control</h1>
         <p class="subtitle">Bluetooth LE Control Panel</p>
 
-        <div class="info">
-            <strong>⚠️ Browser Requirement:</strong> This tool requires a browser with Web Bluetooth API support (Chrome, Edge, or Opera on desktop/Android).
-        </div>
-
         <div id="error" class="error"></div>
 
         <div class="status-bar">
@@ -1219,21 +1215,33 @@
                 logDebug('=== Reconnecting to Saved Device ===', 'info');
                 logDebug(`Saved device: ${savedDevice.name} (${savedDevice.id})`, 'info');
 
-                // Get all Bluetooth devices and find the one with matching ID
-                logDebug('Requesting Bluetooth device with saved ID...', 'info');
-                const devices = await navigator.bluetooth.getDevices();
-                device = devices.find(d => d.id === savedDevice.id);
+                // Check if we still have the device object in memory
+                if (device && device.id === savedDevice.id && device.gatt) {
+                    logDebug('Using existing device object from memory', 'info');
+                } else {
+                    // Device object lost (page reload) - need to request again with user gesture
+                    // This will show the device picker, which should remember the previously paired device
+                    logDebug('Device object not in memory, requesting device selection...', 'info');
 
-                if (!device) {
-                    showError('Saved device not found. Please scan again.');
-                    logDebug('❌ Saved device not found in available devices', 'error');
-                    logDebug('Clearing saved device from storage', 'info');
-                    clearSavedDevice();
-                    updateButtonVisibility();
-                    return;
+                    const showAll = document.getElementById('showAllDevices').checked;
+                    const requestOptions = {
+                        optionalServices: [BEDJET_SERVICE_UUID]
+                    };
+
+                    if (showAll) {
+                        requestOptions.acceptAllDevices = true;
+                    } else {
+                        requestOptions.filters = [
+                            { services: [BEDJET_SERVICE_UUID] },
+                            { namePrefix: 'BedJet' },
+                            { namePrefix: 'BEDJET' }
+                        ];
+                    }
+
+                    device = await navigator.bluetooth.requestDevice(requestOptions);
+                    logDebug(`✓ Device selected: ${device.name || 'Unknown'}`, 'success');
                 }
 
-                logDebug(`✓ Found saved device: ${device.name || 'Unknown'}`, 'success');
                 logDebug(`  Device ID: ${device.id}`, 'info');
 
                 device.addEventListener('gattserverdisconnected', onDisconnected);
@@ -1275,6 +1283,10 @@
                     deviceName.textContent = device.name;
                     logDebug(`⚠ Could not read device name: ${err.message}`, 'warn');
                 }
+
+                // Update saved device info (in case it changed)
+                const finalDeviceName = deviceName.textContent || device.name;
+                saveDeviceToStorage(device.id, finalDeviceName);
 
                 // Update UI
                 updateConnectionStatus(true);
@@ -1320,6 +1332,15 @@
                 return;
             }
 
+            // Auto-reconnect only works if we still have the device object in memory
+            // (Web Bluetooth doesn't allow reconnecting without user gesture after page reload)
+            if (!device || !device.gatt) {
+                logDebug('❌ Cannot auto-reconnect: device object not in memory (page was reloaded)', 'error');
+                showError('Connection lost. Please click Reconnect button.');
+                updateButtonVisibility();
+                return;
+            }
+
             isReconnecting = true;
             reconnectAttempts++;
 
@@ -1328,56 +1349,31 @@
 
             reconnectTimer = setTimeout(async () => {
                 try {
-                    const savedDevice = getSavedDevice();
-                    if (!savedDevice) {
-                        logDebug('❌ No saved device for auto-reconnect', 'error');
-                        isReconnecting = false;
-                        return;
-                    }
+                    logDebug(`Attempting to reconnect to ${device.name}...`, 'info');
 
-                    logDebug(`Attempting to reconnect to ${savedDevice.name}...`, 'info');
+                    server = await device.gatt.connect();
+                    logDebug('✓ Reconnected to GATT server', 'success');
 
-                    // Get the device from saved ID
-                    const devices = await navigator.bluetooth.getDevices();
-                    device = devices.find(d => d.id === savedDevice.id);
+                    // Re-establish characteristics
+                    const bedjetService = await server.getPrimaryService(BEDJET_SERVICE_UUID);
+                    commandCharacteristic = await bedjetService.getCharacteristic(BEDJET_COMMAND_UUID);
 
-                    if (!device) {
-                        logDebug('❌ Saved device not found in available devices', 'error');
-                        isReconnecting = false;
-                        if (reconnectAttempts < maxReconnectAttempts) {
-                            attemptReconnect();
-                        } else {
-                            logDebug(`Max reconnect attempts (${maxReconnectAttempts}) reached. Giving up.`, 'error');
-                            showError('Connection lost. Please reconnect manually.');
-                        }
-                        return;
-                    }
+                    const statusCharacteristic = await bedjetService.getCharacteristic(BEDJET_STATUS_UUID);
+                    await statusCharacteristic.startNotifications();
+                    statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
 
-                    if (device && device.gatt) {
-                        server = await device.gatt.connect();
-                        logDebug('✓ Reconnected to GATT server', 'success');
+                    // Update UI
+                    updateConnectionStatus(true);
+                    controls.style.display = 'block';
+                    connectBtn.style.display = 'none';
+                    reconnectBtn.style.display = 'none';
+                    disconnectBtn.style.display = '';
 
-                        // Re-establish characteristics
-                        const bedjetService = await server.getPrimaryService(BEDJET_SERVICE_UUID);
-                        commandCharacteristic = await bedjetService.getCharacteristic(BEDJET_COMMAND_UUID);
+                    // Reset reconnect state
+                    reconnectAttempts = 0;
+                    isReconnecting = false;
 
-                        const statusCharacteristic = await bedjetService.getCharacteristic(BEDJET_STATUS_UUID);
-                        await statusCharacteristic.startNotifications();
-                        statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
-
-                        // Update UI
-                        updateConnectionStatus(true);
-                        controls.style.display = 'block';
-                        connectBtn.style.display = 'none';
-                        reconnectBtn.style.display = 'none';
-                        disconnectBtn.style.display = '';
-
-                        // Reset reconnect state
-                        reconnectAttempts = 0;
-                        isReconnecting = false;
-
-                        logDebug('=== Reconnection Complete ===', 'success');
-                    }
+                    logDebug('=== Auto-reconnection Complete ===', 'success');
                 } catch (error) {
                     logDebug(`Reconnect attempt ${reconnectAttempts} failed: ${error.message}`, 'error');
                     isReconnecting = false;
@@ -1387,6 +1383,7 @@
                     } else {
                         logDebug(`Max reconnect attempts (${maxReconnectAttempts}) reached. Giving up.`, 'error');
                         showError('Connection lost. Please reconnect manually.');
+                        updateButtonVisibility();
                     }
                 }
             }, delayMs);
