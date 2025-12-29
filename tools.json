@@ -62,6 +62,13 @@
       "description": "Interval timer for work/rest workouts with customizable blocks and ramp generator",
       "icon": "layers",
       "dateAdded": "2025-12-28"
+    },
+    {
+      "id": "bedjet-bluetooth-control",
+      "title": "BedJet Bluetooth Control",
+      "description": "Control BedJet climate comfort system via Bluetooth LE with real-time status monitoring",
+      "icon": "bluetooth",
+      "dateAdded": "2025-12-29"
     }
   ]
 }

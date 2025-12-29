@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BedJet Bluetooth Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 30px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        .status-bar {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #ccc;
+        }
+
+        .status-indicator.connected {
+            background: #4caf50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        .status-text {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .device-name {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #d32f2f;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .state-section {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .state-section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .state-section h2::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .state-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .state-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .state-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .state-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .state-unit {
+            font-size: 16px;
+            color: #999;
+            margin-left: 3px;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .control-section h2::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #666;
+        }
+
+        .mode-btn:hover:not(:disabled) {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+        }
+
+        .mode-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slider-control {
+            margin-bottom: 20px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .slider-value {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border: none;
+        }
+
+        input[type="range"]:disabled {
+            opacity: 0.5;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .preset-btn {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #666;
+        }
+
+        .preset-btn:hover:not(:disabled) {
+            border-color: #764ba2;
+            color: #764ba2;
+            background: #f5f0ff;
+        }
+
+        .preset-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 480px) {
+            .state-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mode-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛏️ BedJet Control</h1>
+        <p class="subtitle">Bluetooth LE Control Panel</p>
+
+        <div class="info">
+            <strong>⚠️ Browser Requirement:</strong> This tool requires a browser with Web Bluetooth API support (Chrome, Edge, or Opera on desktop/Android).
+        </div>
+
+        <div id="error" class="error"></div>
+
+        <div class="status-bar">
+            <div>
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span class="status-text" id="statusText">Not Connected</span>
+            </div>
+            <div class="device-name" id="deviceName"></div>
+        </div>
+
+        <button id="connectBtn" class="btn btn-primary">Connect to BedJet</button>
+        <button id="disconnectBtn" class="btn btn-danger" style="display: none;">Disconnect</button>
+
+        <div id="controls" style="display: none;">
+            <div class="state-section">
+                <h2>Current State</h2>
+                <div class="state-grid">
+                    <div class="state-item">
+                        <div class="state-label">Current Temp</div>
+                        <div class="state-value">
+                            <span id="currentTemp">--</span><span class="state-unit">°F</span>
+                        </div>
+                    </div>
+                    <div class="state-item">
+                        <div class="state-label">Target Temp</div>
+                        <div class="state-value">
+                            <span id="targetTemp">--</span><span class="state-unit">°F</span>
+                        </div>
+                    </div>
+                    <div class="state-item">
+                        <div class="state-label">Fan Speed</div>
+                        <div class="state-value">
+                            <span id="fanSpeed">--</span><span class="state-unit">%</span>
+                        </div>
+                    </div>
+                    <div class="state-item">
+                        <div class="state-label">Time Left</div>
+                        <div class="state-value">
+                            <span id="timeRemaining">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Mode</h2>
+                <div class="mode-buttons">
+                    <button class="mode-btn" data-mode="off">OFF</button>
+                    <button class="mode-btn" data-mode="cool">COOL</button>
+                    <button class="mode-btn" data-mode="heat">HEAT</button>
+                    <button class="mode-btn" data-mode="turbo">TURBO</button>
+                    <button class="mode-btn" data-mode="dry">DRY</button>
+                    <button class="mode-btn" data-mode="ext_ht">EXT HT</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Temperature</h2>
+                <div class="slider-control">
+                    <div class="slider-label">
+                        <span>Set Temperature</span>
+                        <span class="slider-value"><span id="tempSliderValue">72</span>°F</span>
+                    </div>
+                    <input type="range" id="tempSlider" min="66" max="104" value="72" step="1">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Fan Speed</h2>
+                <div class="slider-control">
+                    <div class="slider-label">
+                        <span>Set Fan Speed</span>
+                        <span class="slider-value"><span id="fanSliderValue">50</span>%</span>
+                    </div>
+                    <input type="range" id="fanSlider" min="5" max="100" value="50" step="5">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Memory Presets</h2>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-preset="1">M1</button>
+                    <button class="preset-btn" data-preset="2">M2</button>
+                    <button class="preset-btn" data-preset="3">M3</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BedJet Bluetooth UUIDs and Constants
+        const BEDJET_STATUS_UUID = '00002000-bed0-0080-aa55-4265644a6574';
+        const BEDJET_NAME_UUID = '00002001-bed0-0080-aa55-4265644a6574';
+        const BEDJET_COMMAND_UUID = '00002004-bed0-0080-aa55-4265644a6574';
+
+        const MODE_MAP = {
+            0x01: 'off',
+            0x02: 'cool',
+            0x03: 'heat',
+            0x04: 'turbo',
+            0x05: 'dry',
+            0x06: 'ext_ht'
+        };
+
+        const REVERSE_MODE_MAP = {
+            'off': 0x01,
+            'cool': 0x02,
+            'heat': 0x03,
+            'turbo': 0x04,
+            'dry': 0x05,
+            'ext_ht': 0x06
+        };
+
+        // State
+        let device = null;
+        let server = null;
+        let commandCharacteristic = null;
+        let currentMode = null;
+
+        // UI Elements
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const deviceName = document.getElementById('deviceName');
+        const controls = document.getElementById('controls');
+        const errorDiv = document.getElementById('error');
+
+        // State displays
+        const currentTempEl = document.getElementById('currentTemp');
+        const targetTempEl = document.getElementById('targetTemp');
+        const fanSpeedEl = document.getElementById('fanSpeed');
+        const timeRemainingEl = document.getElementById('timeRemaining');
+
+        // Controls
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const tempSlider = document.getElementById('tempSlider');
+        const tempSliderValue = document.getElementById('tempSliderValue');
+        const fanSlider = document.getElementById('fanSlider');
+        const fanSliderValue = document.getElementById('fanSliderValue');
+        const presetButtons = document.querySelectorAll('.preset-btn');
+
+        // Check Web Bluetooth support
+        if (!navigator.bluetooth) {
+            showError('Web Bluetooth API is not supported in this browser. Please use Chrome, Edge, or Opera.');
+            connectBtn.disabled = true;
+        }
+
+        // Event Listeners
+        connectBtn.addEventListener('click', connectToBedJet);
+        disconnectBtn.addEventListener('click', disconnect);
+
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                setMode(mode);
+            });
+        });
+
+        tempSlider.addEventListener('input', (e) => {
+            tempSliderValue.textContent = e.target.value;
+        });
+
+        tempSlider.addEventListener('change', (e) => {
+            setTemperature(parseInt(e.target.value));
+        });
+
+        fanSlider.addEventListener('input', (e) => {
+            fanSliderValue.textContent = e.target.value;
+        });
+
+        fanSlider.addEventListener('change', (e) => {
+            setFanSpeed(parseInt(e.target.value));
+        });
+
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = parseInt(btn.dataset.preset);
+                activatePreset(preset);
+            });
+        });
+
+        async function connectToBedJet() {
+            try {
+                hideError();
+                statusText.textContent = 'Scanning...';
+
+                // Request BedJet device
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { namePrefix: 'BedJet' }
+                    ],
+                    optionalServices: [
+                        BEDJET_STATUS_UUID,
+                        BEDJET_NAME_UUID,
+                        BEDJET_COMMAND_UUID
+                    ]
+                });
+
+                statusText.textContent = 'Connecting...';
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                server = await device.gatt.connect();
+
+                // Get command characteristic
+                commandCharacteristic = await server.getPrimaryService(BEDJET_COMMAND_UUID)
+                    .then(service => service.getCharacteristic(BEDJET_COMMAND_UUID));
+
+                // Subscribe to status notifications
+                const statusService = await server.getPrimaryService(BEDJET_STATUS_UUID);
+                const statusCharacteristic = await statusService.getCharacteristic(BEDJET_STATUS_UUID);
+                await statusCharacteristic.startNotifications();
+                statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
+
+                // Read device name
+                try {
+                    const nameService = await server.getPrimaryService(BEDJET_NAME_UUID);
+                    const nameCharacteristic = await nameService.getCharacteristic(BEDJET_NAME_UUID);
+                    const nameValue = await nameCharacteristic.readValue();
+                    const name = new TextDecoder().decode(nameValue);
+                    deviceName.textContent = name || device.name;
+                } catch (err) {
+                    deviceName.textContent = device.name;
+                }
+
+                // Update UI
+                updateConnectionStatus(true);
+                controls.style.display = 'block';
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'block';
+
+            } catch (error) {
+                console.error('Connection failed:', error);
+                showError(`Failed to connect: ${error.message}`);
+                updateConnectionStatus(false);
+            }
+        }
+
+        async function disconnect() {
+            if (device && device.gatt.connected) {
+                device.gatt.disconnect();
+            }
+        }
+
+        function onDisconnected() {
+            updateConnectionStatus(false);
+            controls.style.display = 'none';
+            connectBtn.style.display = 'block';
+            disconnectBtn.style.display = 'none';
+            deviceName.textContent = '';
+            currentMode = null;
+            updateModeButtons();
+        }
+
+        function handleStatusUpdate(event) {
+            const data = new Uint8Array(event.target.value.buffer);
+
+            if (data.length >= 15) {
+                console.log('Status data:', Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+                // Parse current temperature (byte 7)
+                if (data[7] !== 0 && data[7] !== 0x26) {
+                    const rawCurrent = data[7] - 0x26;
+                    const currentTemp = Math.round((rawCurrent + 66) - (rawCurrent / 9));
+                    currentTempEl.textContent = currentTemp;
+                }
+
+                // Parse target temperature (byte 8)
+                if (data[8] !== 0 && data[8] !== 0x26) {
+                    const rawTarget = data[8] - 0x26;
+                    const targetTemp = Math.round((rawTarget + 66) - (rawTarget / 9));
+                    targetTempEl.textContent = targetTemp;
+                }
+
+                // Parse fan speed (byte 10)
+                if (data[10] > 0) {
+                    const fanSpeed = data[10] * 5;
+                    fanSpeedEl.textContent = fanSpeed;
+                }
+
+                // Parse time remaining (bytes 4, 5, 6)
+                const hours = data[4];
+                const minutes = data[5];
+                const seconds = data[6];
+                const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+                if (totalSeconds > 0) {
+                    const h = Math.floor(totalSeconds / 3600);
+                    const m = Math.floor((totalSeconds % 3600) / 60);
+                    const s = totalSeconds % 60;
+                    timeRemainingEl.textContent = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                } else {
+                    timeRemainingEl.textContent = '--';
+                }
+
+                // Parse mode (bytes 13, 14)
+                const byte13 = data[13];
+                const byte14 = data[14];
+
+                if (byte14 === 0x50 && byte13 === 0x14) {
+                    currentMode = 'off';
+                } else if (byte14 === 0x34) {
+                    currentMode = 'cool';
+                } else if (byte14 === 0x56) {
+                    currentMode = 'turbo';
+                } else if (byte14 === 0x50 && byte13 === 0x2d) {
+                    currentMode = 'heat';
+                } else if (byte14 === 0x3e) {
+                    currentMode = 'dry';
+                } else if (byte14 === 0x43) {
+                    currentMode = 'ext_ht';
+                }
+
+                updateModeButtons();
+            }
+        }
+
+        function updateModeButtons() {
+            modeButtons.forEach(btn => {
+                if (btn.dataset.mode === currentMode) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        async function sendCommand(command) {
+            if (!commandCharacteristic) {
+                showError('Not connected to BedJet');
+                return;
+            }
+
+            try {
+                const commandArray = new Uint8Array(command);
+                console.log('Sending command:', Array.from(commandArray).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                await commandCharacteristic.writeValue(commandArray);
+                await new Promise(resolve => setTimeout(resolve, 300));
+            } catch (error) {
+                console.error('Command failed:', error);
+                showError(`Command failed: ${error.message}`);
+            }
+        }
+
+        async function setMode(mode) {
+            const modeByte = REVERSE_MODE_MAP[mode];
+            if (modeByte === undefined) {
+                showError(`Invalid mode: ${mode}`);
+                return;
+            }
+            await sendCommand([0x01, modeByte]);
+        }
+
+        async function setTemperature(temp) {
+            if (temp < 66 || temp > 104) {
+                showError(`Temperature ${temp} out of range (66-104°F)`);
+                return;
+            }
+
+            // Convert temperature to BedJet format
+            const tempOffset = temp - 66;
+            const tempByte = Math.round(tempOffset + (tempOffset / 9) + 0x26);
+            const clampedByte = Math.max(0, Math.min(255, tempByte));
+
+            console.log(`Setting temperature ${temp}°F (byte: 0x${clampedByte.toString(16)})`);
+            await sendCommand([0x03, clampedByte]);
+        }
+
+        async function setFanSpeed(speed) {
+            if (speed < 5 || speed > 100) {
+                showError(`Fan speed ${speed} out of range (5-100%)`);
+                return;
+            }
+
+            // Convert percentage to BedJet format
+            const fanByte = Math.round(speed / 5) - 1;
+            await sendCommand([0x07, fanByte]);
+        }
+
+        async function activatePreset(preset) {
+            if (preset < 1 || preset > 3) {
+                showError(`Invalid preset: ${preset}`);
+                return;
+            }
+
+            const presetByte = 0x20 + (preset - 1);
+            await sendCommand([0x01, presetByte]);
+        }
+
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                statusIndicator.classList.add('connected');
+                statusText.textContent = 'Connected';
+            } else {
+                statusIndicator.classList.remove('connected');
+                statusText.textContent = 'Not Connected';
+            }
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => hideError(), 5000);
+        }
+
+        function hideError() {
+            errorDiv.classList.remove('show');
+        }
+    </script>
+</body>
+</html>
