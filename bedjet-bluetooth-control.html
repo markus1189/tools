@@ -589,6 +589,10 @@
 
     <script>
         // BedJet Bluetooth UUIDs and Constants
+        // Service UUID
+        const BEDJET_SERVICE_UUID = '00001000-bed0-0080-aa55-4265644a6574';
+
+        // Characteristic UUIDs (all under the same service)
         const BEDJET_STATUS_UUID = '00002000-bed0-0080-aa55-4265644a6574';
         const BEDJET_NAME_UUID = '00002001-bed0-0080-aa55-4265644a6574';
         const BEDJET_COMMAND_UUID = '00002004-bed0-0080-aa55-4265644a6574';
@@ -840,9 +844,7 @@
                 // Request BedJet device with fallback options
                 const requestOptions = {
                     optionalServices: [
-                        BEDJET_STATUS_UUID,
-                        BEDJET_NAME_UUID,
-                        BEDJET_COMMAND_UUID
+                        BEDJET_SERVICE_UUID
                     ]
                 };
 
@@ -853,12 +855,12 @@
                 } else {
                     // Default: filter by service UUIDs and name prefix
                     requestOptions.filters = [
-                        { services: [BEDJET_STATUS_UUID] },
+                        { services: [BEDJET_SERVICE_UUID] },
                         { namePrefix: 'BedJet' },
                         { namePrefix: 'BEDJET' }
                     ];
                     logDebug('Scanning with filters:', 'info');
-                    logDebug(`  - Service UUID: ${BEDJET_STATUS_UUID}`, 'info');
+                    logDebug(`  - Service UUID: ${BEDJET_SERVICE_UUID}`, 'info');
                     logDebug(`  - Name prefixes: BedJet, BEDJET`, 'info');
                 }
 
@@ -876,26 +878,24 @@
                 server = await device.gatt.connect();
                 logDebug('✓ Connected to GATT server', 'success');
 
-                // Get command characteristic
-                logDebug(`Getting command service (${BEDJET_COMMAND_UUID})...`, 'info');
-                const commandService = await server.getPrimaryService(BEDJET_COMMAND_UUID);
-                logDebug('✓ Got command service', 'success');
+                // Get the BedJet service (all characteristics are under this one service)
+                logDebug(`Getting BedJet service (${BEDJET_SERVICE_UUID})...`, 'info');
+                const bedjetService = await server.getPrimaryService(BEDJET_SERVICE_UUID);
+                logDebug('✓ Got BedJet service', 'success');
 
-                logDebug('Getting command characteristic...', 'info');
-                commandCharacteristic = await commandService.getCharacteristic(BEDJET_COMMAND_UUID);
+                // Get command characteristic (for sending commands)
+                logDebug(`Getting command characteristic (${BEDJET_COMMAND_UUID})...`, 'info');
+                commandCharacteristic = await bedjetService.getCharacteristic(BEDJET_COMMAND_UUID);
                 logDebug('✓ Got command characteristic', 'success');
                 logDebug(`  Properties: ${Array.from(commandCharacteristic.properties).join(', ')}`, 'info');
 
-                // Subscribe to status notifications
-                logDebug(`Getting status service (${BEDJET_STATUS_UUID})...`, 'info');
-                const statusService = await server.getPrimaryService(BEDJET_STATUS_UUID);
-                logDebug('✓ Got status service', 'success');
-
-                logDebug('Getting status characteristic...', 'info');
-                const statusCharacteristic = await statusService.getCharacteristic(BEDJET_STATUS_UUID);
+                // Get status characteristic (for receiving status updates)
+                logDebug(`Getting status characteristic (${BEDJET_STATUS_UUID})...`, 'info');
+                const statusCharacteristic = await bedjetService.getCharacteristic(BEDJET_STATUS_UUID);
                 logDebug('✓ Got status characteristic', 'success');
                 logDebug(`  Properties: ${Array.from(statusCharacteristic.properties).join(', ')}`, 'info');
 
+                // Subscribe to status notifications
                 logDebug('Starting notifications...', 'info');
                 await statusCharacteristic.startNotifications();
                 statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
@@ -903,9 +903,8 @@
 
                 // Read device name
                 try {
-                    logDebug(`Getting name service (${BEDJET_NAME_UUID})...`, 'info');
-                    const nameService = await server.getPrimaryService(BEDJET_NAME_UUID);
-                    const nameCharacteristic = await nameService.getCharacteristic(BEDJET_NAME_UUID);
+                    logDebug(`Getting name characteristic (${BEDJET_NAME_UUID})...`, 'info');
+                    const nameCharacteristic = await bedjetService.getCharacteristic(BEDJET_NAME_UUID);
                     const nameValue = await nameCharacteristic.readValue();
                     const name = new TextDecoder().decode(nameValue);
                     deviceName.textContent = name || device.name;
@@ -972,11 +971,10 @@
                         logDebug('✓ Reconnected to GATT server', 'success');
 
                         // Re-establish characteristics
-                        const commandService = await server.getPrimaryService(BEDJET_COMMAND_UUID);
-                        commandCharacteristic = await commandService.getCharacteristic(BEDJET_COMMAND_UUID);
+                        const bedjetService = await server.getPrimaryService(BEDJET_SERVICE_UUID);
+                        commandCharacteristic = await bedjetService.getCharacteristic(BEDJET_COMMAND_UUID);
 
-                        const statusService = await server.getPrimaryService(BEDJET_STATUS_UUID);
-                        const statusCharacteristic = await statusService.getCharacteristic(BEDJET_STATUS_UUID);
+                        const statusCharacteristic = await bedjetService.getCharacteristic(BEDJET_STATUS_UUID);
                         await statusCharacteristic.startNotifications();
                         statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
 
