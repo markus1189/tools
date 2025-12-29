@@ -25,6 +25,7 @@
             padding: 0;
             margin: 0;
             overflow-x: hidden;
+            transition: background 0.5s ease;
         }
 
         .container {
@@ -940,6 +941,16 @@
             4: 'COOL',
             5: 'DRY',
             6: 'WAIT'
+        };
+
+        // Mode-based background colors
+        const MODE_COLORS = {
+            'off': 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',        // Subtle grey
+            'cool': 'linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%)',       // Cool blue
+            'dry': 'linear-gradient(135deg, #78909c 0%, #546e7a 100%)',        // Neutral blue-grey
+            'heat': 'linear-gradient(135deg, #ef5350 0%, #e53935 100%)',       // Red-ish
+            'ext_ht': 'linear-gradient(135deg, #e53935 0%, #c62828 100%)',     // More red
+            'turbo': 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)'       // Intensely red
         };
 
         // State
@@ -1936,6 +1947,7 @@
             disconnectBtn.style.display = 'none';
             deviceName.textContent = '';
             currentMode = null;
+            updateBackgroundColor();
             updateModeButtons();
             updateButtonVisibility();
 
@@ -2074,6 +2086,7 @@
 
                 if (detectedMode) {
                     currentMode = detectedMode;
+                    updateBackgroundColor();
                     if (statusLoggingEnabled) {
                         logDebug(`  Mode: ${detectedMode.toUpperCase()} (byte[13]=0x${byte13.toString(16)}, byte[14]=0x${byte14.toString(16)})`, 'info');
                     }
@@ -2102,6 +2115,12 @@
 
             // Update temperature slider range when mode changes
             updateTempSliderRange();
+            updateBackgroundColor();
+        }
+
+        function updateBackgroundColor() {
+            const color = MODE_COLORS[currentMode] || MODE_COLORS['off'];
+            document.body.style.background = color;
         }
 
         async function sendCommand(command) {
