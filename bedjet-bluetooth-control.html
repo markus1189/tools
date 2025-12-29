@@ -2718,7 +2718,10 @@
 
         function updateBackgroundColor() {
             const color = MODE_COLORS[currentMode] || MODE_COLORS['off'];
-            document.body.style.background = color;
+            const header = document.querySelector('.header');
+            if (header) {
+                header.style.background = color;
+            }
         }
 
         async function sendCommand(command) {
