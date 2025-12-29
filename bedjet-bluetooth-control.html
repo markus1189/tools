@@ -20,7 +20,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #ff9800 0%, #000000 100%);
+            background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
             min-height: 100vh;
             padding: 0;
             margin: 0;
@@ -29,7 +29,7 @@
         }
 
         .container {
-            background: white;
+            background: transparent;
             min-height: 100vh;
             width: 100%;
             padding: 0;
@@ -44,7 +44,7 @@
             left: 15px;
             width: 40px;
             height: 40px;
-            background: white;
+            background: #222;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             display: flex;
@@ -82,7 +82,7 @@
             left: -100%;
             width: 280px;
             height: 100vh;
-            background: white;
+            background: #222;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             z-index: 1000;
             transition: left 0.3s ease;
@@ -118,7 +118,7 @@
 
         .menu-section h3 {
             font-size: 14px;
-            color: #999;
+            color: #777;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 10px;
@@ -196,14 +196,14 @@
 
         .mode-btn {
             padding: 12px 8px;
-            border: 2px solid #e0e0e0;
-            background: white;
+            border: 2px solid #444;
+            background: #222;
             border-radius: 8px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            color: #666;
+            color: #aaa;
         }
 
         .mode-btn.active {
@@ -215,16 +215,16 @@
         .time-remaining-display {
             text-align: center;
             padding: 10px;
-            background: #f9f9f9;
+            background: #222;
             border-radius: 8px;
             font-size: 14px;
-            color: #666;
+            color: #aaa;
         }
 
         .time-remaining-display .value {
             font-size: 20px;
             font-weight: 700;
-            color: #333;
+            color: #eee;
             margin-left: 8px;
         }
 
@@ -249,7 +249,7 @@
 
         .gauge-background {
             fill: none;
-            stroke: #e0e0e0;
+            stroke: #444;
             stroke-width: 12;
         }
 
@@ -274,19 +274,19 @@
         .gauge-value {
             font-size: 32px;
             font-weight: 700;
-            color: #333;
+            color: #eee;
             display: block;
         }
 
         .gauge-unit {
             font-size: 14px;
-            color: #999;
+            color: #aaa;
             display: block;
         }
 
         .gauge-label {
             font-size: 14px;
-            color: #666;
+            color: #aaa;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -295,7 +295,7 @@
 
         .gauge-sub-value {
             font-size: 12px;
-            color: #999;
+            color: #aaa;
             margin-top: 5px;
         }
 
@@ -348,7 +348,7 @@
             width: 48px;
             height: 48px;
             border: 2px solid #ff9800;
-            background: white;
+            background: #222;
             border-radius: 8px;
             font-size: 20px;
             font-weight: 700;
@@ -371,7 +371,7 @@
             width: 100%;
             height: 10px;
             border-radius: 5px;
-            background: linear-gradient(90deg, #ff9800 0%, #f57c00 var(--value), #e0e0e0 var(--value));
+            background: linear-gradient(90deg, #ff9800 0%, #f57c00 var(--value), #444 var(--value));
             outline: none;
             -webkit-appearance: none;
             transition: background 0.1s ease;
@@ -383,7 +383,7 @@
             width: 26px;
             height: 26px;
             border-radius: 50%;
-            background: white;
+            background: #222;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4), inset 0 0 0 3px #ff9800;
             transition: all 0.2s ease;
@@ -403,7 +403,7 @@
             width: 26px;
             height: 26px;
             border-radius: 50%;
-            background: white;
+            background: #222;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4), inset 0 0 0 3px #ff9800;
             border: none;
@@ -428,7 +428,7 @@
         .timer-control-panel {
             margin-bottom: 15px;
             padding: 12px 15px;
-            background: #f9f9f9;
+            background: #222;
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -445,7 +445,7 @@
 
         .timer-label {
             font-size: 11px;
-            color: #666;
+            color: #aaa;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -454,17 +454,17 @@
         .timer-value {
             font-size: 18px;
             font-weight: 700;
-            color: #333;
+            color: #eee;
             font-variant-numeric: tabular-nums;
         }
 
         .timer-value.off {
-            color: #999;
+            color: #777;
         }
 
         .timer-edit-btn {
             padding: 8px 16px;
-            background: white;
+            background: #222;
             border: 2px solid #ff9800;
             border-radius: 6px;
             font-size: 14px;
@@ -504,7 +504,7 @@
         }
 
         .timer-modal-content {
-            background: white;
+            background: #222;
             border-radius: 16px 16px 0 0;
             padding: 20px;
             width: 100%;
@@ -531,17 +531,17 @@
         .timer-modal-title {
             font-size: 18px;
             font-weight: 700;
-            color: #333;
+            color: #eee;
         }
 
         .timer-modal-close {
             width: 32px;
             height: 32px;
             border: none;
-            background: #f0f0f0;
+            background: #333;
             border-radius: 50%;
             font-size: 20px;
-            color: #666;
+            color: #aaa;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -550,7 +550,7 @@
         }
 
         .timer-modal-close:active {
-            background: #e0e0e0;
+            background: #444;
             transform: scale(0.9);
         }
 
@@ -558,13 +558,13 @@
             text-align: center;
             padding: 20px;
             margin-bottom: 20px;
-            background: #f9f9f9;
+            background: #222;
             border-radius: 8px;
         }
 
         .timer-current-label {
             font-size: 12px;
-            color: #666;
+            color: #aaa;
             margin-bottom: 5px;
         }
 
@@ -577,7 +577,7 @@
 
         .timer-limit-text {
             font-size: 11px;
-            color: #999;
+            color: #777;
             margin-top: 5px;
         }
 
@@ -588,7 +588,7 @@
         .timer-section-title {
             font-size: 13px;
             font-weight: 600;
-            color: #666;
+            color: #aaa;
             margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -603,12 +603,12 @@
 
         .timer-preset-btn {
             padding: 12px 8px;
-            background: white;
-            border: 2px solid #e0e0e0;
+            background: #222;
+            border: 2px solid #444;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
-            color: #333;
+            color: #eee;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -621,8 +621,8 @@
         }
 
         .timer-preset-btn.off {
-            background: #f9f9f9;
-            color: #999;
+            background: #222;
+            color: #777;
         }
 
         .timer-adjustments {
@@ -637,7 +637,7 @@
 
         .timer-adjust-btn {
             padding: 14px;
-            background: white;
+            background: #222;
             border: 2px solid #ff9800;
             border-radius: 8px;
             font-size: 16px;
@@ -664,7 +664,7 @@
 
         .timer-adjust-btn:disabled:active {
             transform: none;
-            background: white;
+            background: #222;
             color: #ff9800;
         }
 
@@ -693,8 +693,8 @@
         }
 
         .timer-modal-btn.cancel {
-            background: #f0f0f0;
-            color: #666;
+            background: #333;
+            color: #aaa;
         }
 
         .timer-modal-btn.apply {
@@ -726,7 +726,7 @@
 
         .memory-section h2 {
             font-size: 16px;
-            color: #333;
+            color: #eee;
             margin-bottom: 12px;
             font-weight: 600;
         }
@@ -739,14 +739,14 @@
 
         .preset-btn {
             padding: 14px;
-            border: 2px solid #e0e0e0;
-            background: white;
+            border: 2px solid #444;
+            background: #222;
             border-radius: 8px;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            color: #666;
+            color: #aaa;
         }
 
         .preset-btn:active {
@@ -799,11 +799,11 @@
 
         /* Debug Section */
         .debug-section {
-            background: #f5f5f5;
+            background: #222;
             border-radius: 10px;
             padding: 15px;
             margin: 20px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #444;
         }
 
         .debug-header {
@@ -817,7 +817,7 @@
         .debug-title {
             font-size: 16px;
             font-weight: 700;
-            color: #333;
+            color: #eee;
         }
 
         .debug-toggle {
@@ -846,7 +846,7 @@
         .debug-options {
             margin-bottom: 10px;
             padding: 10px;
-            background: white;
+            background: #222;
             border-radius: 6px;
         }
 
@@ -855,7 +855,7 @@
             align-items: center;
             cursor: pointer;
             font-size: 13px;
-            color: #666;
+            color: #aaa;
             margin-bottom: 8px;
         }
 
@@ -878,7 +878,7 @@
         .debug-btn {
             padding: 8px 12px;
             border: 1px solid #ff9800;
-            background: white;
+            background: #222;
             border-radius: 6px;
             font-size: 12px;
             font-weight: 600;
@@ -944,7 +944,7 @@
 
         .biorhythm-section h2 {
             font-size: 16px;
-            color: #333;
+            color: #eee;
             margin-bottom: 12px;
             font-weight: 600;
         }
@@ -983,11 +983,11 @@
 
         <div class="menu-section">
             <h3>Settings</h3>
-            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666; margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #aaa; margin-bottom: 12px;">
                 <input type="checkbox" id="showAllDevices" style="margin-right: 8px; cursor: pointer;">
                 <span>Show all Bluetooth devices</span>
             </label>
-            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666;">
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #aaa;">
                 <input type="checkbox" id="useCelsius" style="margin-right: 8px; cursor: pointer;">
                 <span>Use Fahrenheit (°F)</span>
             </label>
@@ -1103,8 +1103,8 @@
                         <svg width="140" height="140" viewBox="0 0 140 140">
                             <defs>
                                 <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-                                    <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                                    <stop offset="0%" style="stop-color:#ff9800;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#000000;stop-opacity:1" />
                                 </linearGradient>
                             </defs>
                             <circle class="gauge-background" cx="70" cy="70" r="60"/>
@@ -1117,7 +1117,7 @@
                         </div>
                     </div>
                     <div class="gauge-sub-value">Current: <span id="currentTemp">--</span><span id="currentTempUnit">°C</span></div>
-                    <div class="gauge-sub-value" id="tempRangeIndicator" style="font-size: 11px; color: #999; margin-top: 2px;">Range: --</div>
+                    <div class="gauge-sub-value" id="tempRangeIndicator" style="font-size: 11px; color: #777; margin-top: 2px;">Range: --</div>
                     <div class="slider-wrapper">
                         <input type="range" id="tempSlider" min="19" max="40" value="22" step="1">
                     </div>
@@ -1178,39 +1178,39 @@
             <button class="btn btn-primary" id="loadBiorhythmsBtn" style="margin-bottom: 15px;">Load Biorhythms</button>
             <div id="biorhythmsList" style="display: none;">
                 <div class="biorhythm-item" id="bio1Card" style="margin-bottom: 10px;">
-                    <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
+                    <div style="padding: 15px; background: #222; border-radius: 8px; border: 2px solid #444;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <div>
-                                <div style="font-weight: 700; font-size: 16px; color: #333;">Bio1</div>
-                                <div id="bio1Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
+                                <div style="font-weight: 700; font-size: 16px; color: #eee;">Bio1</div>
+                                <div id="bio1Name" style="font-size: 14px; color: #aaa; margin-top: 3px;">Not loaded</div>
                             </div>
                             <button class="preset-btn" id="bio1ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
                         </div>
-                        <div id="bio1Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;"></div>
+                        <div id="bio1Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;"></div>
                     </div>
                 </div>
                 <div class="biorhythm-item" id="bio2Card" style="margin-bottom: 10px;">
-                    <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
+                    <div style="padding: 15px; background: #222; border-radius: 8px; border: 2px solid #444;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <div>
-                                <div style="font-weight: 700; font-size: 16px; color: #333;">Bio2</div>
-                                <div id="bio2Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
+                                <div style="font-weight: 700; font-size: 16px; color: #eee;">Bio2</div>
+                                <div id="bio2Name" style="font-size: 14px; color: #aaa; margin-top: 3px;">Not loaded</div>
                             </div>
                             <button class="preset-btn" id="bio2ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
                         </div>
-                        <div id="bio2Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;"></div>
+                        <div id="bio2Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;"></div>
                     </div>
                 </div>
                 <div class="biorhythm-item" id="bio3Card" style="margin-bottom: 10px;">
-                    <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
+                    <div style="padding: 15px; background: #222; border-radius: 8px; border: 2px solid #444;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <div>
-                                <div style="font-weight: 700; font-size: 16px; color: #333;">Bio3</div>
-                                <div id="bio3Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
+                                <div style="font-weight: 700; font-size: 16px; color: #eee;">Bio3</div>
+                                <div id="bio3Name" style="font-size: 14px; color: #aaa; margin-top: 3px;">Not loaded</div>
                             </div>
                             <button class="preset-btn" id="bio3ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
                         </div>
-                        <div id="bio3Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;"></div>
+                        <div id="bio3Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;"></div>
                     </div>
                 </div>
             </div>
@@ -1300,9 +1300,9 @@
             'off': 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',        // Subtle grey
             'cool': 'linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%)',       // Cool blue
             'dry': 'linear-gradient(135deg, #78909c 0%, #546e7a 100%)',        // Neutral blue-grey
-            'heat': 'linear-gradient(135deg, #ef5350 0%, #e53935 100%)',       // Red-ish (hot)
-            'ext_ht': 'linear-gradient(135deg, #e57373 0%, #ef5350 100%)',     // Lighter red (extended heat, not as hot)
-            'turbo': 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)'       // Darkest red (hottest)
+            'heat': 'linear-gradient(135deg, #ff9800 0%, #000000 100%)',       // Orange to black (hot)
+            'ext_ht': 'linear-gradient(135deg, #ffa726 0%, #000000 100%)',     // Lighter orange to black (extended heat)
+            'turbo': 'linear-gradient(135deg, #f57c00 0%, #000000 100%)'       // Darker orange to black (hottest)
         };
 
         // State
@@ -3140,7 +3140,7 @@
                     logDebug(`  Bio${i}: "${bio.name}" with ${bio.steps.length} steps`, 'info');
 
                     // Generate steps HTML
-                    let stepsHTML = '<div style="font-size: 12px; color: #666;">';
+                    let stepsHTML = '<div style="font-size: 12px; color: #aaa;">';
                     bio.steps.forEach((step, idx) => {
                         if (step) {
                             const modeName = BIO_MODE_NAMES[step.mode] || 'UNKNOWN';
@@ -3148,7 +3148,7 @@
                             const temp = formatStepTemperature(step.temperature);
                             const time = formatStepTime(step);
 
-                            stepsHTML += `<div style="padding: 8px; margin-bottom: 5px; background: #f9f9f9; border-radius: 4px;">`;
+                            stepsHTML += `<div style="padding: 8px; margin-bottom: 5px; background: #222; border-radius: 4px;">`;
                             stepsHTML += `<strong>Step ${idx + 1}:</strong> ${modeName} @ ${temp}, Fan ${fanPercent}%, ${time}`;
                             stepsHTML += `</div>`;
                         }
@@ -3157,7 +3157,7 @@
                     stepsEl.innerHTML = stepsHTML;
                 } else {
                     nameEl.textContent = 'Empty';
-                    stepsEl.innerHTML = '<div style="font-size: 12px; color: #999;">No biorhythm configured</div>';
+                    stepsEl.innerHTML = '<div style="font-size: 12px; color: #777;">No biorhythm configured</div>';
                     logDebug(`  Bio${i}: Empty slot`, 'info');
                 }
             }
