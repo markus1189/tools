@@ -314,13 +314,16 @@
         }
 
         .action-btn {
-            padding: 6px 12px;
+            width: 44px;
+            height: 44px;
             border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
+            border-radius: 8px;
+            font-size: 20px;
             cursor: pointer;
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .action-btn.confirm {
@@ -766,8 +769,8 @@
                         <input type="range" id="tempSlider" min="19" max="40" value="22" step="1">
                     </div>
                     <div class="gauge-actions hidden" id="tempActions">
-                        <button class="action-btn confirm" id="tempConfirm">✓ Apply</button>
-                        <button class="action-btn cancel" id="tempCancel">✗ Cancel</button>
+                        <button class="action-btn confirm" id="tempConfirm">✓</button>
+                        <button class="action-btn cancel" id="tempCancel">✗</button>
                     </div>
                     <div class="control-buttons">
                         <button class="control-btn" id="tempDownBtn">−</button>
@@ -790,12 +793,13 @@
                         </div>
                     </div>
                     <div class="gauge-sub-value">&nbsp;</div>
+                    <div class="gauge-sub-value">&nbsp;</div>
                     <div class="slider-wrapper">
                         <input type="range" id="fanSlider" min="5" max="100" value="50" step="5">
                     </div>
                     <div class="gauge-actions hidden" id="fanActions">
-                        <button class="action-btn confirm" id="fanConfirm">✓ Apply</button>
-                        <button class="action-btn cancel" id="fanCancel">✗ Cancel</button>
+                        <button class="action-btn confirm" id="fanConfirm">✓</button>
+                        <button class="action-btn cancel" id="fanCancel">✗</button>
                     </div>
                     <div class="control-buttons">
                         <button class="control-btn" id="fanDownBtn">−</button>
