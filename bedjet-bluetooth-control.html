@@ -530,7 +530,7 @@
             </label>
             <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666;">
                 <input type="checkbox" id="useCelsius" style="margin-right: 8px; cursor: pointer;">
-                <span>Use Celsius (°C) instead of Fahrenheit (°F)</span>
+                <span>Use Fahrenheit (°F) instead of Celsius (°C)</span>
             </label>
         </div>
 
@@ -545,13 +545,13 @@
                     <div class="state-item">
                         <div class="state-label">Current Temp</div>
                         <div class="state-value">
-                            <span id="currentTemp">--</span><span class="state-unit" id="currentTempUnit">°F</span>
+                            <span id="currentTemp">--</span><span class="state-unit" id="currentTempUnit">°C</span>
                         </div>
                     </div>
                     <div class="state-item">
                         <div class="state-label">Target Temp</div>
                         <div class="state-value">
-                            <span id="targetTemp">--</span><span class="state-unit" id="targetTempUnit">°F</span>
+                            <span id="targetTemp">--</span><span class="state-unit" id="targetTempUnit">°C</span>
                         </div>
                     </div>
                     <div class="state-item">
@@ -586,14 +586,14 @@
                 <div class="slider-control">
                     <div class="slider-label">
                         <span>Set Temperature</span>
-                        <span class="slider-value"><span id="tempSliderValue">72</span><span id="tempSliderUnit">°F</span></span>
+                        <span class="slider-value"><span id="tempSliderValue">22</span><span id="tempSliderUnit">°C</span></span>
                     </div>
                     <div class="slider-wrapper">
-                        <input type="range" id="tempSlider" min="66" max="104" value="72" step="1">
+                        <input type="range" id="tempSlider" min="19" max="40" value="22" step="1">
                     </div>
                     <div class="slider-range">
-                        <span id="tempMin">66°F</span>
-                        <span id="tempMax">104°F</span>
+                        <span id="tempMin">19°C</span>
+                        <span id="tempMax">40°C</span>
                     </div>
                 </div>
                 <div class="preset-buttons" style="margin-top: 10px;">
@@ -769,7 +769,7 @@
         let commandCharacteristic = null;
         let biodataCharacteristic = null;
         let currentMode = null;
-        let useCelsius = false;
+        let useCelsius = true;
         let lastStatusUpdate = null;
 
         // Biorhythm state
@@ -1053,7 +1053,7 @@
 
         // Temperature unit toggle
         function updateTemperatureUI() {
-            useCelsius = useCelsiusCheckbox.checked;
+            useCelsius = !useCelsiusCheckbox.checked;
             const unit = getTempUnit();
 
             // Update all unit displays
