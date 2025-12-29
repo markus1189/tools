@@ -22,206 +22,178 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
         }
 
         .container {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
+            min-height: 100vh;
             width: 100%;
-            padding: 30px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
         }
 
-        h1 {
-            font-size: 28px;
-            color: #333;
-            margin-bottom: 10px;
-            text-align: center;
+        /* Hamburger Menu */
+        .hamburger {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            z-index: 1001;
+            transition: all 0.3s ease;
         }
 
-        .subtitle {
-            text-align: center;
-            color: #666;
-            font-size: 14px;
+        .hamburger span {
+            width: 22px;
+            height: 2px;
+            background: #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: translateY(7px) rotate(45deg);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: translateY(-7px) rotate(-45deg);
+        }
+
+        .menu-drawer {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+            padding: 70px 20px 20px 20px;
+        }
+
+        .menu-drawer.open {
+            left: 0;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .menu-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .menu-section {
             margin-bottom: 25px;
         }
 
-        .status-bar {
-            background: #f5f5f5;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+        .menu-section h3 {
+            font-size: 14px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 60px 20px 20px 20px;
             text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header .status-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
         }
 
         .status-indicator {
             display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            margin-right: 8px;
-            background: #ccc;
+            background: rgba(255, 255, 255, 0.5);
         }
 
         .status-indicator.connected {
             background: #4caf50;
-            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
-        }
-
-        .status-text {
-            font-weight: 600;
-            color: #333;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
         }
 
         .device-name {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+            font-size: 11px;
+            opacity: 0.9;
+            margin-top: 4px;
         }
 
-        .btn {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 15px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            background: #d32f2f;
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .state-section {
-            background: #f9f9f9;
-            border-radius: 10px;
+        /* Main Content */
+        .main-content {
+            flex: 1;
             padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* Mode Panel */
+        .mode-panel {
             margin-bottom: 20px;
-        }
-
-        .state-section h2 {
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
-
-        .state-section h2::before {
-            content: "";
-            display: inline-block;
-            width: 4px;
-            height: 18px;
-            background: #667eea;
-            margin-right: 10px;
-            border-radius: 2px;
-        }
-
-        .state-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .state-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .state-label {
-            font-size: 12px;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 5px;
-        }
-
-        .state-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #333;
-        }
-
-        .state-unit {
-            font-size: 16px;
-            color: #999;
-            margin-left: 3px;
-        }
-
-        .control-section {
-            margin-bottom: 20px;
-        }
-
-        .control-section h2 {
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
-
-        .control-section h2::before {
-            content: "";
-            display: inline-block;
-            width: 4px;
-            height: 18px;
-            background: #667eea;
-            margin-right: 10px;
-            border-radius: 2px;
         }
 
         .mode-buttons {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
         .mode-btn {
-            padding: 12px;
+            padding: 12px 8px;
             border: 2px solid #e0e0e0;
             background: white;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             color: #666;
-        }
-
-        .mode-btn:hover:not(:disabled) {
-            border-color: #667eea;
-            color: #667eea;
         }
 
         .mode-btn.active {
@@ -230,39 +202,155 @@
             color: white;
         }
 
-        .mode-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .slider-control {
-            margin-bottom: 20px;
-        }
-
-        .slider-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
+        .time-remaining-display {
+            text-align: center;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
             font-size: 14px;
             color: #666;
         }
 
-        .slider-value {
+        .time-remaining-display .value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-left: 8px;
+        }
+
+        /* Gauges */
+        .gauges-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .gauge-wrapper {
+            text-align: center;
+        }
+
+        .gauge {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 15px auto;
+        }
+
+        .gauge-background {
+            fill: none;
+            stroke: #e0e0e0;
+            stroke-width: 12;
+        }
+
+        .gauge-progress {
+            fill: none;
+            stroke: url(#gaugeGradient);
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .gauge-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .gauge-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            display: block;
+        }
+
+        .gauge-unit {
+            font-size: 14px;
+            color: #999;
+            display: block;
+        }
+
+        .gauge-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .gauge-sub-value {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .gauge.dirty {
+            opacity: 0.7;
+        }
+
+        .gauge-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .gauge-actions.hidden {
+            display: none;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn.confirm {
+            background: #4caf50;
+            color: white;
+        }
+
+        .action-btn.cancel {
+            background: #f44336;
+            color: white;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #667eea;
+            background: white;
+            border-radius: 8px;
+            font-size: 18px;
             font-weight: 700;
             color: #667eea;
-            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .slider-range {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-            font-size: 11px;
-            color: #999;
+        .control-btn:active {
+            background: #667eea;
+            color: white;
         }
 
+        /* Sliders */
         .slider-wrapper {
-            position: relative;
             padding: 10px 0;
         }
 
@@ -336,6 +424,18 @@
             }
         }
 
+        /* Memory Presets */
+        .memory-section {
+            margin: 20px 0;
+        }
+
+        .memory-section h2 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
         .preset-buttons {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -343,24 +443,47 @@
         }
 
         .preset-btn {
-            padding: 12px;
+            padding: 14px;
             border: 2px solid #e0e0e0;
             background: white;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             color: #666;
         }
 
-        .preset-btn:hover:not(:disabled) {
+        .preset-btn:active {
             border-color: #764ba2;
             color: #764ba2;
             background: #f5f0ff;
         }
 
-        .preset-btn:disabled {
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
@@ -370,7 +493,7 @@
             color: #c62828;
             padding: 12px;
             border-radius: 8px;
-            margin-bottom: 15px;
+            margin: 15px 20px;
             font-size: 14px;
             display: none;
         }
@@ -379,21 +502,12 @@
             display: block;
         }
 
-        .info {
-            background: #e3f2fd;
-            color: #1565c0;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
+        /* Debug Section */
         .debug-section {
             background: #f5f5f5;
             border-radius: 10px;
             padding: 15px;
-            margin-top: 20px;
+            margin: 20px;
             border: 2px solid #e0e0e0;
         }
 
@@ -401,7 +515,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
             cursor: pointer;
             user-select: none;
         }
@@ -416,6 +529,49 @@
             font-size: 12px;
             color: #667eea;
             font-weight: 600;
+        }
+
+        .debug-content {
+            margin-top: 10px;
+            display: none;
+        }
+
+        .debug-section:not(.collapsed) .debug-content {
+            display: block;
+        }
+
+        .debug-section.collapsed .debug-toggle::after {
+            content: ' ▼';
+        }
+
+        .debug-section:not(.collapsed) .debug-toggle::after {
+            content: ' ▲';
+        }
+
+        .debug-options {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+        }
+
+        .debug-options label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .debug-options label:last-child {
+            margin-bottom: 0;
+            margin-left: 20px;
+        }
+
+        .debug-options input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
         }
 
         .debug-buttons {
@@ -436,7 +592,7 @@
             transition: all 0.2s ease;
         }
 
-        .debug-btn:hover {
+        .debug-btn:active {
             background: #667eea;
             color: white;
         }
@@ -448,7 +604,7 @@
             padding: 12px;
             font-family: 'Courier New', monospace;
             font-size: 11px;
-            max-height: 300px;
+            max-height: 250px;
             overflow-y: auto;
             overflow-x: auto;
             white-space: pre-wrap;
@@ -457,7 +613,7 @@
         }
 
         .debug-log:empty::before {
-            content: "No logs yet. Enable debug logging above to collect logs.";
+            content: "No logs yet. Enable debug logging to collect logs.";
             color: #888;
         }
 
@@ -486,91 +642,80 @@
             color: #89d185;
         }
 
-        .debug-collapsed .debug-log,
-        .debug-collapsed .debug-buttons {
-            display: none;
+        /* Biorhythm Section */
+        .biorhythm-section {
+            margin: 20px;
         }
 
-        @media (max-width: 480px) {
-            .state-grid {
+        .biorhythm-section h2 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 360px) {
+            .gauges-container {
                 grid-template-columns: 1fr;
             }
 
-            .mode-buttons {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .debug-log {
-                font-size: 10px;
-                max-height: 250px;
+            .gauge {
+                width: 160px;
+                height: 160px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🛏️ BedJet Control</h1>
-        <p class="subtitle">Bluetooth LE Control Panel</p>
+    <!-- Hamburger Menu Button -->
+    <div class="hamburger" id="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
 
-        <div id="error" class="error"></div>
+    <!-- Menu Overlay -->
+    <div class="menu-overlay" id="menuOverlay"></div>
 
-        <div class="status-bar">
-            <div>
-                <span class="status-indicator" id="statusIndicator"></span>
-                <span class="status-text" id="statusText">Not Connected</span>
-            </div>
-            <div class="device-name" id="deviceName"></div>
-            <div class="device-name" id="lastUpdate" style="font-size: 11px; color: #999; margin-top: 3px;"></div>
+    <!-- Menu Drawer -->
+    <div class="menu-drawer" id="menuDrawer">
+        <div class="menu-section">
+            <h3>Connection</h3>
+            <button id="connectBtn" class="btn btn-primary">Connect to BedJet</button>
+            <button id="reconnectBtn" class="btn btn-primary" style="display: none;">Reconnect to <span id="savedDeviceName"></span></button>
+            <button id="disconnectBtn" class="btn btn-danger" style="display: none;">Disconnect</button>
         </div>
 
-        <div style="margin-bottom: 15px; padding: 12px; background: #f9f9f9; border-radius: 8px;">
-            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666; margin-bottom: 8px;">
+        <div class="menu-section">
+            <h3>Settings</h3>
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666; margin-bottom: 12px;">
                 <input type="checkbox" id="showAllDevices" style="margin-right: 8px; cursor: pointer;">
-                <span>Show all Bluetooth devices (use if BedJet not found)</span>
+                <span>Show all Bluetooth devices</span>
             </label>
             <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666;">
                 <input type="checkbox" id="useCelsius" style="margin-right: 8px; cursor: pointer;">
-                <span>Use Fahrenheit (°F) instead of Celsius (°C)</span>
+                <span>Use Fahrenheit (°F)</span>
             </label>
         </div>
+    </div>
 
-        <button id="connectBtn" class="btn btn-primary">Connect to BedJet</button>
-        <button id="reconnectBtn" class="btn btn-primary" style="display: none;">Reconnect to <span id="savedDeviceName"></span></button>
-        <button id="disconnectBtn" class="btn btn-danger" style="display: none;">Disconnect</button>
-
-        <div id="controls" style="display: none;">
-            <div class="state-section">
-                <h2>Current State</h2>
-                <div class="state-grid">
-                    <div class="state-item">
-                        <div class="state-label">Current Temp</div>
-                        <div class="state-value">
-                            <span id="currentTemp">--</span><span class="state-unit" id="currentTempUnit">°C</span>
-                        </div>
-                    </div>
-                    <div class="state-item">
-                        <div class="state-label">Target Temp</div>
-                        <div class="state-value">
-                            <span id="targetTemp">--</span><span class="state-unit" id="targetTempUnit">°C</span>
-                        </div>
-                    </div>
-                    <div class="state-item">
-                        <div class="state-label">Fan Speed</div>
-                        <div class="state-value">
-                            <span id="fanSpeed">--</span><span class="state-unit">%</span>
-                        </div>
-                    </div>
-                    <div class="state-item">
-                        <div class="state-label">Time Left</div>
-                        <div class="state-value">
-                            <span id="timeRemaining">--</span>
-                        </div>
-                    </div>
-                </div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🛏️ BedJet Control</h1>
+            <div class="status-bar">
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span id="statusText">Not Connected</span>
             </div>
+            <div class="device-name" id="deviceName"></div>
+        </div>
 
-            <div class="control-section">
-                <h2>Mode</h2>
+        <div id="error" class="error"></div>
+
+        <!-- Main Content -->
+        <div class="main-content" id="controls" style="display: none;">
+            <!-- Mode Panel -->
+            <div class="mode-panel">
                 <div class="mode-buttons">
                     <button class="mode-btn" data-mode="off">OFF</button>
                     <button class="mode-btn" data-mode="cool">COOL</button>
@@ -579,68 +724,78 @@
                     <button class="mode-btn" data-mode="dry">DRY</button>
                     <button class="mode-btn" data-mode="ext_ht">EXT HT</button>
                 </div>
+                <div class="time-remaining-display">
+                    Time Remaining: <span class="value" id="timeRemaining">--</span>
+                </div>
             </div>
 
-            <div class="control-section">
-                <h2>Temperature</h2>
-                <div class="slider-control">
-                    <div class="slider-label">
-                        <span>Set Temperature</span>
-                        <span class="slider-value"><span id="tempSliderValue">22</span><span id="tempSliderUnit">°C</span></span>
+            <!-- Gauges -->
+            <div class="gauges-container">
+                <!-- Temperature Gauge -->
+                <div class="gauge-wrapper">
+                    <div class="gauge-label">TEMPERATURE</div>
+                    <div class="gauge" id="tempGauge">
+                        <svg width="140" height="140" viewBox="0 0 140 140">
+                            <defs>
+                                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <circle class="gauge-background" cx="70" cy="70" r="60"/>
+                            <circle class="gauge-progress" id="tempGaugeProgress" cx="70" cy="70" r="60"
+                                    stroke-dasharray="377" stroke-dashoffset="377"/>
+                        </svg>
+                        <div class="gauge-text">
+                            <span class="gauge-value" id="targetTemp">--</span>
+                            <span class="gauge-unit" id="targetTempUnit">°C</span>
+                        </div>
                     </div>
+                    <div class="gauge-sub-value">Current: <span id="currentTemp">--</span><span id="currentTempUnit">°C</span></div>
                     <div class="slider-wrapper">
                         <input type="range" id="tempSlider" min="19" max="40" value="22" step="1">
                     </div>
-                    <div class="slider-range">
-                        <span id="tempMin">19°C</span>
-                        <span id="tempMax">40°C</span>
+                    <div class="gauge-actions hidden" id="tempActions">
+                        <button class="action-btn confirm" id="tempConfirm">✓ Apply</button>
+                        <button class="action-btn cancel" id="tempCancel">✗ Cancel</button>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" id="tempDownBtn">−</button>
+                        <button class="control-btn" id="tempUpBtn">+</button>
                     </div>
                 </div>
-                <div class="preset-buttons" style="margin-top: 10px;">
-                    <button class="preset-btn" id="tempDownBtn">TEMP ▼</button>
-                    <button class="preset-btn" id="tempUpBtn">TEMP ▲</button>
-                </div>
-            </div>
 
-            <div class="control-section">
-                <h2>Fan Speed</h2>
-                <div class="slider-control">
-                    <div class="slider-label">
-                        <span>Set Fan Speed</span>
-                        <span class="slider-value"><span id="fanSliderValue">50</span>%</span>
+                <!-- Fan Gauge -->
+                <div class="gauge-wrapper">
+                    <div class="gauge-label">FAN SPEED</div>
+                    <div class="gauge" id="fanGauge">
+                        <svg width="140" height="140" viewBox="0 0 140 140">
+                            <circle class="gauge-background" cx="70" cy="70" r="60"/>
+                            <circle class="gauge-progress" id="fanGaugeProgress" cx="70" cy="70" r="60"
+                                    stroke-dasharray="377" stroke-dashoffset="377"/>
+                        </svg>
+                        <div class="gauge-text">
+                            <span class="gauge-value" id="fanSpeed">--</span>
+                            <span class="gauge-unit">%</span>
+                        </div>
                     </div>
+                    <div class="gauge-sub-value">&nbsp;</div>
                     <div class="slider-wrapper">
                         <input type="range" id="fanSlider" min="5" max="100" value="50" step="5">
                     </div>
-                    <div class="slider-range">
-                        <span>5%</span>
-                        <span>100%</span>
+                    <div class="gauge-actions hidden" id="fanActions">
+                        <button class="action-btn confirm" id="fanConfirm">✓ Apply</button>
+                        <button class="action-btn cancel" id="fanCancel">✗ Cancel</button>
                     </div>
-                </div>
-                <div class="preset-buttons" style="margin-top: 10px;">
-                    <button class="preset-btn" id="fanDownBtn">FAN ▼</button>
-                    <button class="preset-btn" id="fanUpBtn">FAN ▲</button>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <h2>Runtime / Timer</h2>
-                <div class="slider-control">
-                    <div class="slider-label">
-                        <span>Set Runtime</span>
-                        <span class="slider-value"><span id="runtimeValue">60</span> min</span>
-                    </div>
-                    <div class="slider-wrapper">
-                        <input type="range" id="runtimeSlider" min="1" max="600" value="60" step="1">
-                    </div>
-                    <div class="slider-range">
-                        <span>1 min</span>
-                        <span>600 min (10h)</span>
+                    <div class="control-buttons">
+                        <button class="control-btn" id="fanDownBtn">−</button>
+                        <button class="control-btn" id="fanUpBtn">+</button>
                     </div>
                 </div>
             </div>
 
-            <div class="control-section">
+            <!-- Memory Presets -->
+            <div class="memory-section">
                 <h2>Memory Presets</h2>
                 <div class="preset-buttons">
                     <button class="preset-btn" data-preset="1">M1</button>
@@ -648,78 +803,76 @@
                     <button class="preset-btn" data-preset="3">M3</button>
                 </div>
             </div>
+        </div>
 
-            <div class="control-section">
-                <h2>Biorhythms</h2>
-                <button class="btn btn-primary" id="loadBiorhythmsBtn" style="margin-bottom: 15px;">Load Biorhythms</button>
-                <div id="biorhythmsList" style="display: none;">
-                    <div class="biorhythm-item" id="bio1Card" style="margin-bottom: 10px;">
-                        <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <div>
-                                    <div style="font-weight: 700; font-size: 16px; color: #333;">Bio1</div>
-                                    <div id="bio1Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
-                                </div>
-                                <button class="preset-btn" id="bio1ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
+        <!-- Biorhythms -->
+        <div class="biorhythm-section" id="biorhythmSection" style="display: none;">
+            <h2>Biorhythms</h2>
+            <button class="btn btn-primary" id="loadBiorhythmsBtn" style="margin-bottom: 15px;">Load Biorhythms</button>
+            <div id="biorhythmsList" style="display: none;">
+                <div class="biorhythm-item" id="bio1Card" style="margin-bottom: 10px;">
+                    <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 16px; color: #333;">Bio1</div>
+                                <div id="bio1Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
                             </div>
-                            <div id="bio1Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
-                                <!-- Steps will be populated here -->
-                            </div>
+                            <button class="preset-btn" id="bio1ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
                         </div>
+                        <div id="bio1Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;"></div>
                     </div>
-                    <div class="biorhythm-item" id="bio2Card" style="margin-bottom: 10px;">
-                        <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <div>
-                                    <div style="font-weight: 700; font-size: 16px; color: #333;">Bio2</div>
-                                    <div id="bio2Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
-                                </div>
-                                <button class="preset-btn" id="bio2ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
+                </div>
+                <div class="biorhythm-item" id="bio2Card" style="margin-bottom: 10px;">
+                    <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 16px; color: #333;">Bio2</div>
+                                <div id="bio2Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
                             </div>
-                            <div id="bio2Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
-                                <!-- Steps will be populated here -->
-                            </div>
+                            <button class="preset-btn" id="bio2ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
                         </div>
+                        <div id="bio2Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;"></div>
                     </div>
-                    <div class="biorhythm-item" id="bio3Card" style="margin-bottom: 10px;">
-                        <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <div>
-                                    <div style="font-weight: 700; font-size: 16px; color: #333;">Bio3</div>
-                                    <div id="bio3Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
-                                </div>
-                                <button class="preset-btn" id="bio3ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
+                </div>
+                <div class="biorhythm-item" id="bio3Card" style="margin-bottom: 10px;">
+                    <div style="padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e0e0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 16px; color: #333;">Bio3</div>
+                                <div id="bio3Name" style="font-size: 14px; color: #666; margin-top: 3px;">Not loaded</div>
                             </div>
-                            <div id="bio3Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
-                                <!-- Steps will be populated here -->
-                            </div>
+                            <button class="preset-btn" id="bio3ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
                         </div>
+                        <div id="bio3Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="debug-section">
+        <!-- Debug Section -->
+        <div class="debug-section collapsed" id="debugSection">
             <div class="debug-header" onclick="toggleDebugLog()">
                 <div class="debug-title">🐛 Debug Log</div>
-                <div class="debug-toggle" id="debugToggle">Hide ▲</div>
+                <div class="debug-toggle"></div>
             </div>
-            <div style="margin-bottom: 10px; padding: 10px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffc107;">
-                <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px; color: #856404; margin-bottom: 8px;">
-                    <input type="checkbox" id="enableDebugLogging" style="margin-right: 8px; cursor: pointer;">
-                    <span><strong>Enable debug logging</strong> (logs disabled by default to save memory)</span>
-                </label>
-                <label style="display: flex; align-items: center; cursor: pointer; font-size: 12px; color: #856404; margin-left: 20px;">
-                    <input type="checkbox" id="enableStatusLogging" style="margin-right: 8px; cursor: pointer;">
-                    <span>Include status notifications (can spam log)</span>
-                </label>
+            <div class="debug-content">
+                <div class="debug-options">
+                    <label>
+                        <input type="checkbox" id="enableDebugLogging">
+                        <span><strong>Enable debug logging</strong></span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="enableStatusLogging">
+                        <span>Include status notifications</span>
+                    </label>
+                </div>
+                <div class="debug-buttons">
+                    <button class="debug-btn" onclick="copyDebugLog()">📋 Copy</button>
+                    <button class="debug-btn" onclick="clearDebugLog()">🗑️ Clear</button>
+                    <button class="debug-btn" onclick="downloadDebugLog()">💾 Download</button>
+                </div>
+                <div class="debug-log" id="debugLog"></div>
             </div>
-            <div class="debug-buttons">
-                <button class="debug-btn" onclick="copyDebugLog()">📋 Copy Log</button>
-                <button class="debug-btn" onclick="clearDebugLog()">🗑️ Clear</button>
-                <button class="debug-btn" onclick="downloadDebugLog()">💾 Download</button>
-            </div>
-            <div class="debug-log" id="debugLog"></div>
         </div>
     </div>
 
@@ -771,6 +924,12 @@
         let currentMode = null;
         let useCelsius = true;
         let lastStatusUpdate = null;
+
+        // Gauge/Slider dirty state
+        let tempDirty = false;
+        let fanDirty = false;
+        let tempPendingValue = null;
+        let fanPendingValue = null;
 
         // Biorhythm state
         let biorhythms = {
@@ -981,19 +1140,55 @@
         }
 
         function toggleDebugLog() {
-            const section = document.querySelector('.debug-section');
-            const toggle = document.getElementById('debugToggle');
+            const section = document.getElementById('debugSection');
+            section.classList.toggle('collapsed');
+        }
 
-            if (section.classList.contains('debug-collapsed')) {
-                section.classList.remove('debug-collapsed');
-                toggle.textContent = 'Hide ▲';
+        // Hamburger menu functions
+        function openMenu() {
+            hamburger.classList.add('active');
+            menuDrawer.classList.add('open');
+            menuOverlay.classList.add('active');
+        }
+
+        function closeMenu() {
+            hamburger.classList.remove('active');
+            menuDrawer.classList.remove('open');
+            menuOverlay.classList.remove('active');
+        }
+
+        function toggleMenu() {
+            if (menuDrawer.classList.contains('open')) {
+                closeMenu();
             } else {
-                section.classList.add('debug-collapsed');
-                toggle.textContent = 'Show ▼';
+                openMenu();
             }
         }
 
+        // Gauge update functions
+        function updateGauge(gaugeId, value, min, max) {
+            const gauge = document.getElementById(gaugeId);
+            const circumference = 2 * Math.PI * 60; // r=60
+            const percentage = ((value - min) / (max - min)) * 100;
+            const offset = circumference - (percentage / 100) * circumference;
+            gauge.style.strokeDashoffset = offset;
+        }
+
+        function updateTempGauge(tempF) {
+            const displayValue = displayTemp(tempF);
+            const min = useCelsius ? 19 : 66;
+            const max = useCelsius ? 40 : 104;
+            updateGauge('tempGaugeProgress', displayValue, min, max);
+        }
+
+        function updateFanGauge(fanPercent) {
+            updateGauge('fanGaugeProgress', fanPercent, 5, 100);
+        }
+
         // UI Elements
+        const hamburger = document.getElementById('hamburger');
+        const menuDrawer = document.getElementById('menuDrawer');
+        const menuOverlay = document.getElementById('menuOverlay');
         const connectBtn = document.getElementById('connectBtn');
         const reconnectBtn = document.getElementById('reconnectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
@@ -1001,8 +1196,8 @@
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
         const deviceName = document.getElementById('deviceName');
-        const lastUpdateEl = document.getElementById('lastUpdate');
         const controls = document.getElementById('controls');
+        const biorhythmSection = document.getElementById('biorhythmSection');
         const errorDiv = document.getElementById('error');
         const useCelsiusCheckbox = document.getElementById('useCelsius');
         const enableDebugLoggingCheckbox = document.getElementById('enableDebugLogging');
@@ -1019,16 +1214,11 @@
         // Controls
         const modeButtons = document.querySelectorAll('.mode-btn');
         const tempSlider = document.getElementById('tempSlider');
-        const tempSliderValue = document.getElementById('tempSliderValue');
-        const tempSliderUnit = document.getElementById('tempSliderUnit');
         const tempUpBtn = document.getElementById('tempUpBtn');
         const tempDownBtn = document.getElementById('tempDownBtn');
         const fanSlider = document.getElementById('fanSlider');
-        const fanSliderValue = document.getElementById('fanSliderValue');
         const fanUpBtn = document.getElementById('fanUpBtn');
         const fanDownBtn = document.getElementById('fanDownBtn');
-        const runtimeSlider = document.getElementById('runtimeSlider');
-        const runtimeValue = document.getElementById('runtimeValue');
         const presetButtons = document.querySelectorAll('.preset-btn');
 
         // Check Web Bluetooth support
@@ -1059,7 +1249,6 @@
             // Update all unit displays
             currentTempUnitEl.textContent = unit;
             targetTempUnitEl.textContent = unit;
-            tempSliderUnit.textContent = unit;
 
             // Update temperature slider range and value
             if (useCelsius) {
@@ -1067,36 +1256,35 @@
                 tempSlider.min = 19;
                 tempSlider.max = 40;
                 tempSlider.value = fahrenheitToInput(72); // Default 72°F = 22°C
-                tempSliderValue.textContent = tempSlider.value;
-                document.getElementById('tempMin').textContent = '19°C';
-                document.getElementById('tempMax').textContent = '40°C';
             } else {
                 // Fahrenheit range
                 tempSlider.min = 66;
                 tempSlider.max = 104;
                 tempSlider.value = 72;
-                tempSliderValue.textContent = 72;
-                document.getElementById('tempMin').textContent = '66°F';
-                document.getElementById('tempMax').textContent = '104°F';
             }
 
             // Update slider fill
             updateSliderFill(tempSlider);
 
-            // Update current state displays if they have values
-            if (currentTempEl.textContent !== '--') {
-                // Re-parse from the stored Fahrenheit values
-                // (We'd need to store raw values, for now just update units)
-                // This will be properly updated on next status notification
-            }
-
             logDebug(`Temperature unit changed to: ${unit}`, 'info');
         }
 
         // Event Listeners
-        connectBtn.addEventListener('click', connectToBedJet);
-        reconnectBtn.addEventListener('click', reconnectToSavedDevice);
-        disconnectBtn.addEventListener('click', disconnect);
+        hamburger.addEventListener('click', toggleMenu);
+        menuOverlay.addEventListener('click', closeMenu);
+
+        connectBtn.addEventListener('click', () => {
+            connectToBedJet();
+            closeMenu();
+        });
+        reconnectBtn.addEventListener('click', () => {
+            reconnectToSavedDevice();
+            closeMenu();
+        });
+        disconnectBtn.addEventListener('click', () => {
+            disconnect();
+            closeMenu();
+        });
         useCelsiusCheckbox.addEventListener('change', updateTemperatureUI);
         enableDebugLoggingCheckbox.addEventListener('change', (e) => {
             debugLoggingEnabled = e.target.checked;
@@ -1126,38 +1314,98 @@
         });
 
         tempSlider.addEventListener('input', (e) => {
-            tempSliderValue.textContent = e.target.value;
+            const sliderValue = parseInt(e.target.value);
+            document.getElementById('targetTemp').textContent = sliderValue;
             updateSliderFill(e.target);
+
+            // Mark as dirty - user is changing value
+            if (!tempDirty) {
+                tempDirty = true;
+                tempPendingValue = sliderValue;
+                document.getElementById('tempActions').classList.remove('hidden');
+                document.getElementById('tempGauge').classList.add('dirty');
+            } else {
+                tempPendingValue = sliderValue;
+            }
+
+            // Update gauge visual
+            const fahrenheit = inputToFahrenheit(sliderValue);
+            updateTempGauge(fahrenheit);
         });
 
-        tempSlider.addEventListener('change', (e) => {
-            const sliderValue = parseInt(e.target.value);
-            const fahrenheit = inputToFahrenheit(sliderValue);
-            setTemperature(fahrenheit);
+        document.getElementById('tempConfirm').addEventListener('click', () => {
+            if (tempDirty && tempPendingValue !== null) {
+                const fahrenheit = inputToFahrenheit(tempPendingValue);
+                setTemperature(fahrenheit);
+                tempDirty = false;
+                tempPendingValue = null;
+                document.getElementById('tempActions').classList.add('hidden');
+                document.getElementById('tempGauge').classList.remove('dirty');
+            }
+        });
+
+        document.getElementById('tempCancel').addEventListener('click', () => {
+            if (tempDirty) {
+                // Revert to last known value from status
+                const currentValue = document.getElementById('targetTemp').textContent;
+                if (currentValue !== '--') {
+                    tempSlider.value = currentValue;
+                    updateSliderFill(tempSlider);
+                }
+                tempDirty = false;
+                tempPendingValue = null;
+                document.getElementById('tempActions').classList.add('hidden');
+                document.getElementById('tempGauge').classList.remove('dirty');
+            }
         });
 
         fanSlider.addEventListener('input', (e) => {
-            fanSliderValue.textContent = e.target.value;
+            const sliderValue = parseInt(e.target.value);
+            document.getElementById('fanSpeed').textContent = sliderValue;
             updateSliderFill(e.target);
+
+            // Mark as dirty - user is changing value
+            if (!fanDirty) {
+                fanDirty = true;
+                fanPendingValue = sliderValue;
+                document.getElementById('fanActions').classList.remove('hidden');
+                document.getElementById('fanGauge').classList.add('dirty');
+            } else {
+                fanPendingValue = sliderValue;
+            }
+
+            // Update gauge visual
+            updateFanGauge(sliderValue);
         });
 
-        fanSlider.addEventListener('change', (e) => {
-            setFanSpeed(parseInt(e.target.value));
+        document.getElementById('fanConfirm').addEventListener('click', () => {
+            if (fanDirty && fanPendingValue !== null) {
+                setFanSpeed(fanPendingValue);
+                fanDirty = false;
+                fanPendingValue = null;
+                document.getElementById('fanActions').classList.add('hidden');
+                document.getElementById('fanGauge').classList.remove('dirty');
+            }
         });
 
-        runtimeSlider.addEventListener('input', (e) => {
-            runtimeValue.textContent = e.target.value;
-            updateSliderFill(e.target);
-        });
-
-        runtimeSlider.addEventListener('change', (e) => {
-            setRuntime(parseInt(e.target.value));
+        document.getElementById('fanCancel').addEventListener('click', () => {
+            if (fanDirty) {
+                // Revert to last known value from status
+                const currentValue = document.getElementById('fanSpeed').textContent;
+                if (currentValue !== '--') {
+                    fanSlider.value = currentValue;
+                    updateSliderFill(fanSlider);
+                }
+                fanDirty = false;
+                fanPendingValue = null;
+                document.getElementById('fanActions').classList.add('hidden');
+                document.getElementById('fanGauge').classList.remove('dirty');
+            }
         });
 
         // Initialize slider fills
         updateSliderFill(tempSlider);
         updateSliderFill(fanSlider);
-        updateSliderFill(runtimeSlider);
 
         tempUpBtn.addEventListener('click', () => {
             incrementTemperature();
@@ -1342,6 +1590,7 @@
                 // Update UI
                 updateConnectionStatus(true);
                 controls.style.display = 'block';
+                biorhythmSection.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = '';
@@ -1470,6 +1719,7 @@
                 // Update UI
                 updateConnectionStatus(true);
                 controls.style.display = 'block';
+                biorhythmSection.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = '';
@@ -1551,6 +1801,7 @@
                     // Update UI
                     updateConnectionStatus(true);
                     controls.style.display = 'block';
+                    biorhythmSection.style.display = 'block';
                     connectBtn.style.display = 'none';
                     reconnectBtn.style.display = 'none';
                     disconnectBtn.style.display = '';
@@ -1580,6 +1831,7 @@
             logDebug(`Device: ${device?.name || 'Unknown'}`, 'info');
             updateConnectionStatus(false);
             controls.style.display = 'none';
+            biorhythmSection.style.display = 'none';
             disconnectBtn.style.display = 'none';
             deviceName.textContent = '';
             currentMode = null;
@@ -1597,12 +1849,6 @@
 
         function handleStatusUpdate(event) {
             const data = new Uint8Array(event.target.value.buffer);
-
-            // Update last status timestamp
-            lastStatusUpdate = new Date();
-            const timeStr = lastStatusUpdate.toLocaleTimeString('en-US', { hour12: false });
-            lastUpdateEl.textContent = `Last updated: ${timeStr}`;
-            lastUpdateEl.style.color = '#4caf50';
 
             if (data.length >= 15) {
                 const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
@@ -1629,7 +1875,15 @@
                     const rawTarget = data[8] - 0x26;
                     const targetTempF = Math.round((rawTarget + 66) - (rawTarget / 9));
                     const displayTarget = displayTemp(targetTempF);
-                    targetTempEl.textContent = displayTarget;
+
+                    // Only update if not dirty (user hasn't changed slider)
+                    if (!tempDirty) {
+                        targetTempEl.textContent = displayTarget;
+                        tempSlider.value = displayTarget;
+                        updateSliderFill(tempSlider);
+                        updateTempGauge(targetTempF);
+                    }
+
                     if (statusLoggingEnabled) {
                         logDebug(`  Target temp: ${targetTempF}°F (${fToC(targetTempF)}°C) (byte[8]=0x${data[8].toString(16)})`, 'info');
                     }
@@ -1640,7 +1894,14 @@
                 // fanByte 0 = 5%, fanByte 19 = 100%
                 const fanSpeed = data[10] * 5 + 5;
                 if (fanSpeed >= 5 && fanSpeed <= 100) {
-                    fanSpeedEl.textContent = fanSpeed;
+                    // Only update if not dirty (user hasn't changed slider)
+                    if (!fanDirty) {
+                        fanSpeedEl.textContent = fanSpeed;
+                        fanSlider.value = fanSpeed;
+                        updateSliderFill(fanSlider);
+                        updateFanGauge(fanSpeed);
+                    }
+
                     if (statusLoggingEnabled) {
                         logDebug(`  Fan speed: ${fanSpeed}% (byte[10]=0x${data[10].toString(16)})`, 'info');
                     }
