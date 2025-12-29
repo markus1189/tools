@@ -937,18 +937,6 @@
             color: #89d185;
         }
 
-        /* Biorhythm Section */
-        .biorhythm-section {
-            margin: 20px;
-        }
-
-        .biorhythm-section h2 {
-            font-size: 16px;
-            color: #eee;
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
         @media (max-width: 360px) {
             .gauges-container {
                 grid-template-columns: 1fr;
@@ -1173,50 +1161,6 @@
             </div>
         </div>
 
-        <!-- Biorhythms -->
-        <div class="biorhythm-section" id="biorhythmSection" style="display: none;">
-            <h2>Biorhythms</h2>
-            <button class="btn btn-primary" id="loadBiorhythmsBtn" style="margin-bottom: 15px;">Load Biorhythms</button>
-            <div id="biorhythmsList" style="display: none;">
-                <div class="biorhythm-item" id="bio1Card" style="margin-bottom: 10px;">
-                    <div style="padding: 15px; background: #222; border-radius: 8px; border: 2px solid #444;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <div>
-                                <div style="font-weight: 700; font-size: 16px; color: #eee;">Bio1</div>
-                                <div id="bio1Name" style="font-size: 14px; color: #aaa; margin-top: 3px;">Not loaded</div>
-                            </div>
-                            <button class="preset-btn" id="bio1ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
-                        </div>
-                        <div id="bio1Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;"></div>
-                    </div>
-                </div>
-                <div class="biorhythm-item" id="bio2Card" style="margin-bottom: 10px;">
-                    <div style="padding: 15px; background: #222; border-radius: 8px; border: 2px solid #444;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <div>
-                                <div style="font-weight: 700; font-size: 16px; color: #eee;">Bio2</div>
-                                <div id="bio2Name" style="font-size: 14px; color: #aaa; margin-top: 3px;">Not loaded</div>
-                            </div>
-                            <button class="preset-btn" id="bio2ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
-                        </div>
-                        <div id="bio2Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;"></div>
-                    </div>
-                </div>
-                <div class="biorhythm-item" id="bio3Card" style="margin-bottom: 10px;">
-                    <div style="padding: 15px; background: #222; border-radius: 8px; border: 2px solid #444;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <div>
-                                <div style="font-weight: 700; font-size: 16px; color: #eee;">Bio3</div>
-                                <div id="bio3Name" style="font-size: 14px; color: #aaa; margin-top: 3px;">Not loaded</div>
-                            </div>
-                            <button class="preset-btn" id="bio3ExpandBtn" style="width: auto; padding: 8px 16px;">View</button>
-                        </div>
-                        <div id="bio3Steps" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Debug Section -->
         <div class="debug-section collapsed" id="debugSection">
             <div class="debug-header" onclick="toggleDebugLog()">
@@ -1253,7 +1197,6 @@
         const BEDJET_STATUS_UUID = '00002000-bed0-0080-aa55-4265644a6574';
         const BEDJET_NAME_UUID = '00002001-bed0-0080-aa55-4265644a6574';
         const BEDJET_COMMAND_UUID = '00002004-bed0-0080-aa55-4265644a6574';
-        const BEDJET_BIODATA_UUID = '00002005-bed0-0080-aa55-4265644a6574';
 
         const MODE_MAP = {
             0x01: 'off',
@@ -1285,17 +1228,6 @@
             'off': { minF: 66, maxF: 104, minC: 19, maxC: 40 }        // Default range when off
         };
 
-        // Biorhythm mode constants
-        const BIO_MODE_NAMES = {
-            0: 'STANDBY',
-            1: 'HEAT',
-            2: 'TURBO',
-            3: 'EXTHT',
-            4: 'COOL',
-            5: 'DRY',
-            6: 'WAIT'
-        };
-
         // Mode-based background colors
         const MODE_COLORS = {
             'off': 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',        // Subtle grey
@@ -1310,7 +1242,6 @@
         let device = null;
         let server = null;
         let commandCharacteristic = null;
-        let biodataCharacteristic = null;
         let currentMode = null;
         let useCelsius = true;
         let lastStatusUpdate = null;
@@ -1330,14 +1261,6 @@
         let timerPendingMinutes = null;  // Store in minutes for easier math
         let deviceMaxHours = null;       // From status byte 10
         let deviceMaxMinutes = null;     // From status byte 11
-
-        // Biorhythm state
-        let biorhythms = {
-            bio1: { name: null, steps: [] },
-            bio2: { name: null, steps: [] },
-            bio3: { name: null, steps: [] }
-        };
-        let currentBioTag = 1;
 
         // Auto-reconnect state
         let reconnectAttempts = 0;
@@ -1822,7 +1745,6 @@
         const statusText = document.getElementById('statusText');
         const deviceName = document.getElementById('deviceName');
         const controls = document.getElementById('controls');
-        const biorhythmSection = document.getElementById('biorhythmSection');
         const errorDiv = document.getElementById('error');
         const useCelsiusCheckbox = document.getElementById('useCelsius');
         const enableDebugLoggingCheckbox = document.getElementById('enableDebugLogging');
@@ -2102,54 +2024,6 @@
             });
         });
 
-        // Biorhythm button event listeners
-        document.getElementById('loadBiorhythmsBtn').addEventListener('click', () => {
-            logDebug('Load biorhythms button clicked', 'info');
-            loadAllBiorhythms();
-        });
-
-        document.getElementById('bio1ExpandBtn').addEventListener('click', () => {
-            const stepsEl = document.getElementById('bio1Steps');
-            const btn = document.getElementById('bio1ExpandBtn');
-            if (stepsEl.style.display === 'none') {
-                stepsEl.style.display = 'block';
-                btn.textContent = 'Hide';
-                logDebug('Bio1 steps expanded', 'info');
-            } else {
-                stepsEl.style.display = 'none';
-                btn.textContent = 'View';
-                logDebug('Bio1 steps collapsed', 'info');
-            }
-        });
-
-        document.getElementById('bio2ExpandBtn').addEventListener('click', () => {
-            const stepsEl = document.getElementById('bio2Steps');
-            const btn = document.getElementById('bio2ExpandBtn');
-            if (stepsEl.style.display === 'none') {
-                stepsEl.style.display = 'block';
-                btn.textContent = 'Hide';
-                logDebug('Bio2 steps expanded', 'info');
-            } else {
-                stepsEl.style.display = 'none';
-                btn.textContent = 'View';
-                logDebug('Bio2 steps collapsed', 'info');
-            }
-        });
-
-        document.getElementById('bio3ExpandBtn').addEventListener('click', () => {
-            const stepsEl = document.getElementById('bio3Steps');
-            const btn = document.getElementById('bio3ExpandBtn');
-            if (stepsEl.style.display === 'none') {
-                stepsEl.style.display = 'block';
-                btn.textContent = 'Hide';
-                logDebug('Bio3 steps expanded', 'info');
-            } else {
-                stepsEl.style.display = 'none';
-                btn.textContent = 'View';
-                logDebug('Bio3 steps collapsed', 'info');
-            }
-        });
-
         async function connectToBedJet() {
             try {
                 hideError();
@@ -2227,21 +2101,6 @@
                 statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
                 logDebug('✓ Notifications enabled', 'success');
 
-                // Get biodata characteristic (for biorhythm data)
-                // Note: biodata is optional and only needed for loading biorhythms
-                // The official app uses READ operations, not notifications, for biodata
-                try {
-                    logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
-                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                    logDebug('✓ Got biodata characteristic', 'success');
-                    logDebug(`  Properties: ${Array.from(biodataCharacteristic.properties).join(', ')}`, 'info');
-                    logDebug('Note: Biodata will be read on-demand when loading biorhythms', 'info');
-                } catch (error) {
-                    logDebug(`⚠ Could not get biodata characteristic: ${error.message}`, 'warn');
-                    logDebug('  Biorhythm loading will not be available', 'warn');
-                    biodataCharacteristic = null;
-                }
-
                 // Read device name
                 try {
                     logDebug(`Getting name characteristic (${BEDJET_NAME_UUID})...`, 'info');
@@ -2262,7 +2121,6 @@
                 // Update UI
                 updateConnectionStatus(true);
                 controls.style.display = 'block';
-                biorhythmSection.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = '';
@@ -2359,18 +2217,6 @@
                 statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
                 logDebug('✓ Notifications enabled', 'success');
 
-                // Get biodata characteristic (optional)
-                try {
-                    logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
-                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                    logDebug('✓ Got biodata characteristic', 'success');
-                    logDebug('Note: Biodata will be read on-demand when loading biorhythms', 'info');
-                } catch (error) {
-                    logDebug(`⚠ Could not get biodata characteristic: ${error.message}`, 'warn');
-                    logDebug('  Biorhythm loading will not be available', 'warn');
-                    biodataCharacteristic = null;
-                }
-
                 // Read device name
                 try {
                     logDebug(`Getting name characteristic (${BEDJET_NAME_UUID})...`, 'info');
@@ -2391,7 +2237,6 @@
                 // Update UI
                 updateConnectionStatus(true);
                 controls.style.display = 'block';
-                biorhythmSection.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = '';
@@ -2463,17 +2308,9 @@
                     await statusCharacteristic.startNotifications();
                     statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
 
-                    // Get biodata characteristic (optional)
-                    try {
-                        biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                    } catch (error) {
-                        biodataCharacteristic = null;
-                    }
-
                     // Update UI
                     updateConnectionStatus(true);
                     controls.style.display = 'block';
-                    biorhythmSection.style.display = 'block';
                     connectBtn.style.display = 'none';
                     reconnectBtn.style.display = 'none';
                     disconnectBtn.style.display = '';
@@ -2503,7 +2340,6 @@
             logDebug(`Device: ${device?.name || 'Unknown'}`, 'info');
             updateConnectionStatus(false);
             controls.style.display = 'none';
-            biorhythmSection.style.display = 'none';
             disconnectBtn.style.display = 'none';
             deviceName.textContent = '';
             currentMode = null;
@@ -2849,334 +2685,6 @@
             logDebug(`  Preset byte: 0x${presetByte.toString(16)}`, 'info');
             await sendCommand([0x01, presetByte]);
         }
-
-        // Biorhythm functions
-        function getNextBioTag() {
-            currentBioTag = (currentBioTag % 255) + 1;
-            return currentBioTag;
-        }
-
-        async function requestBioPacket(fragmentID) {
-            if (!biodataCharacteristic) {
-                showError('Not connected to BedJet biodata');
-                logDebug('❌ Cannot request biodata: Not connected', 'error');
-                return;
-            }
-
-            const tag = getNextBioTag();
-            const command = new Uint8Array([0x41, fragmentID, tag]);
-            const hexCommand = Array.from(command).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
-
-            logDebug(`► Requesting bio packet: fragment=${fragmentID}, tag=${tag}`, 'info');
-            logDebug(`  Command: ${hexCommand}`, 'info');
-
-            // Send the request command
-            await commandCharacteristic.writeValue(command);
-            logDebug('  Command sent, waiting for device to prepare response...', 'info');
-
-            // Wait a bit for the device to prepare the response
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            // Read the biodata characteristic (NOT notifications - the official app uses readValue!)
-            logDebug(`  Reading biodata characteristic...`, 'info');
-            const dataView = await biodataCharacteristic.readValue();
-            const data = new Uint8Array(dataView.buffer);
-
-            const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
-            logDebug(`◄ Biodata read (${data.length} bytes): ${hexData}`, 'info');
-
-            // Verify response matches our request
-            if (data[0] === fragmentID && data[1] === tag) {
-                logDebug(`✓ Biodata response matches request (fragment=${fragmentID}, tag=${tag})`, 'success');
-                return data;
-            } else {
-                logDebug(`⚠ Biodata response mismatch: expected fragment=${fragmentID} tag=${tag}, got fragment=${data[0]} tag=${data[1]}`, 'warn');
-                throw new Error(`Biodata response mismatch: expected fragment=${fragmentID} tag=${tag}, got fragment=${data[0]} tag=${data[1]}`);
-            }
-        }
-
-        function parseBioNames(data) {
-            logDebug(`Parsing bio names (${data.length} bytes)`, 'info');
-
-            // Expected: 2 header bytes + 48 bytes for names (3 × 16 bytes) = 50 bytes total
-            // But BLE MTU limitations may truncate the response to ~20-23 bytes
-            // We need at least: 2 (header) + 16 (Bio1) = 18 bytes minimum
-            if (data.length < 18) {
-                logDebug(`⚠ Bio names response too short: ${data.length} bytes (need at least 18)`, 'warn');
-                return;
-            }
-
-            // Skip first 2 bytes (fragmentID and tag), then parse available names (16 bytes each)
-            const names = [];
-            const maxBios = Math.min(3, Math.floor((data.length - 2) / 16));
-            logDebug(`  Can parse ${maxBios} biorhythm name(s) from ${data.length} bytes`, 'info');
-
-            for (let i = 0; i < 3; i++) {
-                const offset = 2 + (i * 16);
-
-                // Check if we have enough bytes for this bio slot
-                if (offset + 16 > data.length) {
-                    logDebug(`  Bio${i + 1}: Not enough data (need ${offset + 16} bytes, have ${data.length})`, 'warn');
-                    names.push(null);
-                    continue;
-                }
-
-                const nameBytes = data.slice(offset, offset + 16);
-
-                if (nameBytes[0] === 0x01) {
-                    names.push(null); // Empty slot
-                    logDebug(`  Bio${i + 1}: Empty slot`, 'info');
-                } else {
-                    // Find null terminator or use all 15 chars (first byte may be status, rest is name)
-                    let nameStr = '';
-                    for (let j = 0; j < 16; j++) {
-                        if (nameBytes[j] === 0) break;
-                        // Skip non-printable characters
-                        if (nameBytes[j] >= 0x20 && nameBytes[j] <= 0x7E) {
-                            nameStr += String.fromCharCode(nameBytes[j]);
-                        }
-                    }
-                    names.push(nameStr.trim() || null);
-                    logDebug(`  Bio${i + 1}: "${names[i]}"`, 'info');
-                }
-            }
-
-            biorhythms.bio1.name = names[0];
-            biorhythms.bio2.name = names[1];
-            biorhythms.bio3.name = names[2];
-
-            updateBiorhythmsUI();
-        }
-
-        function parseSequenceStep(bytes, offset) {
-            const mode = bytes[offset];
-            const fanStep = bytes[offset + 1];
-            const temperature = bytes[offset + 2];
-            const hoursByte = bytes[offset + 3];
-            const minutes = bytes[offset + 4];
-
-            const hours = hoursByte & 0x7F;
-            const clocktime = (hoursByte & 0x80) !== 0;
-
-            return {
-                mode,
-                fanStep,
-                temperature,
-                hours,
-                minutes,
-                clocktime
-            };
-        }
-
-        function parseBioSequence(data, sequenceNum) {
-            logDebug(`Parsing bio sequence ${sequenceNum} (${data.length} bytes)`, 'info');
-
-            if (data.length < 3) {
-                logDebug(`⚠ Bio sequence response too short: ${data.length} bytes`, 'warn');
-                return;
-            }
-
-            const fragmentID = data[0];
-            const tag = data[1];
-            const stepCount = data[2];
-
-            logDebug(`  Fragment ID: ${fragmentID}, Tag: ${tag}, Step count: ${stepCount}`, 'info');
-
-            const fragmentNum = (fragmentID - 7) & 3;
-            const stepOffset = fragmentNum * 8;
-
-            // Calculate how many steps we SHOULD parse based on the total step count
-            const expectedStepsInFragment = Math.min(8, stepCount - stepOffset);
-
-            // Calculate how many steps we CAN parse based on available data (MTU limitation)
-            // Each step is 5 bytes, header is 3 bytes
-            const availableBytes = data.length - 3;
-            const maxParseableSteps = Math.floor(availableBytes / 5);
-
-            // Use the minimum of expected and parseable
-            const stepsInFragment = Math.min(expectedStepsInFragment, maxParseableSteps);
-
-            logDebug(`  Fragment num: ${fragmentNum}, Step offset: ${stepOffset}`, 'info');
-            logDebug(`  Expected steps: ${expectedStepsInFragment}, Parseable steps: ${maxParseableSteps}, Parsing: ${stepsInFragment}`, 'info');
-
-            if (stepsInFragment < expectedStepsInFragment) {
-                logDebug(`  ⚠ MTU limitation: Only ${data.length} bytes received, can parse ${stepsInFragment}/${expectedStepsInFragment} steps`, 'warn');
-            }
-
-            const bioKey = `bio${sequenceNum + 1}`;
-
-            for (let i = 0; i < stepsInFragment; i++) {
-                const byteOffset = 3 + (i * 5);
-
-                // Double-check we have enough bytes for this step
-                if (byteOffset + 5 > data.length) {
-                    logDebug(`    ⚠ Skipping step ${stepOffset + i}: Not enough data`, 'warn');
-                    break;
-                }
-
-                const step = parseSequenceStep(data, byteOffset);
-
-                const globalStepNum = stepOffset + i;
-                biorhythms[bioKey].steps[globalStepNum] = step;
-
-                const modeName = BIO_MODE_NAMES[step.mode] || 'UNKNOWN';
-                const fanPercent = step.fanStep * 5 + 5;
-                const tempC = step.temperature / 2;
-                const timeType = step.clocktime ? 'clock' : 'duration';
-
-                logDebug(`    Step ${globalStepNum}: ${modeName}, ${fanPercent}%, ${tempC}°C, ${step.hours}:${step.minutes.toString().padStart(2, '0')} (${timeType})`, 'info');
-            }
-
-            biorhythms[bioKey].totalSteps = stepCount;
-
-            return { stepCount, fragmentNum };
-        }
-
-        async function loadBiorhythm(sequenceNum) {
-            logDebug(`Loading biorhythm ${sequenceNum + 1}...`, 'info');
-
-            const startFragment = (sequenceNum * 4) + 7;
-            logDebug(`  Start fragment: ${startFragment}`, 'info');
-            biorhythms[`bio${sequenceNum + 1}`].steps = [];
-
-            try {
-                let currentFragment = startFragment;
-                let stepCount = 0;
-                let fragmentNum = 0;
-                let fragmentsLoaded = 0;
-
-                do {
-                    logDebug(`  Loading fragment ${currentFragment} (fragment ${fragmentsLoaded + 1})...`, 'info');
-                    const data = await requestBioPacket(currentFragment);
-                    const result = parseBioSequence(data, sequenceNum);
-
-                    if (result) {
-                        stepCount = result.stepCount;
-                        fragmentNum = result.fragmentNum;
-                        fragmentsLoaded++;
-                        logDebug(`  ✓ Fragment ${currentFragment} parsed: ${result.stepCount} total steps, fragment ${fragmentNum}`, 'success');
-                    }
-
-                    currentFragment++;
-
-                    const nextFragmentFirstStep = (fragmentNum + 1) * 8;
-                    if (stepCount <= nextFragmentFirstStep) {
-                        logDebug(`  All steps loaded (${stepCount} <= ${nextFragmentFirstStep}), stopping`, 'info');
-                        break;
-                    }
-                } while (fragmentNum < 3);
-
-                logDebug(`✓ Biorhythm ${sequenceNum + 1} loaded: ${stepCount} steps from ${fragmentsLoaded} fragment(s)`, 'success');
-                updateBiorhythmsUI();
-            } catch (error) {
-                logDebug(`❌ Failed to load biorhythm ${sequenceNum + 1}: ${error.message}`, 'error');
-                if (error.stack) {
-                    logDebug(`  Stack trace: ${error.stack}`, 'error');
-                }
-                throw error;
-            }
-        }
-
-        async function loadAllBiorhythms() {
-            logDebug('=== Loading All Biorhythms ===', 'info');
-
-            try {
-                // Check if biodata characteristic is available
-                if (!biodataCharacteristic) {
-                    showError('Biodata characteristic not available. Your BedJet may not support biorhythm data.');
-                    logDebug('❌ Biodata characteristic not available', 'error');
-                    return;
-                }
-
-                logDebug('Biodata characteristic ready for reading', 'info');
-                logDebug('Note: Using READ operations (not notifications) - matching official BedJet app protocol', 'info');
-
-                // First load names
-                logDebug('Requesting biorhythm names...', 'info');
-                const namesData = await requestBioPacket(4);
-                parseBioNames(namesData);
-
-                // Then load all three sequences
-                let loadedCount = 0;
-                for (let i = 0; i < 3; i++) {
-                    if (biorhythms[`bio${i + 1}`].name) {
-                        await loadBiorhythm(i);
-                        loadedCount++;
-                    } else {
-                        logDebug(`Skipping Bio${i + 1} (empty slot)`, 'info');
-                    }
-                }
-
-                document.getElementById('biorhythmsList').style.display = 'block';
-                logDebug(`✓ Biorhythms list displayed (${loadedCount} biorhythm(s) loaded)`, 'success');
-                logDebug('=== All Biorhythms Loaded ===', 'success');
-            } catch (error) {
-                showError(`Failed to load biorhythms: ${error.message}`);
-                logDebug(`❌ Failed to load biorhythms: ${error.message}`, 'error');
-                if (error.stack) {
-                    logDebug(`Stack trace: ${error.stack}`, 'error');
-                }
-            }
-        }
-
-        function formatStepTime(step) {
-            if (step.clocktime) {
-                return `until ${step.hours}:${step.minutes.toString().padStart(2, '0')}`;
-            } else {
-                if (step.hours > 0) {
-                    return `for ${step.hours}h ${step.minutes}m`;
-                } else {
-                    return `for ${step.minutes}m`;
-                }
-            }
-        }
-
-        function formatStepTemperature(tempHalfC) {
-            const tempC = tempHalfC / 2;
-            const tempF = Math.round(tempC * 9 / 5 + 32);
-            return useCelsius ? `${tempC}°C` : `${tempF}°F`;
-        }
-
-        function updateBiorhythmsUI() {
-            logDebug('Updating biorhythms UI...', 'info');
-            for (let i = 1; i <= 3; i++) {
-                const bioKey = `bio${i}`;
-                const bio = biorhythms[bioKey];
-                const nameEl = document.getElementById(`${bioKey}Name`);
-                const stepsEl = document.getElementById(`${bioKey}Steps`);
-
-                if (bio.name) {
-                    nameEl.textContent = `${bio.name} (${bio.steps.length} steps)`;
-                    logDebug(`  Bio${i}: "${bio.name}" with ${bio.steps.length} steps`, 'info');
-
-                    // Generate steps HTML
-                    let stepsHTML = '<div style="font-size: 12px; color: #aaa;">';
-                    bio.steps.forEach((step, idx) => {
-                        if (step) {
-                            const modeName = BIO_MODE_NAMES[step.mode] || 'UNKNOWN';
-                            const fanPercent = step.fanStep * 5 + 5;
-                            const temp = formatStepTemperature(step.temperature);
-                            const time = formatStepTime(step);
-
-                            stepsHTML += `<div style="padding: 8px; margin-bottom: 5px; background: #222; border-radius: 4px;">`;
-                            stepsHTML += `<strong>Step ${idx + 1}:</strong> ${modeName} @ ${temp}, Fan ${fanPercent}%, ${time}`;
-                            stepsHTML += `</div>`;
-                        }
-                    });
-                    stepsHTML += '</div>';
-                    stepsEl.innerHTML = stepsHTML;
-                } else {
-                    nameEl.textContent = 'Empty';
-                    stepsEl.innerHTML = '<div style="font-size: 12px; color: #777;">No biorhythm configured</div>';
-                    logDebug(`  Bio${i}: Empty slot`, 'info');
-                }
-            }
-            logDebug('✓ Biorhythms UI updated', 'success');
-        }
-
-        // Note: handleBiodataUpdate is no longer used
-        // The official BedJet app uses READ operations (readCharacteristic), not notifications
-        // for biodata. We now use direct readValue() calls in requestBioPacket() instead.
 
         function updateConnectionStatus(connected) {
             if (connected) {
