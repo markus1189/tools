@@ -424,105 +424,286 @@
             opacity: 0.5;
         }
 
-        /* Timer Control */
+        /* Timer Control - Compact Mobile-Friendly Design */
         .timer-control-panel {
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 15px;
+            padding: 12px 15px;
             background: #f9f9f9;
             border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .timer-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .timer-label {
-            font-size: 14px;
+            font-size: 11px;
             color: #666;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        .timer-display-wrapper {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
-        .timer-display {
-            display: inline-block;
-            padding: 15px 25px;
-            background: white;
-            border-radius: 8px;
-            border: 2px solid #e0e0e0;
-            transition: all 0.3s ease;
-        }
-
-        .timer-display.dirty {
-            border-color: #ff9800;
-            background: #fff3e0;
         }
 
         .timer-value {
-            font-size: 28px;
+            font-size: 18px;
             font-weight: 700;
             color: #333;
             font-variant-numeric: tabular-nums;
         }
 
-        .timer-limit-indicator {
+        .timer-value.off {
+            color: #999;
+        }
+
+        .timer-edit-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #ff9800;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #ff9800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .timer-edit-btn:active {
+            background: #ff9800;
+            color: white;
+            transform: scale(0.95);
+        }
+
+        /* Timer Modal */
+        .timer-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .timer-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .timer-modal-content {
+            background: white;
+            border-radius: 16px 16px 0 0;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .timer-modal.active .timer-modal-content {
+            transform: translateY(0);
+        }
+
+        .timer-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .timer-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .timer-modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 50%;
+            font-size: 20px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .timer-modal-close:active {
+            background: #e0e0e0;
+            transform: scale(0.9);
+        }
+
+        .timer-current-value {
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .timer-current-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .timer-current-display {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ff9800;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-limit-text {
             font-size: 11px;
             color: #999;
             margin-top: 5px;
         }
 
-        .timer-steppers {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 10px;
+        .timer-section {
+            margin-bottom: 25px;
         }
 
-        .timer-stepper-btn {
-            width: 48px;
-            height: 48px;
-            border: 2px solid #ff9800;
+        .timer-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .timer-presets {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .timer-preset-btn {
+            padding: 12px 8px;
             background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timer-preset-btn:active {
+            background: #ff9800;
+            border-color: #ff9800;
+            color: white;
+            transform: scale(0.95);
+        }
+
+        .timer-preset-btn.off {
+            background: #f9f9f9;
+            color: #999;
+        }
+
+        .timer-adjustments {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .timer-adjust-row {
+            display: contents;
+        }
+
+        .timer-adjust-btn {
+            padding: 14px;
+            background: white;
+            border: 2px solid #ff9800;
             border-radius: 8px;
             font-size: 16px;
             font-weight: 700;
             color: #ff9800;
             cursor: pointer;
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
         }
 
-        .timer-stepper-btn.small {
-            width: 44px;
-            height: 44px;
-            font-size: 14px;
-            opacity: 0.8;
-        }
-
-        .timer-stepper-btn:active {
+        .timer-adjust-btn:active {
             background: #ff9800;
             color: white;
             transform: scale(0.95);
         }
 
-        .timer-stepper-btn:disabled {
+        .timer-adjust-btn:disabled {
             opacity: 0.3;
             cursor: not-allowed;
         }
 
-        .timer-stepper-btn:disabled:active {
+        .timer-adjust-btn:disabled:active {
             transform: none;
             background: white;
             color: #ff9800;
         }
 
-        .timer-actions {
+        .timer-adjust-label {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .timer-modal-actions {
             display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-top: 10px;
+            gap: 10px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .timer-modal-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timer-modal-btn.cancel {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .timer-modal-btn.apply {
+            background: #ff9800;
+            color: white;
+        }
+
+        .timer-modal-btn:active {
+            transform: scale(0.95);
         }
 
         /* Mobile-optimized touch targets */
@@ -838,23 +1019,77 @@
                     <button class="mode-btn" data-mode="dry">DRY</button>
                     <button class="mode-btn" data-mode="ext_ht">EXT HT</button>
                 </div>
+                <!-- Compact Timer Control -->
                 <div class="timer-control-panel">
-                    <div class="timer-label">TIMER</div>
-                    <div class="timer-display-wrapper">
-                        <div class="timer-display" id="timerDisplay">
-                            <span class="timer-value" id="timeRemaining">--</span>
+                    <div class="timer-info">
+                        <span class="timer-label">TIMER</span>
+                        <span class="timer-value" id="timeRemaining">--</span>
+                    </div>
+                    <button class="timer-edit-btn" id="timerEditBtn">Edit</button>
+                </div>
+
+                <!-- Timer Modal -->
+                <div class="timer-modal" id="timerModal">
+                    <div class="timer-modal-content">
+                        <div class="timer-modal-header">
+                            <div class="timer-modal-title">Set Timer</div>
+                            <button class="timer-modal-close" id="timerModalClose">×</button>
                         </div>
-                        <div class="timer-limit-indicator" id="timerLimitIndicator">Max: --</div>
-                    </div>
-                    <div class="timer-steppers">
-                        <button class="timer-stepper-btn small" id="timerMinus5">-5</button>
-                        <button class="timer-stepper-btn" id="timerMinus1">-1</button>
-                        <button class="timer-stepper-btn" id="timerPlus1">+1</button>
-                        <button class="timer-stepper-btn small" id="timerPlus5">+5</button>
-                    </div>
-                    <div class="timer-actions hidden" id="timerActions">
-                        <button class="action-btn confirm" id="timerConfirm">✓</button>
-                        <button class="action-btn cancel" id="timerCancel">✗</button>
+
+                        <div class="timer-current-value">
+                            <div class="timer-current-label">CURRENT</div>
+                            <div class="timer-current-display" id="timerModalDisplay">--</div>
+                            <div class="timer-limit-text" id="timerModalLimit">Max: --</div>
+                        </div>
+
+                        <div class="timer-section">
+                            <div class="timer-section-title">Quick Presets</div>
+                            <div class="timer-presets">
+                                <button class="timer-preset-btn off" data-minutes="0">Off</button>
+                                <button class="timer-preset-btn" data-minutes="1">1 min</button>
+                                <button class="timer-preset-btn" data-minutes="30">30 min</button>
+                                <button class="timer-preset-btn" data-minutes="60">1 hour</button>
+                                <button class="timer-preset-btn" data-minutes="120">2 hours</button>
+                                <button class="timer-preset-btn" data-minutes="180">3 hours</button>
+                                <button class="timer-preset-btn" data-minutes="240">4 hours</button>
+                                <button class="timer-preset-btn" data-minutes="480">8 hours</button>
+                            </div>
+                        </div>
+
+                        <div class="timer-section">
+                            <div class="timer-section-title">Fine Tune</div>
+                            <div class="timer-adjustments">
+                                <button class="timer-adjust-btn" id="timerMinus60">
+                                    <span>−1</span>
+                                    <span class="timer-adjust-label">hour</span>
+                                </button>
+                                <button class="timer-adjust-btn" id="timerPlus60">
+                                    <span>+1</span>
+                                    <span class="timer-adjust-label">hour</span>
+                                </button>
+                                <button class="timer-adjust-btn" id="timerMinus10">
+                                    <span>−10</span>
+                                    <span class="timer-adjust-label">min</span>
+                                </button>
+                                <button class="timer-adjust-btn" id="timerPlus10">
+                                    <span>+10</span>
+                                    <span class="timer-adjust-label">min</span>
+                                </button>
+                                <button class="timer-adjust-btn" id="timerMinus1">
+                                    <span>−1</span>
+                                    <span class="timer-adjust-label">min</span>
+                                </button>
+                                <button class="timer-adjust-btn" id="timerPlus1">
+                                    <span>+1</span>
+                                    <span class="timer-adjust-label">min</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="timer-modal-actions">
+                            <button class="timer-modal-btn cancel" id="timerModalCancel">Cancel</button>
+                            <button class="timer-modal-btn apply" id="timerModalApply">Apply</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1090,8 +1325,7 @@
         let tempPendingValue = null;
         let fanPendingValue = null;
 
-        // Timer dirty state
-        let timerDirty = false;
+        // Timer state
         let timerPendingMinutes = null;  // Store in minutes for easier math
         let deviceMaxHours = null;       // From status byte 10
         let deviceMaxMinutes = null;     // From status byte 11
@@ -1447,21 +1681,8 @@
         }
 
         function updateTimerLimitIndicator() {
-            const limits = getTimerLimits();
-            const hours = Math.floor(limits.maxMinutes / 60);
-            const mins = limits.maxMinutes % 60;
-
-            const indicator = document.getElementById('timerLimitIndicator');
-            if (currentMode === 'turbo') {
-                indicator.textContent = `Turbo: 1-10 min`;
-                indicator.style.color = '#ff9800';
-            } else if (mins === 0) {
-                indicator.textContent = `Max: ${hours}h`;
-                indicator.style.color = '#999';
-            } else {
-                indicator.textContent = `Max: ${hours}h ${mins}m`;
-                indicator.style.color = '#999';
-            }
+            // No-op: Timer limits now shown in modal only
+            // Kept for backward compatibility with existing calls
         }
 
         function updateTimerDisplay(minutes) {
@@ -1475,34 +1696,28 @@
 
         function updateTimerButtonStates(currentMinutes, limits) {
             const plus1Btn = document.getElementById('timerPlus1');
-            const plus5Btn = document.getElementById('timerPlus5');
+            const plus10Btn = document.getElementById('timerPlus10');
+            const plus60Btn = document.getElementById('timerPlus60');
             const minus1Btn = document.getElementById('timerMinus1');
-            const minus5Btn = document.getElementById('timerMinus5');
+            const minus10Btn = document.getElementById('timerMinus10');
+            const minus60Btn = document.getElementById('timerMinus60');
 
-            // Disable increment buttons if at max
+            // Disable increment buttons if at or near max
             const atMax = currentMinutes >= limits.maxMinutes;
             plus1Btn.disabled = atMax;
-            plus5Btn.disabled = atMax;
+            plus10Btn.disabled = currentMinutes + 10 > limits.maxMinutes;
+            plus60Btn.disabled = currentMinutes + 60 > limits.maxMinutes;
 
-            // Disable decrement buttons if at min
+            // Disable decrement buttons if at or near min
             const atMin = currentMinutes <= limits.minMinutes;
             minus1Btn.disabled = atMin;
-            minus5Btn.disabled = atMin;
+            minus10Btn.disabled = currentMinutes - 10 < limits.minMinutes;
+            minus60Btn.disabled = currentMinutes - 60 < limits.minMinutes;
         }
 
         function adjustTimer(deltaMinutes) {
-            // Get current value (either pending or from display)
-            let currentMinutes = timerPendingMinutes;
-            if (currentMinutes === null) {
-                // Parse current display value
-                const timeStr = document.getElementById('timeRemaining').textContent;
-                if (timeStr === '--') {
-                    currentMinutes = 0;
-                } else {
-                    const parts = timeStr.split(':');
-                    currentMinutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                }
-            }
+            // Get current pending value
+            let currentMinutes = timerPendingMinutes !== null ? timerPendingMinutes : 0;
 
             // Apply delta
             let newMinutes = currentMinutes + deltaMinutes;
@@ -1511,23 +1726,81 @@
             const limits = getTimerLimits();
             newMinutes = Math.max(limits.minMinutes, Math.min(limits.maxMinutes, newMinutes));
 
-            // Mark as dirty
-            if (!timerDirty) {
-                timerDirty = true;
-                document.getElementById('timerActions').classList.remove('hidden');
-                document.getElementById('timerDisplay').classList.add('dirty');
-            }
-
             // Update pending value
             timerPendingMinutes = newMinutes;
 
-            // Update display immediately (preview)
-            updateTimerDisplay(newMinutes);
+            // Update modal display immediately (preview)
+            updateTimerModalDisplay(newMinutes);
 
             // Update button states (disable if at limits)
             updateTimerButtonStates(newMinutes, limits);
 
             logDebug(`Timer adjusted: ${deltaMinutes > 0 ? '+' : ''}${deltaMinutes} min → ${newMinutes} min`, 'info');
+        }
+
+        function setTimerPreset(minutes) {
+            const limits = getTimerLimits();
+            const clampedMinutes = Math.max(limits.minMinutes, Math.min(limits.maxMinutes, minutes));
+
+            timerPendingMinutes = clampedMinutes;
+            updateTimerModalDisplay(clampedMinutes);
+            updateTimerButtonStates(clampedMinutes, limits);
+
+            logDebug(`Timer preset: ${minutes} min${clampedMinutes !== minutes ? ` (clamped to ${clampedMinutes})` : ''}`, 'info');
+        }
+
+        function updateTimerModalDisplay(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+
+            let displayStr;
+            if (minutes === 0) {
+                displayStr = 'Off';
+            } else if (hours === 0) {
+                displayStr = `${mins} min`;
+            } else if (mins === 0) {
+                displayStr = `${hours} hour${hours > 1 ? 's' : ''}`;
+            } else {
+                displayStr = `${hours}h ${mins}m`;
+            }
+
+            document.getElementById('timerModalDisplay').textContent = displayStr;
+        }
+
+        function openTimerModal() {
+            // Initialize pending value from current display
+            const timeStr = document.getElementById('timeRemaining').textContent;
+            if (timeStr === '--' || timeStr === 'Off') {
+                timerPendingMinutes = 0;
+            } else {
+                const parts = timeStr.split(':');
+                timerPendingMinutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            }
+
+            // Update modal display and limits
+            updateTimerModalDisplay(timerPendingMinutes);
+            const limits = getTimerLimits();
+            document.getElementById('timerModalLimit').textContent = `Max: ${limits.maxMinutes} min (${Math.floor(limits.maxMinutes / 60)}h)`;
+            updateTimerButtonStates(timerPendingMinutes, limits);
+
+            // Show modal
+            document.getElementById('timerModal').classList.add('active');
+            logDebug('Timer modal opened', 'info');
+        }
+
+        function closeTimerModal(apply = false) {
+            if (apply && timerPendingMinutes !== null) {
+                setRuntime(timerPendingMinutes);
+                logDebug(`Timer applied: ${timerPendingMinutes} min`, 'info');
+            } else {
+                logDebug('Timer modal cancelled', 'info');
+            }
+
+            // Reset state
+            timerPendingMinutes = null;
+
+            // Hide modal
+            document.getElementById('timerModal').classList.remove('active');
         }
 
         // UI Elements
@@ -1758,44 +2031,61 @@
             decrementFan();
         });
 
-        // Timer stepper buttons
+        // Timer modal controls
+        document.getElementById('timerEditBtn').addEventListener('click', () => {
+            openTimerModal();
+        });
+
+        document.getElementById('timerModalClose').addEventListener('click', () => {
+            closeTimerModal(false);
+        });
+
+        document.getElementById('timerModalCancel').addEventListener('click', () => {
+            closeTimerModal(false);
+        });
+
+        document.getElementById('timerModalApply').addEventListener('click', () => {
+            closeTimerModal(true);
+        });
+
+        // Close modal on backdrop click
+        document.getElementById('timerModal').addEventListener('click', (e) => {
+            if (e.target.id === 'timerModal') {
+                closeTimerModal(false);
+            }
+        });
+
+        // Timer preset buttons
+        document.querySelectorAll('.timer-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const minutes = parseInt(btn.dataset.minutes);
+                setTimerPreset(minutes);
+            });
+        });
+
+        // Timer adjustment buttons
         document.getElementById('timerPlus1').addEventListener('click', () => {
             adjustTimer(1);
         });
 
-        document.getElementById('timerPlus5').addEventListener('click', () => {
-            adjustTimer(5);
+        document.getElementById('timerPlus10').addEventListener('click', () => {
+            adjustTimer(10);
+        });
+
+        document.getElementById('timerPlus60').addEventListener('click', () => {
+            adjustTimer(60);
         });
 
         document.getElementById('timerMinus1').addEventListener('click', () => {
             adjustTimer(-1);
         });
 
-        document.getElementById('timerMinus5').addEventListener('click', () => {
-            adjustTimer(-5);
+        document.getElementById('timerMinus10').addEventListener('click', () => {
+            adjustTimer(-10);
         });
 
-        // Timer confirm/cancel handlers
-        document.getElementById('timerConfirm').addEventListener('click', () => {
-            if (timerDirty && timerPendingMinutes !== null) {
-                setRuntime(timerPendingMinutes);
-                timerDirty = false;
-                timerPendingMinutes = null;
-                document.getElementById('timerActions').classList.add('hidden');
-                document.getElementById('timerDisplay').classList.remove('dirty');
-            }
-        });
-
-        document.getElementById('timerCancel').addEventListener('click', () => {
-            if (timerDirty) {
-                // Revert to last known value from device
-                timerDirty = false;
-                timerPendingMinutes = null;
-                document.getElementById('timerActions').classList.add('hidden');
-                document.getElementById('timerDisplay').classList.remove('dirty');
-                // Display will be updated by next status notification
-                logDebug('Timer adjustment cancelled', 'info');
-            }
+        document.getElementById('timerMinus60').addEventListener('click', () => {
+            adjustTimer(-60);
         });
 
         presetButtons.forEach(btn => {
@@ -2339,8 +2629,9 @@
                 const seconds = data[6];
                 const totalSeconds = hours * 3600 + minutes * 60 + seconds;
 
-                // Only update if not dirty (user hasn't modified timer)
-                if (!timerDirty) {
+                // Only update if modal is not open (user isn't editing timer)
+                const modalOpen = document.getElementById('timerModal').classList.contains('active');
+                if (!modalOpen) {
                     if (totalSeconds > 0) {
                         const h = Math.floor(totalSeconds / 3600);
                         const m = Math.floor((totalSeconds % 3600) / 60);
@@ -2411,14 +2702,16 @@
             updateTimerLimitIndicator();
 
             // Check if current timer exceeds new mode's limit
-            if (timerPendingMinutes !== null) {
+            // If modal is open and timer exceeds new mode's limit, clamp it
+            const modalOpen = document.getElementById('timerModal').classList.contains('active');
+            if (modalOpen && timerPendingMinutes !== null) {
                 const limits = getTimerLimits();
                 if (timerPendingMinutes > limits.maxMinutes) {
                     timerPendingMinutes = limits.maxMinutes;
-                    updateTimerDisplay(timerPendingMinutes);
+                    updateTimerModalDisplay(timerPendingMinutes);
                     updateTimerButtonStates(timerPendingMinutes, limits);
+                    document.getElementById('timerModalLimit').textContent = `Max: ${limits.maxMinutes} min (${Math.floor(limits.maxMinutes / 60)}h)`;
                     logDebug(`Timer clamped to ${limits.maxMinutes} min for ${currentMode.toUpperCase()} mode`, 'warn');
-                    // Timer stays dirty - user must confirm clamped value
                 }
             }
         }
