@@ -362,6 +362,13 @@
             <div class="device-name" id="deviceName"></div>
         </div>
 
+        <div style="margin-bottom: 15px; padding: 12px; background: #f9f9f9; border-radius: 8px;">
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666;">
+                <input type="checkbox" id="showAllDevices" style="margin-right: 8px; cursor: pointer;">
+                <span>Show all Bluetooth devices (use if BedJet not found)</span>
+            </label>
+        </div>
+
         <button id="connectBtn" class="btn btn-primary">Connect to BedJet</button>
         <button id="disconnectBtn" class="btn btn-danger" style="display: none;">Disconnect</button>
 
@@ -539,18 +546,30 @@
                 hideError();
                 statusText.textContent = 'Scanning...';
 
-                // Request BedJet device - filter by service UUIDs
-                // (devices may not advertise name, or may use different capitalization)
-                device = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { services: [BEDJET_STATUS_UUID] }
-                    ],
+                const showAll = document.getElementById('showAllDevices').checked;
+
+                // Request BedJet device with fallback options
+                const requestOptions = {
                     optionalServices: [
                         BEDJET_STATUS_UUID,
                         BEDJET_NAME_UUID,
                         BEDJET_COMMAND_UUID
                     ]
-                });
+                };
+
+                if (showAll) {
+                    // Fallback: show all devices (useful if service UUIDs aren't advertised)
+                    requestOptions.acceptAllDevices = true;
+                } else {
+                    // Default: filter by service UUIDs and name prefix
+                    requestOptions.filters = [
+                        { services: [BEDJET_STATUS_UUID] },
+                        { namePrefix: 'BedJet' },
+                        { namePrefix: 'BEDJET' }
+                    ];
+                }
+
+                device = await navigator.bluetooth.requestDevice(requestOptions);
 
                 statusText.textContent = 'Connecting...';
                 device.addEventListener('gattserverdisconnected', onDisconnected);
