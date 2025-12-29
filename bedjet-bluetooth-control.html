@@ -1880,28 +1880,45 @@
         function parseBioNames(data) {
             logDebug(`Parsing bio names (${data.length} bytes)`, 'info');
 
-            if (data.length < 50) {
-                logDebug(`⚠ Bio names response too short: ${data.length} bytes`, 'warn');
+            // Expected: 2 header bytes + 48 bytes for names (3 × 16 bytes) = 50 bytes total
+            // But BLE MTU limitations may truncate the response to ~20-23 bytes
+            // We need at least: 2 (header) + 16 (Bio1) = 18 bytes minimum
+            if (data.length < 18) {
+                logDebug(`⚠ Bio names response too short: ${data.length} bytes (need at least 18)`, 'warn');
                 return;
             }
 
-            // Skip first 2 bytes (fragmentID and tag), then 48 bytes for 3 names (16 bytes each)
+            // Skip first 2 bytes (fragmentID and tag), then parse available names (16 bytes each)
             const names = [];
+            const maxBios = Math.min(3, Math.floor((data.length - 2) / 16));
+            logDebug(`  Can parse ${maxBios} biorhythm name(s) from ${data.length} bytes`, 'info');
+
             for (let i = 0; i < 3; i++) {
                 const offset = 2 + (i * 16);
+
+                // Check if we have enough bytes for this bio slot
+                if (offset + 16 > data.length) {
+                    logDebug(`  Bio${i + 1}: Not enough data (need ${offset + 16} bytes, have ${data.length})`, 'warn');
+                    names.push(null);
+                    continue;
+                }
+
                 const nameBytes = data.slice(offset, offset + 16);
 
                 if (nameBytes[0] === 0x01) {
                     names.push(null); // Empty slot
                     logDebug(`  Bio${i + 1}: Empty slot`, 'info');
                 } else {
-                    // Find null terminator or use all 15 chars
+                    // Find null terminator or use all 15 chars (first byte may be status, rest is name)
                     let nameStr = '';
-                    for (let j = 0; j < 15; j++) {
+                    for (let j = 0; j < 16; j++) {
                         if (nameBytes[j] === 0) break;
-                        nameStr += String.fromCharCode(nameBytes[j]);
+                        // Skip non-printable characters
+                        if (nameBytes[j] >= 0x20 && nameBytes[j] <= 0x7E) {
+                            nameStr += String.fromCharCode(nameBytes[j]);
+                        }
                     }
-                    names.push(nameStr.trim() || `Bio${i + 1}`);
+                    names.push(nameStr.trim() || null);
                     logDebug(`  Bio${i + 1}: "${names[i]}"`, 'info');
                 }
             }
