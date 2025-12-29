@@ -539,6 +539,7 @@
         </div>
 
         <button id="connectBtn" class="btn btn-primary">Connect to BedJet</button>
+        <button id="reconnectBtn" class="btn btn-primary" style="display: none;">Reconnect to <span id="savedDeviceName"></span></button>
         <button id="disconnectBtn" class="btn btn-danger" style="display: none;">Disconnect</button>
 
         <div id="controls" style="display: none;">
@@ -711,6 +712,44 @@
         let isReconnecting = false;
         let userDisconnected = false;
 
+        // LocalStorage keys
+        const STORAGE_KEY_DEVICE_ID = 'bedjet_device_id';
+        const STORAGE_KEY_DEVICE_NAME = 'bedjet_device_name';
+
+        // LocalStorage functions
+        function saveDeviceToStorage(deviceId, deviceName) {
+            try {
+                localStorage.setItem(STORAGE_KEY_DEVICE_ID, deviceId);
+                localStorage.setItem(STORAGE_KEY_DEVICE_NAME, deviceName);
+                logDebug(`✓ Device saved to storage: ${deviceName} (${deviceId})`, 'success');
+            } catch (error) {
+                logDebug(`⚠ Failed to save device to storage: ${error.message}`, 'warn');
+            }
+        }
+
+        function getSavedDevice() {
+            try {
+                const deviceId = localStorage.getItem(STORAGE_KEY_DEVICE_ID);
+                const deviceName = localStorage.getItem(STORAGE_KEY_DEVICE_NAME);
+                if (deviceId && deviceName) {
+                    return { id: deviceId, name: deviceName };
+                }
+            } catch (error) {
+                logDebug(`⚠ Failed to load device from storage: ${error.message}`, 'warn');
+            }
+            return null;
+        }
+
+        function clearSavedDevice() {
+            try {
+                localStorage.removeItem(STORAGE_KEY_DEVICE_ID);
+                localStorage.removeItem(STORAGE_KEY_DEVICE_NAME);
+                logDebug('✓ Saved device cleared from storage', 'info');
+            } catch (error) {
+                logDebug(`⚠ Failed to clear device from storage: ${error.message}`, 'warn');
+            }
+        }
+
         // Debug logging
         let debugLogContent = '';
         const debugLogEl = document.getElementById('debugLog');
@@ -835,7 +874,9 @@
 
         // UI Elements
         const connectBtn = document.getElementById('connectBtn');
+        const reconnectBtn = document.getElementById('reconnectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
+        const savedDeviceNameEl = document.getElementById('savedDeviceName');
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
         const deviceName = document.getElementById('deviceName');
@@ -931,6 +972,7 @@
 
         // Event Listeners
         connectBtn.addEventListener('click', connectToBedJet);
+        reconnectBtn.addEventListener('click', reconnectToSavedDevice);
         disconnectBtn.addEventListener('click', disconnect);
         useCelsiusCheckbox.addEventListener('change', updateTemperatureUI);
 
@@ -1088,10 +1130,15 @@
                     logDebug(`⚠ Could not read device name: ${err.message}`, 'warn');
                 }
 
+                // Save device to localStorage
+                const finalDeviceName = deviceName.textContent || device.name;
+                saveDeviceToStorage(device.id, finalDeviceName);
+
                 // Update UI
                 updateConnectionStatus(true);
                 controls.style.display = 'block';
                 connectBtn.style.display = 'none';
+                reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'block';
 
                 logDebug('=== Connection Complete ===', 'success');
@@ -1104,6 +1151,107 @@
                 }
                 showError(`Failed to connect: ${error.message}`);
                 updateConnectionStatus(false);
+            }
+        }
+
+        async function reconnectToSavedDevice() {
+            try {
+                hideError();
+                statusText.textContent = 'Reconnecting...';
+
+                // Reset reconnect state
+                userDisconnected = false;
+                reconnectAttempts = 0;
+                if (reconnectTimer) {
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = null;
+                }
+
+                const savedDevice = getSavedDevice();
+                if (!savedDevice) {
+                    showError('No saved device found. Please connect manually.');
+                    logDebug('❌ No saved device found', 'error');
+                    return;
+                }
+
+                logDebug('=== Reconnecting to Saved Device ===', 'info');
+                logDebug(`Saved device: ${savedDevice.name} (${savedDevice.id})`, 'info');
+
+                // Get all Bluetooth devices and find the one with matching ID
+                logDebug('Requesting Bluetooth device with saved ID...', 'info');
+                const devices = await navigator.bluetooth.getDevices();
+                device = devices.find(d => d.id === savedDevice.id);
+
+                if (!device) {
+                    showError('Saved device not found. Please scan again.');
+                    logDebug('❌ Saved device not found in available devices', 'error');
+                    logDebug('Clearing saved device from storage', 'info');
+                    clearSavedDevice();
+                    updateButtonVisibility();
+                    return;
+                }
+
+                logDebug(`✓ Found saved device: ${device.name || 'Unknown'}`, 'success');
+                logDebug(`  Device ID: ${device.id}`, 'info');
+
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                logDebug('Connecting to GATT server...', 'info');
+                server = await device.gatt.connect();
+                logDebug('✓ Connected to GATT server', 'success');
+
+                // Get the BedJet service
+                logDebug(`Getting BedJet service (${BEDJET_SERVICE_UUID})...`, 'info');
+                const bedjetService = await server.getPrimaryService(BEDJET_SERVICE_UUID);
+                logDebug('✓ Got BedJet service', 'success');
+
+                // Get command characteristic
+                logDebug(`Getting command characteristic (${BEDJET_COMMAND_UUID})...`, 'info');
+                commandCharacteristic = await bedjetService.getCharacteristic(BEDJET_COMMAND_UUID);
+                logDebug('✓ Got command characteristic', 'success');
+
+                // Get status characteristic
+                logDebug(`Getting status characteristic (${BEDJET_STATUS_UUID})...`, 'info');
+                const statusCharacteristic = await bedjetService.getCharacteristic(BEDJET_STATUS_UUID);
+                logDebug('✓ Got status characteristic', 'success');
+
+                // Subscribe to status notifications
+                logDebug('Starting notifications...', 'info');
+                await statusCharacteristic.startNotifications();
+                statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
+                logDebug('✓ Notifications enabled', 'success');
+
+                // Read device name
+                try {
+                    logDebug(`Getting name characteristic (${BEDJET_NAME_UUID})...`, 'info');
+                    const nameCharacteristic = await bedjetService.getCharacteristic(BEDJET_NAME_UUID);
+                    const nameValue = await nameCharacteristic.readValue();
+                    const name = new TextDecoder().decode(nameValue);
+                    deviceName.textContent = name || device.name;
+                    logDebug(`✓ Device name: ${name || device.name}`, 'success');
+                } catch (err) {
+                    deviceName.textContent = device.name;
+                    logDebug(`⚠ Could not read device name: ${err.message}`, 'warn');
+                }
+
+                // Update UI
+                updateConnectionStatus(true);
+                controls.style.display = 'block';
+                connectBtn.style.display = 'none';
+                reconnectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'block';
+
+                logDebug('=== Reconnection Complete ===', 'success');
+
+            } catch (error) {
+                console.error('Reconnection failed:', error);
+                logDebug(`❌ Reconnection failed: ${error.name} - ${error.message}`, 'error');
+                if (error.stack) {
+                    logDebug(`Stack: ${error.stack}`, 'error');
+                }
+                showError(`Failed to reconnect: ${error.message}`);
+                updateConnectionStatus(false);
+                updateButtonVisibility();
             }
         }
 
@@ -1138,7 +1286,30 @@
 
             reconnectTimer = setTimeout(async () => {
                 try {
-                    logDebug(`Attempting to reconnect to ${device?.name || 'BedJet'}...`, 'info');
+                    const savedDevice = getSavedDevice();
+                    if (!savedDevice) {
+                        logDebug('❌ No saved device for auto-reconnect', 'error');
+                        isReconnecting = false;
+                        return;
+                    }
+
+                    logDebug(`Attempting to reconnect to ${savedDevice.name}...`, 'info');
+
+                    // Get the device from saved ID
+                    const devices = await navigator.bluetooth.getDevices();
+                    device = devices.find(d => d.id === savedDevice.id);
+
+                    if (!device) {
+                        logDebug('❌ Saved device not found in available devices', 'error');
+                        isReconnecting = false;
+                        if (reconnectAttempts < maxReconnectAttempts) {
+                            attemptReconnect();
+                        } else {
+                            logDebug(`Max reconnect attempts (${maxReconnectAttempts}) reached. Giving up.`, 'error');
+                            showError('Connection lost. Please reconnect manually.');
+                        }
+                        return;
+                    }
 
                     if (device && device.gatt) {
                         server = await device.gatt.connect();
@@ -1156,6 +1327,7 @@
                         updateConnectionStatus(true);
                         controls.style.display = 'block';
                         connectBtn.style.display = 'none';
+                        reconnectBtn.style.display = 'none';
                         disconnectBtn.style.display = 'block';
 
                         // Reset reconnect state
@@ -1183,11 +1355,11 @@
             logDebug(`Device: ${device?.name || 'Unknown'}`, 'info');
             updateConnectionStatus(false);
             controls.style.display = 'none';
-            connectBtn.style.display = 'block';
             disconnectBtn.style.display = 'none';
             deviceName.textContent = '';
             currentMode = null;
             updateModeButtons();
+            updateButtonVisibility();
 
             // Attempt auto-reconnect if not user-initiated
             if (!userDisconnected) {
@@ -1433,6 +1605,39 @@
             errorDiv.classList.remove('show');
         }
 
+        function updateButtonVisibility() {
+            const savedDevice = getSavedDevice();
+
+            if (device && device.gatt && device.gatt.connected) {
+                // Currently connected
+                connectBtn.style.display = 'none';
+                reconnectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'block';
+            } else if (savedDevice) {
+                // Not connected, but have saved device
+                connectBtn.style.display = 'block';
+                reconnectBtn.style.display = 'block';
+                disconnectBtn.style.display = 'none';
+                savedDeviceNameEl.textContent = savedDevice.name;
+            } else {
+                // Not connected, no saved device
+                connectBtn.style.display = 'block';
+                reconnectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'none';
+            }
+        }
+
+        // Initialize button visibility on page load
+        function initializeApp() {
+            const savedDevice = getSavedDevice();
+            if (savedDevice) {
+                logDebug(`Found saved device: ${savedDevice.name} (${savedDevice.id})`, 'info');
+            } else {
+                logDebug('No saved device found', 'info');
+            }
+            updateButtonVisibility();
+        }
+
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -1445,7 +1650,13 @@
                         logDebug(`⚠ Service Worker registration failed: ${error}`, 'warn');
                         console.log('ServiceWorker registration failed:', error);
                     });
+
+                // Initialize app after page load
+                initializeApp();
             });
+        } else {
+            // Initialize app even if service worker not available
+            initializeApp();
         }
     </script>
 </body>
