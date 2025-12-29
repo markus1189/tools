@@ -457,7 +457,7 @@
         }
 
         .debug-log:empty::before {
-            content: "No logs yet. Click 'Connect to BedJet' to start...";
+            content: "No logs yet. Enable debug logging above to collect logs.";
             color: #888;
         }
 
@@ -659,6 +659,12 @@
                 <div class="debug-title">🐛 Debug Log</div>
                 <div class="debug-toggle" id="debugToggle">Hide ▲</div>
             </div>
+            <div style="margin-bottom: 10px; padding: 10px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffc107;">
+                <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px; color: #856404;">
+                    <input type="checkbox" id="enableDebugLogging" style="margin-right: 8px; cursor: pointer;">
+                    <span><strong>Enable debug logging</strong> (logs disabled by default to save memory)</span>
+                </label>
+            </div>
             <div class="debug-buttons">
                 <button class="debug-btn" onclick="copyDebugLog()">📋 Copy Log</button>
                 <button class="debug-btn" onclick="clearDebugLog()">🗑️ Clear</button>
@@ -715,6 +721,7 @@
         // LocalStorage keys
         const STORAGE_KEY_DEVICE_ID = 'bedjet_device_id';
         const STORAGE_KEY_DEVICE_NAME = 'bedjet_device_name';
+        const STORAGE_KEY_DEBUG_LOGGING = 'bedjet_debug_logging_enabled';
 
         // LocalStorage functions
         function saveDeviceToStorage(deviceId, deviceName) {
@@ -750,7 +757,25 @@
             }
         }
 
+        function saveDebugLoggingPreference(enabled) {
+            try {
+                localStorage.setItem(STORAGE_KEY_DEBUG_LOGGING, enabled ? 'true' : 'false');
+            } catch (error) {
+                console.warn('Failed to save debug logging preference:', error);
+            }
+        }
+
+        function getDebugLoggingPreference() {
+            try {
+                const value = localStorage.getItem(STORAGE_KEY_DEBUG_LOGGING);
+                return value === 'true';
+            } catch (error) {
+                return false; // Default to disabled
+            }
+        }
+
         // Debug logging
+        let debugLoggingEnabled = getDebugLoggingPreference(); // Default to disabled
         let debugLogContent = '';
         const debugLogEl = document.getElementById('debugLog');
 
@@ -780,7 +805,15 @@
         }
 
         function logDebug(message, level = 'info') {
+            // Always log to console for browser devtools debugging
             const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
+            console.log(`[${timestamp}] ${message}`);
+
+            // Only collect logs in UI if debug logging is enabled
+            if (!debugLoggingEnabled) {
+                return;
+            }
+
             const logEntry = document.createElement('div');
             logEntry.className = 'log-entry';
 
@@ -799,9 +832,6 @@
             // Auto-scroll to bottom
             debugLogEl.scrollTop = debugLogEl.scrollHeight;
 
-            // Also log to console
-            console.log(`[${timestamp}] ${message}`);
-
             // Keep text content for copying
             debugLogContent += `[${timestamp}] ${message}\n`;
         }
@@ -809,7 +839,9 @@
         function clearDebugLog() {
             debugLogContent = '';
             debugLogEl.innerHTML = '';
-            logDebug('Debug log cleared', 'info');
+            if (debugLoggingEnabled) {
+                logDebug('Debug log cleared', 'info');
+            }
         }
 
         function copyDebugLog() {
@@ -884,6 +916,7 @@
         const controls = document.getElementById('controls');
         const errorDiv = document.getElementById('error');
         const useCelsiusCheckbox = document.getElementById('useCelsius');
+        const enableDebugLoggingCheckbox = document.getElementById('enableDebugLogging');
 
         // State displays
         const currentTempEl = document.getElementById('currentTemp');
@@ -975,6 +1008,15 @@
         reconnectBtn.addEventListener('click', reconnectToSavedDevice);
         disconnectBtn.addEventListener('click', disconnect);
         useCelsiusCheckbox.addEventListener('change', updateTemperatureUI);
+        enableDebugLoggingCheckbox.addEventListener('change', (e) => {
+            debugLoggingEnabled = e.target.checked;
+            saveDebugLoggingPreference(debugLoggingEnabled);
+            if (debugLoggingEnabled) {
+                logDebug('✓ Debug logging enabled', 'success');
+            } else {
+                console.log('Debug logging disabled');
+            }
+        });
 
         modeButtons.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1139,7 +1181,7 @@
                 controls.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'block';
+                disconnectBtn.style.display = '';
 
                 logDebug('=== Connection Complete ===', 'success');
 
@@ -1239,7 +1281,7 @@
                 controls.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'block';
+                disconnectBtn.style.display = '';
 
                 logDebug('=== Reconnection Complete ===', 'success');
 
@@ -1328,7 +1370,7 @@
                         controls.style.display = 'block';
                         connectBtn.style.display = 'none';
                         reconnectBtn.style.display = 'none';
-                        disconnectBtn.style.display = 'block';
+                        disconnectBtn.style.display = '';
 
                         // Reset reconnect state
                         reconnectAttempts = 0;
@@ -1612,16 +1654,16 @@
                 // Currently connected
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'block';
+                disconnectBtn.style.display = '';
             } else if (savedDevice) {
                 // Not connected, but have saved device
-                connectBtn.style.display = 'block';
-                reconnectBtn.style.display = 'block';
+                connectBtn.style.display = '';
+                reconnectBtn.style.display = '';
                 disconnectBtn.style.display = 'none';
                 savedDeviceNameEl.textContent = savedDevice.name;
             } else {
                 // Not connected, no saved device
-                connectBtn.style.display = 'block';
+                connectBtn.style.display = '';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'none';
             }
@@ -1629,6 +1671,9 @@
 
         // Initialize button visibility on page load
         function initializeApp() {
+            // Initialize debug logging checkbox
+            enableDebugLoggingCheckbox.checked = debugLoggingEnabled;
+
             const savedDevice = getSavedDevice();
             if (savedDevice) {
                 logDebug(`Found saved device: ${savedDevice.name} (${savedDevice.id})`, 'info');
