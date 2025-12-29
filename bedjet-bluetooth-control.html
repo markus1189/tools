@@ -126,32 +126,36 @@
         /* Header */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 60px 20px 20px 20px;
-            text-align: center;
+            padding: 60px 15px 15px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             color: white;
         }
 
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
         }
 
         .header .status-bar {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap: 8px;
             background: rgba(255, 255, 255, 0.2);
-            padding: 8px 16px;
+            padding: 8px 12px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .status-indicator {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.5);
+            flex-shrink: 0;
         }
 
         .status-indicator.connected {
@@ -162,7 +166,12 @@
         .device-name {
             font-size: 11px;
             opacity: 0.9;
-            margin-top: 4px;
+            margin-left: 4px;
+        }
+
+        .device-name:not(:empty)::before {
+            content: '• ';
+            margin-right: 4px;
         }
 
         /* Main Content */
@@ -702,12 +711,12 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🛏️ BedJet Control</h1>
+            <h1>JetCommand</h1>
             <div class="status-bar">
                 <span class="status-indicator" id="statusIndicator"></span>
                 <span id="statusText">Not Connected</span>
+                <span class="device-name" id="deviceName"></span>
             </div>
-            <div class="device-name" id="deviceName"></div>
         </div>
 
         <div id="error" class="error"></div>
