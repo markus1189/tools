@@ -332,6 +332,108 @@
             line-height: 1.5;
         }
 
+        .debug-section {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .debug-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .debug-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .debug-toggle {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .debug-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .debug-btn {
+            padding: 8px 12px;
+            border: 1px solid #667eea;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #667eea;
+            transition: all 0.2s ease;
+        }
+
+        .debug-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .debug-log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 300px;
+            overflow-y: auto;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .debug-log:empty::before {
+            content: "No logs yet. Click 'Connect to BedJet' to start...";
+            color: #888;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 2px 0;
+        }
+
+        .log-time {
+            color: #858585;
+        }
+
+        .log-level-info {
+            color: #4ec9b0;
+        }
+
+        .log-level-error {
+            color: #f48771;
+        }
+
+        .log-level-warn {
+            color: #dcdcaa;
+        }
+
+        .log-level-success {
+            color: #89d185;
+        }
+
+        .debug-collapsed .debug-log,
+        .debug-collapsed .debug-buttons {
+            display: none;
+        }
+
         @media (max-width: 480px) {
             .state-grid {
                 grid-template-columns: 1fr;
@@ -339,6 +441,11 @@
 
             .mode-buttons {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .debug-log {
+                font-size: 10px;
+                max-height: 250px;
             }
         }
     </style>
@@ -446,6 +553,19 @@
                 </div>
             </div>
         </div>
+
+        <div class="debug-section">
+            <div class="debug-header" onclick="toggleDebugLog()">
+                <div class="debug-title">🐛 Debug Log</div>
+                <div class="debug-toggle" id="debugToggle">Hide ▲</div>
+            </div>
+            <div class="debug-buttons">
+                <button class="debug-btn" onclick="copyDebugLog()">📋 Copy Log</button>
+                <button class="debug-btn" onclick="clearDebugLog()">🗑️ Clear</button>
+                <button class="debug-btn" onclick="downloadDebugLog()">💾 Download</button>
+            </div>
+            <div class="debug-log" id="debugLog"></div>
+        </div>
     </div>
 
     <script>
@@ -478,6 +598,103 @@
         let commandCharacteristic = null;
         let currentMode = null;
 
+        // Debug logging
+        let debugLogContent = '';
+        const debugLogEl = document.getElementById('debugLog');
+
+        function logDebug(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'log-time';
+            timeSpan.textContent = `[${timestamp}] `;
+
+            const levelSpan = document.createElement('span');
+            levelSpan.className = `log-level-${level}`;
+            levelSpan.textContent = message;
+
+            logEntry.appendChild(timeSpan);
+            logEntry.appendChild(levelSpan);
+            debugLogEl.appendChild(logEntry);
+
+            // Auto-scroll to bottom
+            debugLogEl.scrollTop = debugLogEl.scrollHeight;
+
+            // Also log to console
+            console.log(`[${timestamp}] ${message}`);
+
+            // Keep text content for copying
+            debugLogContent += `[${timestamp}] ${message}\n`;
+        }
+
+        function clearDebugLog() {
+            debugLogContent = '';
+            debugLogEl.innerHTML = '';
+            logDebug('Debug log cleared', 'info');
+        }
+
+        function copyDebugLog() {
+            if (!debugLogContent) {
+                alert('No logs to copy');
+                return;
+            }
+
+            navigator.clipboard.writeText(debugLogContent).then(() => {
+                logDebug('Log copied to clipboard!', 'success');
+                setTimeout(() => alert('Debug log copied to clipboard!'), 100);
+            }).catch(err => {
+                // Fallback for mobile browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = debugLogContent;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    logDebug('Log copied to clipboard (fallback)!', 'success');
+                    alert('Debug log copied to clipboard!');
+                } catch (e) {
+                    logDebug('Failed to copy: ' + e.message, 'error');
+                    alert('Failed to copy. Error: ' + e.message);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+
+        function downloadDebugLog() {
+            if (!debugLogContent) {
+                alert('No logs to download');
+                return;
+            }
+
+            const blob = new Blob([debugLogContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bedjet-debug-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            logDebug('Log downloaded', 'success');
+        }
+
+        function toggleDebugLog() {
+            const section = document.querySelector('.debug-section');
+            const toggle = document.getElementById('debugToggle');
+
+            if (section.classList.contains('debug-collapsed')) {
+                section.classList.remove('debug-collapsed');
+                toggle.textContent = 'Hide ▲';
+            } else {
+                section.classList.add('debug-collapsed');
+                toggle.textContent = 'Show ▼';
+            }
+        }
+
         // UI Elements
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
@@ -505,6 +722,11 @@
         if (!navigator.bluetooth) {
             showError('Web Bluetooth API is not supported in this browser. Please use Chrome, Edge, or Opera.');
             connectBtn.disabled = true;
+            logDebug('❌ Web Bluetooth API not supported in this browser', 'error');
+            logDebug('User Agent: ' + navigator.userAgent, 'info');
+        } else {
+            logDebug('✓ Web Bluetooth API is available', 'success');
+            logDebug('User Agent: ' + navigator.userAgent, 'info');
         }
 
         // Event Listeners
@@ -547,6 +769,8 @@
                 statusText.textContent = 'Scanning...';
 
                 const showAll = document.getElementById('showAllDevices').checked;
+                logDebug('=== Starting BedJet Connection ===', 'info');
+                logDebug(`Show all devices mode: ${showAll}`, 'info');
 
                 // Request BedJet device with fallback options
                 const requestOptions = {
@@ -560,6 +784,7 @@
                 if (showAll) {
                     // Fallback: show all devices (useful if service UUIDs aren't advertised)
                     requestOptions.acceptAllDevices = true;
+                    logDebug('Using acceptAllDevices mode (fallback)', 'warn');
                 } else {
                     // Default: filter by service UUIDs and name prefix
                     requestOptions.filters = [
@@ -567,34 +792,62 @@
                         { namePrefix: 'BedJet' },
                         { namePrefix: 'BEDJET' }
                     ];
+                    logDebug('Scanning with filters:', 'info');
+                    logDebug(`  - Service UUID: ${BEDJET_STATUS_UUID}`, 'info');
+                    logDebug(`  - Name prefixes: BedJet, BEDJET`, 'info');
                 }
 
+                logDebug('Requesting Bluetooth device...', 'info');
                 device = await navigator.bluetooth.requestDevice(requestOptions);
+
+                logDebug(`✓ Device selected: ${device.name || 'Unknown'}`, 'success');
+                logDebug(`  Device ID: ${device.id}`, 'info');
+                logDebug(`  Device GATT connected: ${device.gatt.connected}`, 'info');
 
                 statusText.textContent = 'Connecting...';
                 device.addEventListener('gattserverdisconnected', onDisconnected);
 
+                logDebug('Connecting to GATT server...', 'info');
                 server = await device.gatt.connect();
+                logDebug('✓ Connected to GATT server', 'success');
 
                 // Get command characteristic
-                commandCharacteristic = await server.getPrimaryService(BEDJET_COMMAND_UUID)
-                    .then(service => service.getCharacteristic(BEDJET_COMMAND_UUID));
+                logDebug(`Getting command service (${BEDJET_COMMAND_UUID})...`, 'info');
+                const commandService = await server.getPrimaryService(BEDJET_COMMAND_UUID);
+                logDebug('✓ Got command service', 'success');
+
+                logDebug('Getting command characteristic...', 'info');
+                commandCharacteristic = await commandService.getCharacteristic(BEDJET_COMMAND_UUID);
+                logDebug('✓ Got command characteristic', 'success');
+                logDebug(`  Properties: ${Array.from(commandCharacteristic.properties).join(', ')}`, 'info');
 
                 // Subscribe to status notifications
+                logDebug(`Getting status service (${BEDJET_STATUS_UUID})...`, 'info');
                 const statusService = await server.getPrimaryService(BEDJET_STATUS_UUID);
+                logDebug('✓ Got status service', 'success');
+
+                logDebug('Getting status characteristic...', 'info');
                 const statusCharacteristic = await statusService.getCharacteristic(BEDJET_STATUS_UUID);
+                logDebug('✓ Got status characteristic', 'success');
+                logDebug(`  Properties: ${Array.from(statusCharacteristic.properties).join(', ')}`, 'info');
+
+                logDebug('Starting notifications...', 'info');
                 await statusCharacteristic.startNotifications();
                 statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
+                logDebug('✓ Notifications enabled', 'success');
 
                 // Read device name
                 try {
+                    logDebug(`Getting name service (${BEDJET_NAME_UUID})...`, 'info');
                     const nameService = await server.getPrimaryService(BEDJET_NAME_UUID);
                     const nameCharacteristic = await nameService.getCharacteristic(BEDJET_NAME_UUID);
                     const nameValue = await nameCharacteristic.readValue();
                     const name = new TextDecoder().decode(nameValue);
                     deviceName.textContent = name || device.name;
+                    logDebug(`✓ Device name: ${name || device.name}`, 'success');
                 } catch (err) {
                     deviceName.textContent = device.name;
+                    logDebug(`⚠ Could not read device name: ${err.message}`, 'warn');
                 }
 
                 // Update UI
@@ -603,20 +856,32 @@
                 connectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'block';
 
+                logDebug('=== Connection Complete ===', 'success');
+
             } catch (error) {
                 console.error('Connection failed:', error);
+                logDebug(`❌ Connection failed: ${error.name} - ${error.message}`, 'error');
+                if (error.stack) {
+                    logDebug(`Stack: ${error.stack}`, 'error');
+                }
                 showError(`Failed to connect: ${error.message}`);
                 updateConnectionStatus(false);
             }
         }
 
         async function disconnect() {
+            logDebug('User requested disconnect', 'info');
             if (device && device.gatt.connected) {
                 device.gatt.disconnect();
+                logDebug('Disconnect command sent', 'info');
+            } else {
+                logDebug('No active connection to disconnect', 'warn');
             }
         }
 
         function onDisconnected() {
+            logDebug('Device disconnected', 'warn');
+            logDebug(`Device: ${device?.name || 'Unknown'}`, 'info');
             updateConnectionStatus(false);
             controls.style.display = 'none';
             connectBtn.style.display = 'block';
@@ -630,13 +895,16 @@
             const data = new Uint8Array(event.target.value.buffer);
 
             if (data.length >= 15) {
-                console.log('Status data:', Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+                console.log('Status data:', hexData);
+                logDebug(`◄ Status update (${data.length} bytes): ${hexData}`, 'info');
 
                 // Parse current temperature (byte 7)
                 if (data[7] !== 0 && data[7] !== 0x26) {
                     const rawCurrent = data[7] - 0x26;
                     const currentTemp = Math.round((rawCurrent + 66) - (rawCurrent / 9));
                     currentTempEl.textContent = currentTemp;
+                    logDebug(`  Current temp: ${currentTemp}°F (byte[7]=0x${data[7].toString(16)})`, 'info');
                 }
 
                 // Parse target temperature (byte 8)
@@ -644,12 +912,14 @@
                     const rawTarget = data[8] - 0x26;
                     const targetTemp = Math.round((rawTarget + 66) - (rawTarget / 9));
                     targetTempEl.textContent = targetTemp;
+                    logDebug(`  Target temp: ${targetTemp}°F (byte[8]=0x${data[8].toString(16)})`, 'info');
                 }
 
                 // Parse fan speed (byte 10)
                 if (data[10] > 0) {
                     const fanSpeed = data[10] * 5;
                     fanSpeedEl.textContent = fanSpeed;
+                    logDebug(`  Fan speed: ${fanSpeed}% (byte[10]=0x${data[10].toString(16)})`, 'info');
                 }
 
                 // Parse time remaining (bytes 4, 5, 6)
@@ -662,7 +932,9 @@
                     const h = Math.floor(totalSeconds / 3600);
                     const m = Math.floor((totalSeconds % 3600) / 60);
                     const s = totalSeconds % 60;
-                    timeRemainingEl.textContent = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                    const timeStr = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                    timeRemainingEl.textContent = timeStr;
+                    logDebug(`  Time remaining: ${timeStr}`, 'info');
                 } else {
                     timeRemainingEl.textContent = '--';
                 }
@@ -671,21 +943,31 @@
                 const byte13 = data[13];
                 const byte14 = data[14];
 
+                let detectedMode = null;
                 if (byte14 === 0x50 && byte13 === 0x14) {
-                    currentMode = 'off';
+                    detectedMode = 'off';
                 } else if (byte14 === 0x34) {
-                    currentMode = 'cool';
+                    detectedMode = 'cool';
                 } else if (byte14 === 0x56) {
-                    currentMode = 'turbo';
+                    detectedMode = 'turbo';
                 } else if (byte14 === 0x50 && byte13 === 0x2d) {
-                    currentMode = 'heat';
+                    detectedMode = 'heat';
                 } else if (byte14 === 0x3e) {
-                    currentMode = 'dry';
+                    detectedMode = 'dry';
                 } else if (byte14 === 0x43) {
-                    currentMode = 'ext_ht';
+                    detectedMode = 'ext_ht';
+                }
+
+                if (detectedMode) {
+                    currentMode = detectedMode;
+                    logDebug(`  Mode: ${detectedMode.toUpperCase()} (byte[13]=0x${byte13.toString(16)}, byte[14]=0x${byte14.toString(16)})`, 'info');
+                } else {
+                    logDebug(`  Unknown mode (byte[13]=0x${byte13.toString(16)}, byte[14]=0x${byte14.toString(16)})`, 'warn');
                 }
 
                 updateModeButtons();
+            } else {
+                logDebug(`⚠ Status update too short: ${data.length} bytes (expected ≥15)`, 'warn');
             }
         }
 
@@ -702,32 +984,44 @@
         async function sendCommand(command) {
             if (!commandCharacteristic) {
                 showError('Not connected to BedJet');
+                logDebug('❌ Cannot send command: Not connected', 'error');
                 return;
             }
 
             try {
                 const commandArray = new Uint8Array(command);
-                console.log('Sending command:', Array.from(commandArray).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                const hexCommand = Array.from(commandArray).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+                console.log('Sending command:', hexCommand);
+                logDebug(`► Sending command: ${hexCommand}`, 'info');
+
                 await commandCharacteristic.writeValue(commandArray);
+                logDebug('✓ Command sent successfully', 'success');
+
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
                 console.error('Command failed:', error);
+                logDebug(`❌ Command failed: ${error.message}`, 'error');
                 showError(`Command failed: ${error.message}`);
             }
         }
 
         async function setMode(mode) {
+            logDebug(`Setting mode to: ${mode.toUpperCase()}`, 'info');
             const modeByte = REVERSE_MODE_MAP[mode];
             if (modeByte === undefined) {
                 showError(`Invalid mode: ${mode}`);
+                logDebug(`❌ Invalid mode: ${mode}`, 'error');
                 return;
             }
+            logDebug(`  Mode byte: 0x${modeByte.toString(16)}`, 'info');
             await sendCommand([0x01, modeByte]);
         }
 
         async function setTemperature(temp) {
+            logDebug(`Setting temperature to: ${temp}°F`, 'info');
             if (temp < 66 || temp > 104) {
                 showError(`Temperature ${temp} out of range (66-104°F)`);
+                logDebug(`❌ Temperature ${temp}°F out of range (66-104°F)`, 'error');
                 return;
             }
 
@@ -737,27 +1031,34 @@
             const clampedByte = Math.max(0, Math.min(255, tempByte));
 
             console.log(`Setting temperature ${temp}°F (byte: 0x${clampedByte.toString(16)})`);
+            logDebug(`  Temp offset: ${tempOffset}, Temp byte: 0x${clampedByte.toString(16)}`, 'info');
             await sendCommand([0x03, clampedByte]);
         }
 
         async function setFanSpeed(speed) {
+            logDebug(`Setting fan speed to: ${speed}%`, 'info');
             if (speed < 5 || speed > 100) {
                 showError(`Fan speed ${speed} out of range (5-100%)`);
+                logDebug(`❌ Fan speed ${speed}% out of range (5-100%)`, 'error');
                 return;
             }
 
             // Convert percentage to BedJet format
             const fanByte = Math.round(speed / 5) - 1;
+            logDebug(`  Fan byte: 0x${fanByte.toString(16)}`, 'info');
             await sendCommand([0x07, fanByte]);
         }
 
         async function activatePreset(preset) {
+            logDebug(`Activating memory preset: M${preset}`, 'info');
             if (preset < 1 || preset > 3) {
                 showError(`Invalid preset: ${preset}`);
+                logDebug(`❌ Invalid preset: ${preset}`, 'error');
                 return;
             }
 
             const presetByte = 0x20 + (preset - 1);
+            logDebug(`  Preset byte: 0x${presetByte.toString(16)}`, 'info');
             await sendCommand([0x01, presetByte]);
         }
 
