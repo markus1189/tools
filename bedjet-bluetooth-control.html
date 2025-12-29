@@ -1966,14 +1966,36 @@
 
             const fragmentNum = (fragmentID - 7) & 3;
             const stepOffset = fragmentNum * 8;
-            const stepsInFragment = Math.min(8, stepCount - stepOffset);
 
-            logDebug(`  Fragment num: ${fragmentNum}, Step offset: ${stepOffset}, Steps in fragment: ${stepsInFragment}`, 'info');
+            // Calculate how many steps we SHOULD parse based on the total step count
+            const expectedStepsInFragment = Math.min(8, stepCount - stepOffset);
+
+            // Calculate how many steps we CAN parse based on available data (MTU limitation)
+            // Each step is 5 bytes, header is 3 bytes
+            const availableBytes = data.length - 3;
+            const maxParseableSteps = Math.floor(availableBytes / 5);
+
+            // Use the minimum of expected and parseable
+            const stepsInFragment = Math.min(expectedStepsInFragment, maxParseableSteps);
+
+            logDebug(`  Fragment num: ${fragmentNum}, Step offset: ${stepOffset}`, 'info');
+            logDebug(`  Expected steps: ${expectedStepsInFragment}, Parseable steps: ${maxParseableSteps}, Parsing: ${stepsInFragment}`, 'info');
+
+            if (stepsInFragment < expectedStepsInFragment) {
+                logDebug(`  ⚠ MTU limitation: Only ${data.length} bytes received, can parse ${stepsInFragment}/${expectedStepsInFragment} steps`, 'warn');
+            }
 
             const bioKey = `bio${sequenceNum + 1}`;
 
             for (let i = 0; i < stepsInFragment; i++) {
                 const byteOffset = 3 + (i * 5);
+
+                // Double-check we have enough bytes for this step
+                if (byteOffset + 5 > data.length) {
+                    logDebug(`    ⚠ Skipping step ${stepOffset + i}: Not enough data`, 'warn');
+                    break;
+                }
+
                 const step = parseSequenceStep(data, byteOffset);
 
                 const globalStepNum = stepOffset + i;
