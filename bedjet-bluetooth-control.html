@@ -1183,7 +1183,10 @@
         });
 
         // Biorhythm button event listeners
-        document.getElementById('loadBiorhythmsBtn').addEventListener('click', loadAllBiorhythms);
+        document.getElementById('loadBiorhythmsBtn').addEventListener('click', () => {
+            logDebug('Load biorhythms button clicked', 'info');
+            loadAllBiorhythms();
+        });
 
         document.getElementById('bio1ExpandBtn').addEventListener('click', () => {
             const stepsEl = document.getElementById('bio1Steps');
@@ -1191,9 +1194,11 @@
             if (stepsEl.style.display === 'none') {
                 stepsEl.style.display = 'block';
                 btn.textContent = 'Hide';
+                logDebug('Bio1 steps expanded', 'info');
             } else {
                 stepsEl.style.display = 'none';
                 btn.textContent = 'View';
+                logDebug('Bio1 steps collapsed', 'info');
             }
         });
 
@@ -1203,9 +1208,11 @@
             if (stepsEl.style.display === 'none') {
                 stepsEl.style.display = 'block';
                 btn.textContent = 'Hide';
+                logDebug('Bio2 steps expanded', 'info');
             } else {
                 stepsEl.style.display = 'none';
                 btn.textContent = 'View';
+                logDebug('Bio2 steps collapsed', 'info');
             }
         });
 
@@ -1215,9 +1222,11 @@
             if (stepsEl.style.display === 'none') {
                 stepsEl.style.display = 'block';
                 btn.textContent = 'Hide';
+                logDebug('Bio3 steps expanded', 'info');
             } else {
                 stepsEl.style.display = 'none';
                 btn.textContent = 'View';
+                logDebug('Bio3 steps collapsed', 'info');
             }
         });
 
@@ -1845,12 +1854,13 @@
 
             // Send the request command
             await commandCharacteristic.writeValue(command);
+            logDebug('  Command sent, waiting for device to prepare response...', 'info');
 
             // Wait a bit for the device to prepare the response
             await new Promise(resolve => setTimeout(resolve, 300));
 
             // Read the biodata characteristic (NOT notifications - the official app uses readValue!)
-            logDebug(`Reading biodata characteristic...`, 'info');
+            logDebug(`  Reading biodata characteristic...`, 'info');
             const dataView = await biodataCharacteristic.readValue();
             const data = new Uint8Array(dataView.buffer);
 
@@ -1966,37 +1976,46 @@
         }
 
         async function loadBiorhythm(sequenceNum) {
-            logDebug(`Loading biorhythm ${sequenceNum}...`, 'info');
+            logDebug(`Loading biorhythm ${sequenceNum + 1}...`, 'info');
 
             const startFragment = (sequenceNum * 4) + 7;
+            logDebug(`  Start fragment: ${startFragment}`, 'info');
             biorhythms[`bio${sequenceNum + 1}`].steps = [];
 
             try {
                 let currentFragment = startFragment;
                 let stepCount = 0;
                 let fragmentNum = 0;
+                let fragmentsLoaded = 0;
 
                 do {
+                    logDebug(`  Loading fragment ${currentFragment} (fragment ${fragmentsLoaded + 1})...`, 'info');
                     const data = await requestBioPacket(currentFragment);
                     const result = parseBioSequence(data, sequenceNum);
 
                     if (result) {
                         stepCount = result.stepCount;
                         fragmentNum = result.fragmentNum;
+                        fragmentsLoaded++;
+                        logDebug(`  ✓ Fragment ${currentFragment} parsed: ${result.stepCount} total steps, fragment ${fragmentNum}`, 'success');
                     }
 
                     currentFragment++;
 
                     const nextFragmentFirstStep = (fragmentNum + 1) * 8;
                     if (stepCount <= nextFragmentFirstStep) {
+                        logDebug(`  All steps loaded (${stepCount} <= ${nextFragmentFirstStep}), stopping`, 'info');
                         break;
                     }
                 } while (fragmentNum < 3);
 
-                logDebug(`✓ Biorhythm ${sequenceNum + 1} loaded: ${stepCount} steps`, 'success');
+                logDebug(`✓ Biorhythm ${sequenceNum + 1} loaded: ${stepCount} steps from ${fragmentsLoaded} fragment(s)`, 'success');
                 updateBiorhythmsUI();
             } catch (error) {
                 logDebug(`❌ Failed to load biorhythm ${sequenceNum + 1}: ${error.message}`, 'error');
+                if (error.stack) {
+                    logDebug(`  Stack trace: ${error.stack}`, 'error');
+                }
                 throw error;
             }
         }
@@ -2021,19 +2040,25 @@
                 parseBioNames(namesData);
 
                 // Then load all three sequences
+                let loadedCount = 0;
                 for (let i = 0; i < 3; i++) {
                     if (biorhythms[`bio${i + 1}`].name) {
                         await loadBiorhythm(i);
+                        loadedCount++;
                     } else {
                         logDebug(`Skipping Bio${i + 1} (empty slot)`, 'info');
                     }
                 }
 
                 document.getElementById('biorhythmsList').style.display = 'block';
+                logDebug(`✓ Biorhythms list displayed (${loadedCount} biorhythm(s) loaded)`, 'success');
                 logDebug('=== All Biorhythms Loaded ===', 'success');
             } catch (error) {
                 showError(`Failed to load biorhythms: ${error.message}`);
                 logDebug(`❌ Failed to load biorhythms: ${error.message}`, 'error');
+                if (error.stack) {
+                    logDebug(`Stack trace: ${error.stack}`, 'error');
+                }
             }
         }
 
@@ -2056,6 +2081,7 @@
         }
 
         function updateBiorhythmsUI() {
+            logDebug('Updating biorhythms UI...', 'info');
             for (let i = 1; i <= 3; i++) {
                 const bioKey = `bio${i}`;
                 const bio = biorhythms[bioKey];
@@ -2064,6 +2090,7 @@
 
                 if (bio.name) {
                     nameEl.textContent = `${bio.name} (${bio.steps.length} steps)`;
+                    logDebug(`  Bio${i}: "${bio.name}" with ${bio.steps.length} steps`, 'info');
 
                     // Generate steps HTML
                     let stepsHTML = '<div style="font-size: 12px; color: #666;">';
@@ -2084,8 +2111,10 @@
                 } else {
                     nameEl.textContent = 'Empty';
                     stepsEl.innerHTML = '<div style="font-size: 12px; color: #999;">No biorhythm configured</div>';
+                    logDebug(`  Bio${i}: Empty slot`, 'info');
                 }
             }
+            logDebug('✓ Biorhythms UI updated', 'success');
         }
 
         // Note: handleBiodataUpdate is no longer used
