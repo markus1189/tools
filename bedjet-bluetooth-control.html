@@ -987,10 +987,11 @@
                 <input type="checkbox" id="showAllDevices" style="margin-right: 8px; cursor: pointer;">
                 <span>Show all Bluetooth devices</span>
             </label>
-            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #aaa;">
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #aaa; margin-bottom: 12px;">
                 <input type="checkbox" id="useCelsius" style="margin-right: 8px; cursor: pointer;">
                 <span>Use Fahrenheit (°F)</span>
             </label>
+            <button id="installBtn" class="btn btn-primary" style="display: none; width: 100%;">Install App</button>
         </div>
     </div>
 
@@ -3236,6 +3237,42 @@
             // Initialize timer limit indicator
             updateTimerLimitIndicator();
         }
+
+        // PWA Install Prompt Handling
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show the install button
+            installBtn.style.display = 'block';
+            logDebug('✓ PWA install prompt available', 'success');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                return;
+            }
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            logDebug(`PWA install prompt outcome: ${outcome}`, outcome === 'accepted' ? 'success' : 'info');
+            // Clear the deferredPrompt so it can't be used again
+            deferredPrompt = null;
+            // Hide the install button
+            installBtn.style.display = 'none';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            // Hide the install button after successful installation
+            installBtn.style.display = 'none';
+            deferredPrompt = null;
+            logDebug('✓ PWA installed successfully', 'success');
+        });
 
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
