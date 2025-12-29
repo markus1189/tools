@@ -6,6 +6,7 @@ This directory contains technical documentation related to the BedJet Bluetooth 
 
 ### Implementation Analysis
 - **[BEDJET_IMPLEMENTATIONS.md](BEDJET_IMPLEMENTATIONS.md)** - Cross-reference of BedJet control implementations across various open-source projects, validating the fan speed fix
+- **[BEDJET_BIORHYTHM_RESEARCH.md](BEDJET_BIORHYTHM_RESEARCH.md)** - Research into BedJet biorhythm sequences: what's possible, what's not, and potential workarounds
 
 ### Comparison and Improvements
 - **[BEDJET_BLUETOOTH_COMPARISON.md](BEDJET_BLUETOOTH_COMPARISON.md)** - Comparison of BedJet Bluetooth implementations
