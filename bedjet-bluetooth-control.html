@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Control BedJet climate comfort system via Bluetooth LE with real-time status monitoring">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BedJet Control">
+    <link rel="manifest" href="bedjet-bluetooth-control.manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🛏️</text></svg>">
     <title>BedJet Bluetooth Control</title>
     <style>
         * {
@@ -235,7 +242,7 @@
         .slider-label {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-size: 14px;
             color: #666;
         }
@@ -243,40 +250,90 @@
         .slider-value {
             font-weight: 700;
             color: #667eea;
+            font-size: 16px;
+        }
+
+        .slider-range {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 11px;
+            color: #999;
+        }
+
+        .slider-wrapper {
+            position: relative;
+            padding: 10px 0;
         }
 
         input[type="range"] {
             width: 100%;
-            height: 8px;
+            height: 10px;
             border-radius: 5px;
-            background: #e0e0e0;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 var(--value), #e0e0e0 var(--value));
             outline: none;
             -webkit-appearance: none;
+            transition: background 0.1s ease;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: white;
             cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4), inset 0 0 0 3px #667eea;
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 12px rgba(102, 126, 234, 0.6), inset 0 0 0 3px #667eea;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.8), inset 0 0 0 4px #667eea;
         }
 
         input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: white;
             cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4), inset 0 0 0 3px #667eea;
             border: none;
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 12px rgba(102, 126, 234, 0.6), inset 0 0 0 3px #667eea;
+        }
+
+        input[type="range"]::-moz-range-thumb:active {
+            transform: scale(1.2);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.8), inset 0 0 0 4px #667eea;
         }
 
         input[type="range"]:disabled {
             opacity: 0.5;
+        }
+
+        /* Mobile-optimized touch targets */
+        @media (pointer: coarse) {
+            input[type="range"]::-webkit-slider-thumb {
+                width: 32px;
+                height: 32px;
+            }
+
+            input[type="range"]::-moz-range-thumb {
+                width: 32px;
+                height: 32px;
+            }
         }
 
         .preset-buttons {
@@ -467,12 +524,17 @@
                 <span class="status-text" id="statusText">Not Connected</span>
             </div>
             <div class="device-name" id="deviceName"></div>
+            <div class="device-name" id="lastUpdate" style="font-size: 11px; color: #999; margin-top: 3px;"></div>
         </div>
 
         <div style="margin-bottom: 15px; padding: 12px; background: #f9f9f9; border-radius: 8px;">
-            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666;">
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666; margin-bottom: 8px;">
                 <input type="checkbox" id="showAllDevices" style="margin-right: 8px; cursor: pointer;">
                 <span>Show all Bluetooth devices (use if BedJet not found)</span>
+            </label>
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #666;">
+                <input type="checkbox" id="useCelsius" style="margin-right: 8px; cursor: pointer;">
+                <span>Use Celsius (°C) instead of Fahrenheit (°F)</span>
             </label>
         </div>
 
@@ -486,13 +548,13 @@
                     <div class="state-item">
                         <div class="state-label">Current Temp</div>
                         <div class="state-value">
-                            <span id="currentTemp">--</span><span class="state-unit">°F</span>
+                            <span id="currentTemp">--</span><span class="state-unit" id="currentTempUnit">°F</span>
                         </div>
                     </div>
                     <div class="state-item">
                         <div class="state-label">Target Temp</div>
                         <div class="state-value">
-                            <span id="targetTemp">--</span><span class="state-unit">°F</span>
+                            <span id="targetTemp">--</span><span class="state-unit" id="targetTempUnit">°F</span>
                         </div>
                     </div>
                     <div class="state-item">
@@ -527,9 +589,15 @@
                 <div class="slider-control">
                     <div class="slider-label">
                         <span>Set Temperature</span>
-                        <span class="slider-value"><span id="tempSliderValue">72</span>°F</span>
+                        <span class="slider-value"><span id="tempSliderValue">72</span><span id="tempSliderUnit">°F</span></span>
                     </div>
-                    <input type="range" id="tempSlider" min="66" max="104" value="72" step="1">
+                    <div class="slider-wrapper">
+                        <input type="range" id="tempSlider" min="66" max="104" value="72" step="1">
+                    </div>
+                    <div class="slider-range">
+                        <span id="tempMin">66°F</span>
+                        <span id="tempMax">104°F</span>
+                    </div>
                 </div>
                 <div class="preset-buttons" style="margin-top: 10px;">
                     <button class="preset-btn" id="tempDownBtn">TEMP ▼</button>
@@ -544,7 +612,13 @@
                         <span>Set Fan Speed</span>
                         <span class="slider-value"><span id="fanSliderValue">50</span>%</span>
                     </div>
-                    <input type="range" id="fanSlider" min="5" max="100" value="50" step="5">
+                    <div class="slider-wrapper">
+                        <input type="range" id="fanSlider" min="5" max="100" value="50" step="5">
+                    </div>
+                    <div class="slider-range">
+                        <span>5%</span>
+                        <span>100%</span>
+                    </div>
                 </div>
                 <div class="preset-buttons" style="margin-top: 10px;">
                     <button class="preset-btn" id="fanDownBtn">FAN ▼</button>
@@ -559,7 +633,13 @@
                         <span>Set Runtime</span>
                         <span class="slider-value"><span id="runtimeValue">60</span> min</span>
                     </div>
-                    <input type="range" id="runtimeSlider" min="1" max="600" value="60" step="1">
+                    <div class="slider-wrapper">
+                        <input type="range" id="runtimeSlider" min="1" max="600" value="60" step="1">
+                    </div>
+                    <div class="slider-range">
+                        <span>1 min</span>
+                        <span>600 min (10h)</span>
+                    </div>
                 </div>
             </div>
 
@@ -620,6 +700,8 @@
         let server = null;
         let commandCharacteristic = null;
         let currentMode = null;
+        let useCelsius = false;
+        let lastStatusUpdate = null;
 
         // Auto-reconnect state
         let reconnectAttempts = 0;
@@ -632,6 +714,31 @@
         // Debug logging
         let debugLogContent = '';
         const debugLogEl = document.getElementById('debugLog');
+
+        // Temperature conversion helpers
+        function fToC(fahrenheit) {
+            return Math.round((fahrenheit - 32) * 5 / 9);
+        }
+
+        function cToF(celsius) {
+            return Math.round(celsius * 9 / 5 + 32);
+        }
+
+        function getTempUnit() {
+            return useCelsius ? '°C' : '°F';
+        }
+
+        function displayTemp(fahrenheit) {
+            return useCelsius ? fToC(fahrenheit) : fahrenheit;
+        }
+
+        function inputToFahrenheit(value) {
+            return useCelsius ? cToF(value) : value;
+        }
+
+        function fahrenheitToInput(fahrenheit) {
+            return useCelsius ? fToC(fahrenheit) : fahrenheit;
+        }
 
         function logDebug(message, level = 'info') {
             const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
@@ -732,12 +839,16 @@
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
         const deviceName = document.getElementById('deviceName');
+        const lastUpdateEl = document.getElementById('lastUpdate');
         const controls = document.getElementById('controls');
         const errorDiv = document.getElementById('error');
+        const useCelsiusCheckbox = document.getElementById('useCelsius');
 
         // State displays
         const currentTempEl = document.getElementById('currentTemp');
+        const currentTempUnitEl = document.getElementById('currentTempUnit');
         const targetTempEl = document.getElementById('targetTemp');
+        const targetTempUnitEl = document.getElementById('targetTempUnit');
         const fanSpeedEl = document.getElementById('fanSpeed');
         const timeRemainingEl = document.getElementById('timeRemaining');
 
@@ -745,6 +856,7 @@
         const modeButtons = document.querySelectorAll('.mode-btn');
         const tempSlider = document.getElementById('tempSlider');
         const tempSliderValue = document.getElementById('tempSliderValue');
+        const tempSliderUnit = document.getElementById('tempSliderUnit');
         const tempUpBtn = document.getElementById('tempUpBtn');
         const tempDownBtn = document.getElementById('tempDownBtn');
         const fanSlider = document.getElementById('fanSlider');
@@ -766,9 +878,61 @@
             logDebug('User Agent: ' + navigator.userAgent, 'info');
         }
 
+        // Slider fill update
+        function updateSliderFill(slider) {
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const value = parseFloat(slider.value);
+            const percentage = ((value - min) / (max - min)) * 100;
+            slider.style.setProperty('--value', `${percentage}%`);
+        }
+
+        // Temperature unit toggle
+        function updateTemperatureUI() {
+            useCelsius = useCelsiusCheckbox.checked;
+            const unit = getTempUnit();
+
+            // Update all unit displays
+            currentTempUnitEl.textContent = unit;
+            targetTempUnitEl.textContent = unit;
+            tempSliderUnit.textContent = unit;
+
+            // Update temperature slider range and value
+            if (useCelsius) {
+                // Convert to Celsius range: 66°F = 19°C, 104°F = 40°C
+                tempSlider.min = 19;
+                tempSlider.max = 40;
+                tempSlider.value = fahrenheitToInput(72); // Default 72°F = 22°C
+                tempSliderValue.textContent = tempSlider.value;
+                document.getElementById('tempMin').textContent = '19°C';
+                document.getElementById('tempMax').textContent = '40°C';
+            } else {
+                // Fahrenheit range
+                tempSlider.min = 66;
+                tempSlider.max = 104;
+                tempSlider.value = 72;
+                tempSliderValue.textContent = 72;
+                document.getElementById('tempMin').textContent = '66°F';
+                document.getElementById('tempMax').textContent = '104°F';
+            }
+
+            // Update slider fill
+            updateSliderFill(tempSlider);
+
+            // Update current state displays if they have values
+            if (currentTempEl.textContent !== '--') {
+                // Re-parse from the stored Fahrenheit values
+                // (We'd need to store raw values, for now just update units)
+                // This will be properly updated on next status notification
+            }
+
+            logDebug(`Temperature unit changed to: ${unit}`, 'info');
+        }
+
         // Event Listeners
         connectBtn.addEventListener('click', connectToBedJet);
         disconnectBtn.addEventListener('click', disconnect);
+        useCelsiusCheckbox.addEventListener('change', updateTemperatureUI);
 
         modeButtons.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -779,14 +943,18 @@
 
         tempSlider.addEventListener('input', (e) => {
             tempSliderValue.textContent = e.target.value;
+            updateSliderFill(e.target);
         });
 
         tempSlider.addEventListener('change', (e) => {
-            setTemperature(parseInt(e.target.value));
+            const sliderValue = parseInt(e.target.value);
+            const fahrenheit = inputToFahrenheit(sliderValue);
+            setTemperature(fahrenheit);
         });
 
         fanSlider.addEventListener('input', (e) => {
             fanSliderValue.textContent = e.target.value;
+            updateSliderFill(e.target);
         });
 
         fanSlider.addEventListener('change', (e) => {
@@ -795,11 +963,17 @@
 
         runtimeSlider.addEventListener('input', (e) => {
             runtimeValue.textContent = e.target.value;
+            updateSliderFill(e.target);
         });
 
         runtimeSlider.addEventListener('change', (e) => {
             setRuntime(parseInt(e.target.value));
         });
+
+        // Initialize slider fills
+        updateSliderFill(tempSlider);
+        updateSliderFill(fanSlider);
+        updateSliderFill(runtimeSlider);
 
         tempUpBtn.addEventListener('click', () => {
             incrementTemperature();
@@ -1027,6 +1201,12 @@
         function handleStatusUpdate(event) {
             const data = new Uint8Array(event.target.value.buffer);
 
+            // Update last status timestamp
+            lastStatusUpdate = new Date();
+            const timeStr = lastStatusUpdate.toLocaleTimeString('en-US', { hour12: false });
+            lastUpdateEl.textContent = `Last updated: ${timeStr}`;
+            lastUpdateEl.style.color = '#4caf50';
+
             if (data.length >= 15) {
                 const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
                 console.log('Status data:', hexData);
@@ -1035,17 +1215,19 @@
                 // Parse current temperature (byte 7)
                 if (data[7] !== 0 && data[7] !== 0x26) {
                     const rawCurrent = data[7] - 0x26;
-                    const currentTemp = Math.round((rawCurrent + 66) - (rawCurrent / 9));
-                    currentTempEl.textContent = currentTemp;
-                    logDebug(`  Current temp: ${currentTemp}°F (byte[7]=0x${data[7].toString(16)})`, 'info');
+                    const currentTempF = Math.round((rawCurrent + 66) - (rawCurrent / 9));
+                    const displayCurrent = displayTemp(currentTempF);
+                    currentTempEl.textContent = displayCurrent;
+                    logDebug(`  Current temp: ${currentTempF}°F (${fToC(currentTempF)}°C) (byte[7]=0x${data[7].toString(16)})`, 'info');
                 }
 
                 // Parse target temperature (byte 8)
                 if (data[8] !== 0 && data[8] !== 0x26) {
                     const rawTarget = data[8] - 0x26;
-                    const targetTemp = Math.round((rawTarget + 66) - (rawTarget / 9));
-                    targetTempEl.textContent = targetTemp;
-                    logDebug(`  Target temp: ${targetTemp}°F (byte[8]=0x${data[8].toString(16)})`, 'info');
+                    const targetTempF = Math.round((rawTarget + 66) - (rawTarget / 9));
+                    const displayTarget = displayTemp(targetTempF);
+                    targetTempEl.textContent = displayTarget;
+                    logDebug(`  Target temp: ${targetTempF}°F (${fToC(targetTempF)}°C) (byte[8]=0x${data[8].toString(16)})`, 'info');
                 }
 
                 // Parse fan speed (byte 10)
@@ -1176,8 +1358,8 @@
                 return;
             }
 
-            // Convert percentage to BedJet format
-            const fanByte = Math.round(speed / 5) - 1;
+            // Convert percentage to BedJet format (no -1 offset needed)
+            const fanByte = Math.round(speed / 5);
             logDebug(`  Fan byte: 0x${fanByte.toString(16)}`, 'info');
             await sendCommand([0x07, fanByte]);
         }
@@ -1249,6 +1431,21 @@
 
         function hideError() {
             errorDiv.classList.remove('show');
+        }
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('bedjet-bluetooth-control-sw.js')
+                    .then(registration => {
+                        logDebug('✓ Service Worker registered successfully', 'success');
+                        console.log('ServiceWorker registration successful:', registration.scope);
+                    })
+                    .catch(error => {
+                        logDebug(`⚠ Service Worker registration failed: ${error}`, 'warn');
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
         }
     </script>
 </body>
