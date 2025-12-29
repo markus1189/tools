@@ -1491,17 +1491,23 @@
             if (currentMode === 'turbo') {
                 rangeIndicator.textContent = `Fixed: ${range.min}${unit}`;
                 rangeIndicator.style.color = '#ff9800';
-                logDebug(`Temperature locked to ${range.min}${unit} for TURBO mode`, 'info');
+                if (statusLoggingEnabled) {
+                    logDebug(`Temperature locked to ${range.min}${unit} for TURBO mode`, 'info');
+                }
             } else if (currentMode === 'dry' && deviceMinTemp !== null && deviceMaxTemp !== null) {
                 // DRY mode with dynamic bounds from device
                 const ambientTempC = ambientTemp !== null ? Math.round(ambientTemp / 2) : '?';
                 rangeIndicator.textContent = `Range: ${range.min}-${range.max}${unit} (ambient: ${ambientTempC}°C)`;
                 rangeIndicator.style.color = '#4caf50';  // Green to indicate dynamic
-                logDebug(`Temperature range (dynamic): ${range.min}-${range.max}${unit} for DRY mode (ambient: ${ambientTempC}°C)`, 'info');
+                if (statusLoggingEnabled) {
+                    logDebug(`Temperature range (dynamic): ${range.min}-${range.max}${unit} for DRY mode (ambient: ${ambientTempC}°C)`, 'info');
+                }
             } else {
                 rangeIndicator.textContent = `Range: ${range.min}-${range.max}${unit}`;
                 rangeIndicator.style.color = '#999';
-                logDebug(`Temperature range updated: ${range.min}-${range.max}${unit} for ${(currentMode || 'off').toUpperCase()} mode`, 'info');
+                if (statusLoggingEnabled) {
+                    logDebug(`Temperature range updated: ${range.min}-${range.max}${unit} for ${(currentMode || 'off').toUpperCase()} mode`, 'info');
+                }
             }
 
             // Clamp current slider value to new range
