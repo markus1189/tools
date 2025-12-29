@@ -542,6 +542,8 @@
                 // Request BedJet device
                 device = await navigator.bluetooth.requestDevice({
                     filters: [
+                        { services: [BEDJET_STATUS_UUID] },
+                        { services: [BEDJET_COMMAND_UUID] },
                         { namePrefix: 'BedJet' }
                     ],
                     optionalServices: [
