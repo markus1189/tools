@@ -1442,8 +1442,10 @@
                 }
 
                 // Parse fan speed (byte 10)
-                if (data[10] > 0) {
-                    const fanSpeed = data[10] * 5;
+                // BedJet formula: fanSpeed = fanByte * 5 + 5
+                // fanByte 0 = 5%, fanByte 19 = 100%
+                const fanSpeed = data[10] * 5 + 5;
+                if (fanSpeed >= 5 && fanSpeed <= 100) {
                     fanSpeedEl.textContent = fanSpeed;
                     logDebug(`  Fan speed: ${fanSpeed}% (byte[10]=0x${data[10].toString(16)})`, 'info');
                 }
@@ -1569,8 +1571,10 @@
                 return;
             }
 
-            // Convert percentage to BedJet format (no -1 offset needed)
-            const fanByte = Math.round(speed / 5);
+            // Convert percentage to BedJet format
+            // BedJet formula: actual_speed = fanByte * 5 + 5
+            // Therefore: fanByte = (speed - 5) / 5
+            const fanByte = Math.round((speed - 5) / 5);
             logDebug(`  Fan byte: 0x${fanByte.toString(16)}`, 'info');
             await sendCommand([0x07, fanByte]);
         }
