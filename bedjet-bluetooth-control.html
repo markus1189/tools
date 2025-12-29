@@ -775,7 +775,6 @@
             bio3: { name: null, steps: [] }
         };
         let currentBioTag = 1;
-        let pendingBioRequest = null;
 
         // Auto-reconnect state
         let reconnectAttempts = 0;
@@ -1266,16 +1265,19 @@
                 logDebug('✓ Notifications enabled', 'success');
 
                 // Get biodata characteristic (for biorhythm data)
-                logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
-                biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                logDebug('✓ Got biodata characteristic', 'success');
-                logDebug(`  Properties: ${Array.from(biodataCharacteristic.properties).join(', ')}`, 'info');
-
-                // Subscribe to biodata notifications
-                logDebug('Starting biodata notifications...', 'info');
-                await biodataCharacteristic.startNotifications();
-                biodataCharacteristic.addEventListener('characteristicvaluechanged', handleBiodataUpdate);
-                logDebug('✓ Biodata notifications enabled', 'success');
+                // Note: biodata is optional and only needed for loading biorhythms
+                // The official app uses READ operations, not notifications, for biodata
+                try {
+                    logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
+                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
+                    logDebug('✓ Got biodata characteristic', 'success');
+                    logDebug(`  Properties: ${Array.from(biodataCharacteristic.properties).join(', ')}`, 'info');
+                    logDebug('Note: Biodata will be read on-demand when loading biorhythms', 'info');
+                } catch (error) {
+                    logDebug(`⚠ Could not get biodata characteristic: ${error.message}`, 'warn');
+                    logDebug('  Biorhythm loading will not be available', 'warn');
+                    biodataCharacteristic = null;
+                }
 
                 // Read device name
                 try {
@@ -1393,16 +1395,17 @@
                 statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
                 logDebug('✓ Notifications enabled', 'success');
 
-                // Get biodata characteristic
-                logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
-                biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                logDebug('✓ Got biodata characteristic', 'success');
-
-                // Subscribe to biodata notifications
-                logDebug('Starting biodata notifications...', 'info');
-                await biodataCharacteristic.startNotifications();
-                biodataCharacteristic.addEventListener('characteristicvaluechanged', handleBiodataUpdate);
-                logDebug('✓ Biodata notifications enabled', 'success');
+                // Get biodata characteristic (optional)
+                try {
+                    logDebug(`Getting biodata characteristic (${BEDJET_BIODATA_UUID})...`, 'info');
+                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
+                    logDebug('✓ Got biodata characteristic', 'success');
+                    logDebug('Note: Biodata will be read on-demand when loading biorhythms', 'info');
+                } catch (error) {
+                    logDebug(`⚠ Could not get biodata characteristic: ${error.message}`, 'warn');
+                    logDebug('  Biorhythm loading will not be available', 'warn');
+                    biodataCharacteristic = null;
+                }
 
                 // Read device name
                 try {
@@ -1495,9 +1498,12 @@
                     await statusCharacteristic.startNotifications();
                     statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
 
-                    biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
-                    await biodataCharacteristic.startNotifications();
-                    biodataCharacteristic.addEventListener('characteristicvaluechanged', handleBiodataUpdate);
+                    // Get biodata characteristic (optional)
+                    try {
+                        biodataCharacteristic = await bedjetService.getCharacteristic(BEDJET_BIODATA_UUID);
+                    } catch (error) {
+                        biodataCharacteristic = null;
+                    }
 
                     // Update UI
                     updateConnectionStatus(true);
@@ -1785,18 +1791,28 @@
             logDebug(`► Requesting bio packet: fragment=${fragmentID}, tag=${tag}`, 'info');
             logDebug(`  Command: ${hexCommand}`, 'info');
 
+            // Send the request command
             await commandCharacteristic.writeValue(command);
 
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error('Biodata request timeout'));
-                }, 5000);
+            // Wait a bit for the device to prepare the response
+            await new Promise(resolve => setTimeout(resolve, 300));
 
-                pendingBioRequest = { fragmentID, tag, resolve: (data) => {
-                    clearTimeout(timeout);
-                    resolve(data);
-                }, reject };
-            });
+            // Read the biodata characteristic (NOT notifications - the official app uses readValue!)
+            logDebug(`Reading biodata characteristic...`, 'info');
+            const dataView = await biodataCharacteristic.readValue();
+            const data = new Uint8Array(dataView.buffer);
+
+            const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+            logDebug(`◄ Biodata read (${data.length} bytes): ${hexData}`, 'info');
+
+            // Verify response matches our request
+            if (data[0] === fragmentID && data[1] === tag) {
+                logDebug(`✓ Biodata response matches request (fragment=${fragmentID}, tag=${tag})`, 'success');
+                return data;
+            } else {
+                logDebug(`⚠ Biodata response mismatch: expected fragment=${fragmentID} tag=${tag}, got fragment=${data[0]} tag=${data[1]}`, 'warn');
+                throw new Error(`Biodata response mismatch: expected fragment=${fragmentID} tag=${tag}, got fragment=${data[0]} tag=${data[1]}`);
+            }
         }
 
         function parseBioNames(data) {
@@ -1937,6 +1953,16 @@
             logDebug('=== Loading All Biorhythms ===', 'info');
 
             try {
+                // Check if biodata characteristic is available
+                if (!biodataCharacteristic) {
+                    showError('Biodata characteristic not available. Your BedJet may not support biorhythm data.');
+                    logDebug('❌ Biodata characteristic not available', 'error');
+                    return;
+                }
+
+                logDebug('Biodata characteristic ready for reading', 'info');
+                logDebug('Note: Using READ operations (not notifications) - matching official BedJet app protocol', 'info');
+
                 // First load names
                 logDebug('Requesting biorhythm names...', 'info');
                 const namesData = await requestBioPacket(4);
@@ -2010,27 +2036,9 @@
             }
         }
 
-        function handleBiodataUpdate(event) {
-            const data = new Uint8Array(event.target.value.buffer);
-            const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
-
-            logDebug(`◄ Biodata notification (${data.length} bytes): ${hexData}`, 'info');
-
-            if (pendingBioRequest) {
-                const fragmentID = data[0];
-                const tag = data[1];
-
-                if (fragmentID === pendingBioRequest.fragmentID && tag === pendingBioRequest.tag) {
-                    logDebug(`✓ Biodata response matches pending request (fragment=${fragmentID}, tag=${tag})`, 'success');
-                    pendingBioRequest.resolve(data);
-                    pendingBioRequest = null;
-                } else {
-                    logDebug(`⚠ Biodata response mismatch: expected fragment=${pendingBioRequest.fragmentID} tag=${pendingBioRequest.tag}, got fragment=${fragmentID} tag=${tag}`, 'warn');
-                }
-            } else {
-                logDebug('⚠ Received biodata notification but no pending request', 'warn');
-            }
-        }
+        // Note: handleBiodataUpdate is no longer used
+        // The official BedJet app uses READ operations (readCharacteristic), not notifications
+        // for biodata. We now use direct readValue() calls in requestBioPacket() instead.
 
         function updateConnectionStatus(connected) {
             if (connected) {
