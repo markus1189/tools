@@ -1181,7 +1181,7 @@
                 controls.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'block';
+                disconnectBtn.style.display = '';
 
                 logDebug('=== Connection Complete ===', 'success');
 
@@ -1281,7 +1281,7 @@
                 controls.style.display = 'block';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'block';
+                disconnectBtn.style.display = '';
 
                 logDebug('=== Reconnection Complete ===', 'success');
 
@@ -1370,7 +1370,7 @@
                         controls.style.display = 'block';
                         connectBtn.style.display = 'none';
                         reconnectBtn.style.display = 'none';
-                        disconnectBtn.style.display = 'block';
+                        disconnectBtn.style.display = '';
 
                         // Reset reconnect state
                         reconnectAttempts = 0;
@@ -1654,16 +1654,16 @@
                 // Currently connected
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'block';
+                disconnectBtn.style.display = '';
             } else if (savedDevice) {
                 // Not connected, but have saved device
-                connectBtn.style.display = 'block';
-                reconnectBtn.style.display = 'block';
+                connectBtn.style.display = '';
+                reconnectBtn.style.display = '';
                 disconnectBtn.style.display = 'none';
                 savedDeviceNameEl.textContent = savedDevice.name;
             } else {
                 // Not connected, no saved device
-                connectBtn.style.display = 'block';
+                connectBtn.style.display = '';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'none';
             }
