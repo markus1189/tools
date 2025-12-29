@@ -539,12 +539,11 @@
                 hideError();
                 statusText.textContent = 'Scanning...';
 
-                // Request BedJet device
+                // Request BedJet device - filter by service UUIDs
+                // (devices may not advertise name, or may use different capitalization)
                 device = await navigator.bluetooth.requestDevice({
                     filters: [
-                        { services: [BEDJET_STATUS_UUID] },
-                        { services: [BEDJET_COMMAND_UUID] },
-                        { namePrefix: 'BedJet' }
+                        { services: [BEDJET_STATUS_UUID] }
                     ],
                     optionalServices: [
                         BEDJET_STATUS_UUID,
