@@ -531,6 +531,10 @@
                     </div>
                     <input type="range" id="tempSlider" min="66" max="104" value="72" step="1">
                 </div>
+                <div class="preset-buttons" style="margin-top: 10px;">
+                    <button class="preset-btn" id="tempDownBtn">TEMP ▼</button>
+                    <button class="preset-btn" id="tempUpBtn">TEMP ▲</button>
+                </div>
             </div>
 
             <div class="control-section">
@@ -541,6 +545,21 @@
                         <span class="slider-value"><span id="fanSliderValue">50</span>%</span>
                     </div>
                     <input type="range" id="fanSlider" min="5" max="100" value="50" step="5">
+                </div>
+                <div class="preset-buttons" style="margin-top: 10px;">
+                    <button class="preset-btn" id="fanDownBtn">FAN ▼</button>
+                    <button class="preset-btn" id="fanUpBtn">FAN ▲</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Runtime / Timer</h2>
+                <div class="slider-control">
+                    <div class="slider-label">
+                        <span>Set Runtime</span>
+                        <span class="slider-value"><span id="runtimeValue">60</span> min</span>
+                    </div>
+                    <input type="range" id="runtimeSlider" min="1" max="600" value="60" step="1">
                 </div>
             </div>
 
@@ -597,6 +616,14 @@
         let server = null;
         let commandCharacteristic = null;
         let currentMode = null;
+
+        // Auto-reconnect state
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 10;
+        let reconnectBaseDelay = 3000; // 3 seconds
+        let reconnectTimer = null;
+        let isReconnecting = false;
+        let userDisconnected = false;
 
         // Debug logging
         let debugLogContent = '';
@@ -714,8 +741,14 @@
         const modeButtons = document.querySelectorAll('.mode-btn');
         const tempSlider = document.getElementById('tempSlider');
         const tempSliderValue = document.getElementById('tempSliderValue');
+        const tempUpBtn = document.getElementById('tempUpBtn');
+        const tempDownBtn = document.getElementById('tempDownBtn');
         const fanSlider = document.getElementById('fanSlider');
         const fanSliderValue = document.getElementById('fanSliderValue');
+        const fanUpBtn = document.getElementById('fanUpBtn');
+        const fanDownBtn = document.getElementById('fanDownBtn');
+        const runtimeSlider = document.getElementById('runtimeSlider');
+        const runtimeValue = document.getElementById('runtimeValue');
         const presetButtons = document.querySelectorAll('.preset-btn');
 
         // Check Web Bluetooth support
@@ -756,6 +789,30 @@
             setFanSpeed(parseInt(e.target.value));
         });
 
+        runtimeSlider.addEventListener('input', (e) => {
+            runtimeValue.textContent = e.target.value;
+        });
+
+        runtimeSlider.addEventListener('change', (e) => {
+            setRuntime(parseInt(e.target.value));
+        });
+
+        tempUpBtn.addEventListener('click', () => {
+            incrementTemperature();
+        });
+
+        tempDownBtn.addEventListener('click', () => {
+            decrementTemperature();
+        });
+
+        fanUpBtn.addEventListener('click', () => {
+            incrementFan();
+        });
+
+        fanDownBtn.addEventListener('click', () => {
+            decrementFan();
+        });
+
         presetButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const preset = parseInt(btn.dataset.preset);
@@ -767,6 +824,14 @@
             try {
                 hideError();
                 statusText.textContent = 'Scanning...';
+
+                // Reset reconnect state
+                userDisconnected = false;
+                reconnectAttempts = 0;
+                if (reconnectTimer) {
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = null;
+                }
 
                 const showAll = document.getElementById('showAllDevices').checked;
                 logDebug('=== Starting BedJet Connection ===', 'info');
@@ -871,12 +936,74 @@
 
         async function disconnect() {
             logDebug('User requested disconnect', 'info');
+            userDisconnected = true;
+
+            // Clear any pending reconnect attempts
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+
             if (device && device.gatt.connected) {
                 device.gatt.disconnect();
                 logDebug('Disconnect command sent', 'info');
             } else {
                 logDebug('No active connection to disconnect', 'warn');
             }
+        }
+
+        async function attemptReconnect() {
+            if (userDisconnected || isReconnecting) {
+                return;
+            }
+
+            isReconnecting = true;
+            reconnectAttempts++;
+
+            const delayMs = reconnectBaseDelay * reconnectAttempts; // Linear backoff
+            logDebug(`Reconnect attempt ${reconnectAttempts}/${maxReconnectAttempts} in ${delayMs/1000}s...`, 'warn');
+
+            reconnectTimer = setTimeout(async () => {
+                try {
+                    logDebug(`Attempting to reconnect to ${device?.name || 'BedJet'}...`, 'info');
+
+                    if (device && device.gatt) {
+                        server = await device.gatt.connect();
+                        logDebug('✓ Reconnected to GATT server', 'success');
+
+                        // Re-establish characteristics
+                        const commandService = await server.getPrimaryService(BEDJET_COMMAND_UUID);
+                        commandCharacteristic = await commandService.getCharacteristic(BEDJET_COMMAND_UUID);
+
+                        const statusService = await server.getPrimaryService(BEDJET_STATUS_UUID);
+                        const statusCharacteristic = await statusService.getCharacteristic(BEDJET_STATUS_UUID);
+                        await statusCharacteristic.startNotifications();
+                        statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
+
+                        // Update UI
+                        updateConnectionStatus(true);
+                        controls.style.display = 'block';
+                        connectBtn.style.display = 'none';
+                        disconnectBtn.style.display = 'block';
+
+                        // Reset reconnect state
+                        reconnectAttempts = 0;
+                        isReconnecting = false;
+
+                        logDebug('=== Reconnection Complete ===', 'success');
+                    }
+                } catch (error) {
+                    logDebug(`Reconnect attempt ${reconnectAttempts} failed: ${error.message}`, 'error');
+                    isReconnecting = false;
+
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        attemptReconnect();
+                    } else {
+                        logDebug(`Max reconnect attempts (${maxReconnectAttempts}) reached. Giving up.`, 'error');
+                        showError('Connection lost. Please reconnect manually.');
+                    }
+                }
+            }, delayMs);
         }
 
         function onDisconnected() {
@@ -889,6 +1016,14 @@
             deviceName.textContent = '';
             currentMode = null;
             updateModeButtons();
+
+            // Attempt auto-reconnect if not user-initiated
+            if (!userDisconnected) {
+                logDebug('Unexpected disconnect - initiating auto-reconnect', 'warn');
+                attemptReconnect();
+            } else {
+                logDebug('User-initiated disconnect - auto-reconnect disabled', 'info');
+            }
         }
 
         function handleStatusUpdate(event) {
@@ -1025,13 +1160,13 @@
                 return;
             }
 
-            // Convert temperature to BedJet format
-            const tempOffset = temp - 66;
-            const tempByte = Math.round(tempOffset + (tempOffset / 9) + 0x26);
+            // Convert temperature to BedJet format (matches Python implementations)
+            // Formula: temp_byte = (temp - 60) / 9 + (temp - 66) + 0x26
+            const tempByte = Math.round((temp - 60) / 9 + (temp - 66) + 0x26);
             const clampedByte = Math.max(0, Math.min(255, tempByte));
 
             console.log(`Setting temperature ${temp}°F (byte: 0x${clampedByte.toString(16)})`);
-            logDebug(`  Temp offset: ${tempOffset}, Temp byte: 0x${clampedByte.toString(16)}`, 'info');
+            logDebug(`  Temp byte: 0x${clampedByte.toString(16)}`, 'info');
             await sendCommand([0x03, clampedByte]);
         }
 
@@ -1047,6 +1182,42 @@
             const fanByte = Math.round(speed / 5) - 1;
             logDebug(`  Fan byte: 0x${fanByte.toString(16)}`, 'info');
             await sendCommand([0x07, fanByte]);
+        }
+
+        async function setRuntime(minutes) {
+            logDebug(`Setting runtime to: ${minutes} minutes`, 'info');
+            if (minutes < 1 || minutes > 600) {
+                showError(`Runtime ${minutes} out of range (1-600 minutes)`);
+                logDebug(`❌ Runtime ${minutes} min out of range (1-600 min)`, 'error');
+                return;
+            }
+
+            // Convert minutes to hours and minutes
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+
+            logDebug(`  Runtime: ${hours}h ${mins}m`, 'info');
+            await sendCommand([0x02, hours, mins]);
+        }
+
+        async function incrementTemperature() {
+            logDebug('Increment temperature button pressed', 'info');
+            await sendCommand([0x01, 0x12]); // TEMP_UP command
+        }
+
+        async function decrementTemperature() {
+            logDebug('Decrement temperature button pressed', 'info');
+            await sendCommand([0x01, 0x13]); // TEMP_DOWN command
+        }
+
+        async function incrementFan() {
+            logDebug('Increment fan speed button pressed', 'info');
+            await sendCommand([0x01, 0x10]); // FAN_UP command
+        }
+
+        async function decrementFan() {
+            logDebug('Decrement fan speed button pressed', 'info');
+            await sendCommand([0x01, 0x11]); // FAN_DOWN command
         }
 
         async function activatePreset(preset) {
