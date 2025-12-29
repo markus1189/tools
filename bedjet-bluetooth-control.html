@@ -752,6 +752,7 @@
                         </div>
                     </div>
                     <div class="gauge-sub-value">Current: <span id="currentTemp">--</span><span id="currentTempUnit">°C</span></div>
+                    <div class="gauge-sub-value" id="tempRangeIndicator" style="font-size: 11px; color: #999; margin-top: 2px;">Range: --</div>
                     <div class="slider-wrapper">
                         <input type="range" id="tempSlider" min="19" max="40" value="22" step="1">
                     </div>
@@ -905,6 +906,18 @@
             'ext_ht': 0x06
         };
 
+        // Temperature ranges by mode (in Fahrenheit for direct use)
+        // Source: /tmp/bedjet-source/docs/temperature-ranges.md
+        // Note: DRY mode uses dynamic bounds from device (see dry-mode-temperature-bounds.md)
+        const TEMP_RANGES = {
+            'heat': { minF: 72, maxF: 104, minC: 22, maxC: 40 },      // Heat: 22.5-40°C (72.5-104°F) - rounded
+            'turbo': { minF: 109, maxF: 109, minC: 43, maxC: 43 },    // Turbo: Fixed 43°C (109.4°F)
+            'ext_ht': { minF: 66, maxF: 92, minC: 19, maxC: 33 },     // Extended Heat: 19-33.5°C (66.2-92.3°F) - rounded
+            'cool': { minF: 66, maxF: 88, minC: 19, maxC: 31 },       // Cool: 19-31°C (66.2-87.8°F)
+            'dry': { minF: 68, maxF: 104, minC: 20, maxC: 40 },       // Dry: 20-40°C (68-104°F) - STATIC FALLBACK, device overrides
+            'off': { minF: 66, maxF: 104, minC: 19, maxC: 40 }        // Default range when off
+        };
+
         // Biorhythm mode constants
         const BIO_MODE_NAMES = {
             0: 'STANDBY',
@@ -924,6 +937,11 @@
         let currentMode = null;
         let useCelsius = true;
         let lastStatusUpdate = null;
+
+        // Device-reported dynamic temperature bounds (for DRY mode)
+        let deviceMinTemp = null;  // in half-degrees Celsius (raw value from device)
+        let deviceMaxTemp = null;  // in half-degrees Celsius (raw value from device)
+        let ambientTemp = null;    // in half-degrees Celsius (raw value from device)
 
         // Gauge/Slider dirty state
         let tempDirty = false;
@@ -1052,6 +1070,87 @@
             return useCelsius ? fToC(fahrenheit) : fahrenheit;
         }
 
+        function getTempRange(mode = null) {
+            const activeMode = mode || currentMode || 'off';
+            const range = TEMP_RANGES[activeMode] || TEMP_RANGES['off'];
+
+            // DRY mode uses dynamic bounds from device if available
+            if (activeMode === 'dry' && deviceMinTemp !== null && deviceMaxTemp !== null) {
+                // Convert from half-degrees Celsius to actual temperature
+                // deviceMinTemp/deviceMaxTemp are in the format: value = temp * 2
+                // e.g., 40 = 20°C, 80 = 40°C
+                const minC = Math.round(deviceMinTemp / 2);
+                const maxC = Math.round(deviceMaxTemp / 2);
+                const minF = Math.round((deviceMinTemp * 9) / 10 + 32);
+                const maxF = Math.round((deviceMaxTemp * 9) / 10 + 32);
+
+                if (useCelsius) {
+                    return { min: minC, max: maxC };
+                } else {
+                    return { min: minF, max: maxF };
+                }
+            }
+
+            // All other modes use static ranges
+            if (useCelsius) {
+                return { min: range.minC, max: range.maxC };
+            } else {
+                return { min: range.minF, max: range.maxF };
+            }
+        }
+
+        function updateTempSliderRange() {
+            const range = getTempRange();
+            tempSlider.min = range.min;
+            tempSlider.max = range.max;
+
+            // Update range indicator
+            const unit = getTempUnit();
+            const rangeIndicator = document.getElementById('tempRangeIndicator');
+            if (currentMode === 'turbo') {
+                rangeIndicator.textContent = `Fixed: ${range.min}${unit}`;
+                rangeIndicator.style.color = '#ff9800';
+                logDebug(`Temperature locked to ${range.min}${unit} for TURBO mode`, 'info');
+            } else if (currentMode === 'dry' && deviceMinTemp !== null && deviceMaxTemp !== null) {
+                // DRY mode with dynamic bounds from device
+                const ambientTempC = ambientTemp ? Math.round(ambientTemp / 2) : '?';
+                rangeIndicator.textContent = `Range: ${range.min}-${range.max}${unit} (ambient: ${ambientTempC}°C)`;
+                rangeIndicator.style.color = '#4caf50';  // Green to indicate dynamic
+                logDebug(`Temperature range (dynamic): ${range.min}-${range.max}${unit} for DRY mode (ambient: ${ambientTempC}°C)`, 'info');
+            } else {
+                rangeIndicator.textContent = `Range: ${range.min}-${range.max}${unit}`;
+                rangeIndicator.style.color = '#999';
+                logDebug(`Temperature range updated: ${range.min}-${range.max}${unit} for ${(currentMode || 'off').toUpperCase()} mode`, 'info');
+            }
+
+            // Clamp current slider value to new range
+            const currentValue = parseInt(tempSlider.value);
+            if (currentValue < range.min) {
+                tempSlider.value = range.min;
+                targetTempEl.textContent = range.min;
+                logDebug(`Temperature clamped to minimum: ${range.min}${unit}`, 'warn');
+            } else if (currentValue > range.max) {
+                tempSlider.value = range.max;
+                targetTempEl.textContent = range.max;
+                logDebug(`Temperature clamped to maximum: ${range.max}${unit}`, 'warn');
+            }
+
+            updateSliderFill(tempSlider);
+
+            // Update gauge to reflect current value
+            const fahrenheit = inputToFahrenheit(parseInt(tempSlider.value));
+            updateTempGauge(fahrenheit);
+
+            // Disable slider for turbo mode (fixed temperature)
+            if (currentMode === 'turbo') {
+                tempSlider.disabled = true;
+                tempSlider.style.opacity = '0.5';
+            } else {
+                tempSlider.disabled = false;
+                tempSlider.style.opacity = '1';
+            }
+        }
+
         function logDebug(message, level = 'info') {
             // Always log to console for browser devtools debugging
             const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
@@ -1176,9 +1275,8 @@
 
         function updateTempGauge(tempF) {
             const displayValue = displayTemp(tempF);
-            const min = useCelsius ? 19 : 66;
-            const max = useCelsius ? 40 : 104;
-            updateGauge('tempGaugeProgress', displayValue, min, max);
+            const range = getTempRange();
+            updateGauge('tempGaugeProgress', displayValue, range.min, range.max);
         }
 
         function updateFanGauge(fanPercent) {
@@ -1250,21 +1348,8 @@
             currentTempUnitEl.textContent = unit;
             targetTempUnitEl.textContent = unit;
 
-            // Update temperature slider range and value
-            if (useCelsius) {
-                // Convert to Celsius range: 66°F = 19°C, 104°F = 40°C
-                tempSlider.min = 19;
-                tempSlider.max = 40;
-                tempSlider.value = fahrenheitToInput(72); // Default 72°F = 22°C
-            } else {
-                // Fahrenheit range
-                tempSlider.min = 66;
-                tempSlider.max = 104;
-                tempSlider.value = 72;
-            }
-
-            // Update slider fill
-            updateSliderFill(tempSlider);
+            // Update temperature slider range based on current mode and unit
+            updateTempSliderRange();
 
             logDebug(`Temperature unit changed to: ${unit}`, 'info');
         }
@@ -1406,6 +1491,9 @@
         // Initialize slider fills
         updateSliderFill(tempSlider);
         updateSliderFill(fanSlider);
+
+        // Initialize temperature slider range based on default mode
+        updateTempSliderRange();
 
         tempUpBtn.addEventListener('click', () => {
             incrementTemperature();
@@ -1850,13 +1938,39 @@
         function handleStatusUpdate(event) {
             const data = new Uint8Array(event.target.value.buffer);
 
-            if (data.length >= 15) {
+            if (data.length >= 17) {  // Need at least 17 bytes to read ambient temp at byte 16
                 const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
                 console.log('Status data:', hexData);
 
                 // Only log status updates if status logging is enabled
                 if (statusLoggingEnabled) {
                     logDebug(`◄ Status update (${data.length} bytes): ${hexData}`, 'info');
+                }
+
+                // Parse device-reported temperature bounds (bytes 12, 13)
+                // These are dynamic for DRY mode, based on ambient temperature
+                const newDeviceMinTemp = data[12];
+                const newDeviceMaxTemp = data[13];
+                const newAmbientTemp = data[16];
+
+                // Check if bounds have changed
+                const boundsChanged = (deviceMinTemp !== newDeviceMinTemp ||
+                                      deviceMaxTemp !== newDeviceMaxTemp);
+
+                deviceMinTemp = newDeviceMinTemp;
+                deviceMaxTemp = newDeviceMaxTemp;
+                ambientTemp = newAmbientTemp;
+
+                if (statusLoggingEnabled && boundsChanged) {
+                    const minTempC = Math.round(deviceMinTemp / 2);
+                    const maxTempC = Math.round(deviceMaxTemp / 2);
+                    const ambientTempC = Math.round(ambientTemp / 2);
+                    logDebug(`  Device temp bounds: ${minTempC}-${maxTempC}°C (ambient: ${ambientTempC}°C)`, 'info');
+                }
+
+                // Update temperature slider range if bounds changed (important for DRY mode)
+                if (boundsChanged && currentMode === 'dry') {
+                    updateTempSliderRange();
                 }
 
                 // Parse current temperature (byte 7)
@@ -1972,6 +2086,9 @@
                     btn.classList.remove('active');
                 }
             });
+
+            // Update temperature slider range when mode changes
+            updateTempSliderRange();
         }
 
         async function sendCommand(command) {
