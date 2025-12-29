@@ -705,9 +705,13 @@
                 <div class="debug-toggle" id="debugToggle">Hide ▲</div>
             </div>
             <div style="margin-bottom: 10px; padding: 10px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffc107;">
-                <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px; color: #856404;">
+                <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px; color: #856404; margin-bottom: 8px;">
                     <input type="checkbox" id="enableDebugLogging" style="margin-right: 8px; cursor: pointer;">
                     <span><strong>Enable debug logging</strong> (logs disabled by default to save memory)</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; font-size: 12px; color: #856404; margin-left: 20px;">
+                    <input type="checkbox" id="enableStatusLogging" style="margin-right: 8px; cursor: pointer;">
+                    <span>Include status notifications (can spam log)</span>
                 </label>
             </div>
             <div class="debug-buttons">
@@ -788,6 +792,7 @@
         const STORAGE_KEY_DEVICE_ID = 'bedjet_device_id';
         const STORAGE_KEY_DEVICE_NAME = 'bedjet_device_name';
         const STORAGE_KEY_DEBUG_LOGGING = 'bedjet_debug_logging_enabled';
+        const STORAGE_KEY_STATUS_LOGGING = 'bedjet_status_logging_enabled';
 
         // LocalStorage functions
         function saveDeviceToStorage(deviceId, deviceName) {
@@ -840,8 +845,26 @@
             }
         }
 
+        function saveStatusLoggingPreference(enabled) {
+            try {
+                localStorage.setItem(STORAGE_KEY_STATUS_LOGGING, enabled ? 'true' : 'false');
+            } catch (error) {
+                console.warn('Failed to save status logging preference:', error);
+            }
+        }
+
+        function getStatusLoggingPreference() {
+            try {
+                const value = localStorage.getItem(STORAGE_KEY_STATUS_LOGGING);
+                return value === 'true';
+            } catch (error) {
+                return false; // Default to disabled
+            }
+        }
+
         // Debug logging
         let debugLoggingEnabled = getDebugLoggingPreference(); // Default to disabled
+        let statusLoggingEnabled = getStatusLoggingPreference(); // Default to disabled
         let debugLogContent = '';
         const debugLogEl = document.getElementById('debugLog');
 
@@ -983,6 +1006,7 @@
         const errorDiv = document.getElementById('error');
         const useCelsiusCheckbox = document.getElementById('useCelsius');
         const enableDebugLoggingCheckbox = document.getElementById('enableDebugLogging');
+        const enableStatusLoggingCheckbox = document.getElementById('enableStatusLogging');
 
         // State displays
         const currentTempEl = document.getElementById('currentTemp');
@@ -1081,6 +1105,16 @@
                 logDebug('✓ Debug logging enabled', 'success');
             } else {
                 console.log('Debug logging disabled');
+            }
+        });
+
+        enableStatusLoggingCheckbox.addEventListener('change', (e) => {
+            statusLoggingEnabled = e.target.checked;
+            saveStatusLoggingPreference(statusLoggingEnabled);
+            if (debugLoggingEnabled) {
+                logDebug(`Status notification logging ${statusLoggingEnabled ? 'enabled' : 'disabled'}`, 'info');
+            } else {
+                console.log(`Status notification logging ${statusLoggingEnabled ? 'enabled' : 'disabled'}`);
             }
         });
 
@@ -1564,7 +1598,11 @@
             if (data.length >= 15) {
                 const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
                 console.log('Status data:', hexData);
-                logDebug(`◄ Status update (${data.length} bytes): ${hexData}`, 'info');
+
+                // Only log status updates if status logging is enabled
+                if (statusLoggingEnabled) {
+                    logDebug(`◄ Status update (${data.length} bytes): ${hexData}`, 'info');
+                }
 
                 // Parse current temperature (byte 7)
                 if (data[7] !== 0 && data[7] !== 0x26) {
@@ -1572,7 +1610,9 @@
                     const currentTempF = Math.round((rawCurrent + 66) - (rawCurrent / 9));
                     const displayCurrent = displayTemp(currentTempF);
                     currentTempEl.textContent = displayCurrent;
-                    logDebug(`  Current temp: ${currentTempF}°F (${fToC(currentTempF)}°C) (byte[7]=0x${data[7].toString(16)})`, 'info');
+                    if (statusLoggingEnabled) {
+                        logDebug(`  Current temp: ${currentTempF}°F (${fToC(currentTempF)}°C) (byte[7]=0x${data[7].toString(16)})`, 'info');
+                    }
                 }
 
                 // Parse target temperature (byte 8)
@@ -1581,7 +1621,9 @@
                     const targetTempF = Math.round((rawTarget + 66) - (rawTarget / 9));
                     const displayTarget = displayTemp(targetTempF);
                     targetTempEl.textContent = displayTarget;
-                    logDebug(`  Target temp: ${targetTempF}°F (${fToC(targetTempF)}°C) (byte[8]=0x${data[8].toString(16)})`, 'info');
+                    if (statusLoggingEnabled) {
+                        logDebug(`  Target temp: ${targetTempF}°F (${fToC(targetTempF)}°C) (byte[8]=0x${data[8].toString(16)})`, 'info');
+                    }
                 }
 
                 // Parse fan speed (byte 10)
@@ -1590,7 +1632,9 @@
                 const fanSpeed = data[10] * 5 + 5;
                 if (fanSpeed >= 5 && fanSpeed <= 100) {
                     fanSpeedEl.textContent = fanSpeed;
-                    logDebug(`  Fan speed: ${fanSpeed}% (byte[10]=0x${data[10].toString(16)})`, 'info');
+                    if (statusLoggingEnabled) {
+                        logDebug(`  Fan speed: ${fanSpeed}% (byte[10]=0x${data[10].toString(16)})`, 'info');
+                    }
                 }
 
                 // Parse time remaining (bytes 4, 5, 6)
@@ -1605,7 +1649,9 @@
                     const s = totalSeconds % 60;
                     const timeStr = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
                     timeRemainingEl.textContent = timeStr;
-                    logDebug(`  Time remaining: ${timeStr}`, 'info');
+                    if (statusLoggingEnabled) {
+                        logDebug(`  Time remaining: ${timeStr}`, 'info');
+                    }
                 } else {
                     timeRemainingEl.textContent = '--';
                 }
@@ -1631,14 +1677,20 @@
 
                 if (detectedMode) {
                     currentMode = detectedMode;
-                    logDebug(`  Mode: ${detectedMode.toUpperCase()} (byte[13]=0x${byte13.toString(16)}, byte[14]=0x${byte14.toString(16)})`, 'info');
+                    if (statusLoggingEnabled) {
+                        logDebug(`  Mode: ${detectedMode.toUpperCase()} (byte[13]=0x${byte13.toString(16)}, byte[14]=0x${byte14.toString(16)})`, 'info');
+                    }
                 } else {
-                    logDebug(`  Unknown mode (byte[13]=0x${byte13.toString(16)}, byte[14]=0x${byte14.toString(16)})`, 'warn');
+                    if (statusLoggingEnabled) {
+                        logDebug(`  Unknown mode (byte[13]=0x${byte13.toString(16)}, byte[14]=0x${byte14.toString(16)})`, 'warn');
+                    }
                 }
 
                 updateModeButtons();
             } else {
-                logDebug(`⚠ Status update too short: ${data.length} bytes (expected ≥15)`, 'warn');
+                if (statusLoggingEnabled) {
+                    logDebug(`⚠ Status update too short: ${data.length} bytes (expected ≥15)`, 'warn');
+                }
             }
         }
 
@@ -2084,8 +2136,9 @@
 
         // Initialize button visibility on page load
         function initializeApp() {
-            // Initialize debug logging checkbox
+            // Initialize debug logging checkboxes
             enableDebugLoggingCheckbox.checked = debugLoggingEnabled;
+            enableStatusLoggingCheckbox.checked = statusLoggingEnabled;
 
             const savedDevice = getSavedDevice();
             if (savedDevice) {
