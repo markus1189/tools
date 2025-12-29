@@ -424,6 +424,107 @@
             opacity: 0.5;
         }
 
+        /* Timer Control */
+        .timer-control-panel {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .timer-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .timer-display-wrapper {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .timer-display {
+            display: inline-block;
+            padding: 15px 25px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .timer-display.dirty {
+            border-color: #667eea;
+            background: #f5f0ff;
+        }
+
+        .timer-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-limit-indicator {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .timer-steppers {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .timer-stepper-btn {
+            width: 48px;
+            height: 48px;
+            border: 2px solid #667eea;
+            background: white;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timer-stepper-btn.small {
+            width: 44px;
+            height: 44px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .timer-stepper-btn:active {
+            background: #667eea;
+            color: white;
+            transform: scale(0.95);
+        }
+
+        .timer-stepper-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .timer-stepper-btn:disabled:active {
+            transform: none;
+            background: white;
+            color: #667eea;
+        }
+
+        .timer-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
         /* Mobile-optimized touch targets */
         @media (pointer: coarse) {
             input[type="range"]::-webkit-slider-thumb {
@@ -737,8 +838,24 @@
                     <button class="mode-btn" data-mode="dry">DRY</button>
                     <button class="mode-btn" data-mode="ext_ht">EXT HT</button>
                 </div>
-                <div class="time-remaining-display">
-                    Time Remaining: <span class="value" id="timeRemaining">--</span>
+                <div class="timer-control-panel">
+                    <div class="timer-label">TIMER</div>
+                    <div class="timer-display-wrapper">
+                        <div class="timer-display" id="timerDisplay">
+                            <span class="timer-value" id="timeRemaining">--</span>
+                        </div>
+                        <div class="timer-limit-indicator" id="timerLimitIndicator">Max: --</div>
+                    </div>
+                    <div class="timer-steppers">
+                        <button class="timer-stepper-btn small" id="timerMinus5">-5</button>
+                        <button class="timer-stepper-btn" id="timerMinus1">-1</button>
+                        <button class="timer-stepper-btn" id="timerPlus1">+1</button>
+                        <button class="timer-stepper-btn small" id="timerPlus5">+5</button>
+                    </div>
+                    <div class="timer-actions hidden" id="timerActions">
+                        <button class="action-btn confirm" id="timerConfirm">✓</button>
+                        <button class="action-btn cancel" id="timerCancel">✗</button>
+                    </div>
                 </div>
             </div>
 
@@ -972,6 +1089,12 @@
         let fanDirty = false;
         let tempPendingValue = null;
         let fanPendingValue = null;
+
+        // Timer dirty state
+        let timerDirty = false;
+        let timerPendingMinutes = null;  // Store in minutes for easier math
+        let deviceMaxHours = null;       // From status byte 10
+        let deviceMaxMinutes = null;     // From status byte 11
 
         // Biorhythm state
         let biorhythms = {
@@ -1307,6 +1430,106 @@
             updateGauge('fanGaugeProgress', fanPercent, 5, 100);
         }
 
+        // Timer utility functions
+        function getTimerLimits() {
+            if (currentMode === 'turbo') {
+                return { minMinutes: 1, maxMinutes: 10 };
+            }
+
+            // For other modes, use device-reported max
+            if (deviceMaxHours !== null && deviceMaxMinutes !== null) {
+                const maxMinutes = deviceMaxHours * 60 + deviceMaxMinutes;
+                return { minMinutes: 1, maxMinutes: maxMinutes };
+            }
+
+            // Fallback if device doesn't report limits
+            return { minMinutes: 1, maxMinutes: 600 }; // 10 hours default
+        }
+
+        function updateTimerLimitIndicator() {
+            const limits = getTimerLimits();
+            const hours = Math.floor(limits.maxMinutes / 60);
+            const mins = limits.maxMinutes % 60;
+
+            const indicator = document.getElementById('timerLimitIndicator');
+            if (currentMode === 'turbo') {
+                indicator.textContent = `Turbo: 1-10 min`;
+                indicator.style.color = '#ff9800';
+            } else if (mins === 0) {
+                indicator.textContent = `Max: ${hours}h`;
+                indicator.style.color = '#999';
+            } else {
+                indicator.textContent = `Max: ${hours}h ${mins}m`;
+                indicator.style.color = '#999';
+            }
+        }
+
+        function updateTimerDisplay(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            const secs = 0; // User adjustments don't include seconds
+
+            const timeStr = `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            document.getElementById('timeRemaining').textContent = timeStr;
+        }
+
+        function updateTimerButtonStates(currentMinutes, limits) {
+            const plus1Btn = document.getElementById('timerPlus1');
+            const plus5Btn = document.getElementById('timerPlus5');
+            const minus1Btn = document.getElementById('timerMinus1');
+            const minus5Btn = document.getElementById('timerMinus5');
+
+            // Disable increment buttons if at max
+            const atMax = currentMinutes >= limits.maxMinutes;
+            plus1Btn.disabled = atMax;
+            plus5Btn.disabled = atMax;
+
+            // Disable decrement buttons if at min
+            const atMin = currentMinutes <= limits.minMinutes;
+            minus1Btn.disabled = atMin;
+            minus5Btn.disabled = atMin;
+        }
+
+        function adjustTimer(deltaMinutes) {
+            // Get current value (either pending or from display)
+            let currentMinutes = timerPendingMinutes;
+            if (currentMinutes === null) {
+                // Parse current display value
+                const timeStr = document.getElementById('timeRemaining').textContent;
+                if (timeStr === '--') {
+                    currentMinutes = 0;
+                } else {
+                    const parts = timeStr.split(':');
+                    currentMinutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                }
+            }
+
+            // Apply delta
+            let newMinutes = currentMinutes + deltaMinutes;
+
+            // Clamp to limits
+            const limits = getTimerLimits();
+            newMinutes = Math.max(limits.minMinutes, Math.min(limits.maxMinutes, newMinutes));
+
+            // Mark as dirty
+            if (!timerDirty) {
+                timerDirty = true;
+                document.getElementById('timerActions').classList.remove('hidden');
+                document.getElementById('timerDisplay').classList.add('dirty');
+            }
+
+            // Update pending value
+            timerPendingMinutes = newMinutes;
+
+            // Update display immediately (preview)
+            updateTimerDisplay(newMinutes);
+
+            // Update button states (disable if at limits)
+            updateTimerButtonStates(newMinutes, limits);
+
+            logDebug(`Timer adjusted: ${deltaMinutes > 0 ? '+' : ''}${deltaMinutes} min → ${newMinutes} min`, 'info');
+        }
+
         // UI Elements
         const hamburger = document.getElementById('hamburger');
         const menuDrawer = document.getElementById('menuDrawer');
@@ -1533,6 +1756,46 @@
 
         fanDownBtn.addEventListener('click', () => {
             decrementFan();
+        });
+
+        // Timer stepper buttons
+        document.getElementById('timerPlus1').addEventListener('click', () => {
+            adjustTimer(1);
+        });
+
+        document.getElementById('timerPlus5').addEventListener('click', () => {
+            adjustTimer(5);
+        });
+
+        document.getElementById('timerMinus1').addEventListener('click', () => {
+            adjustTimer(-1);
+        });
+
+        document.getElementById('timerMinus5').addEventListener('click', () => {
+            adjustTimer(-5);
+        });
+
+        // Timer confirm/cancel handlers
+        document.getElementById('timerConfirm').addEventListener('click', () => {
+            if (timerDirty && timerPendingMinutes !== null) {
+                setRuntime(timerPendingMinutes);
+                timerDirty = false;
+                timerPendingMinutes = null;
+                document.getElementById('timerActions').classList.add('hidden');
+                document.getElementById('timerDisplay').classList.remove('dirty');
+            }
+        });
+
+        document.getElementById('timerCancel').addEventListener('click', () => {
+            if (timerDirty) {
+                // Revert to last known value from device
+                timerDirty = false;
+                timerPendingMinutes = null;
+                document.getElementById('timerActions').classList.add('hidden');
+                document.getElementById('timerDisplay').classList.remove('dirty');
+                // Display will be updated by next status notification
+                logDebug('Timer adjustment cancelled', 'info');
+            }
         });
 
         presetButtons.forEach(btn => {
@@ -2046,23 +2309,44 @@
                     }
                 }
 
+                // Parse maximum runtime (bytes 10, 11)
+                const maxHours = data[10];
+                const maxMinutes = data[11];
+
+                // Update stored limits
+                const limitsChanged = (deviceMaxHours !== maxHours || deviceMaxMinutes !== maxMinutes);
+                deviceMaxHours = maxHours;
+                deviceMaxMinutes = maxMinutes;
+
+                if (statusLoggingEnabled && limitsChanged) {
+                    logDebug(`  Max runtime: ${maxHours}h ${maxMinutes}m (bytes[10-11]=0x${maxHours.toString(16)},0x${maxMinutes.toString(16)})`, 'info');
+                }
+
+                // Update limit indicator if limits changed
+                if (limitsChanged) {
+                    updateTimerLimitIndicator();
+                }
+
                 // Parse time remaining (bytes 4, 5, 6)
                 const hours = data[4];
                 const minutes = data[5];
                 const seconds = data[6];
                 const totalSeconds = hours * 3600 + minutes * 60 + seconds;
 
-                if (totalSeconds > 0) {
-                    const h = Math.floor(totalSeconds / 3600);
-                    const m = Math.floor((totalSeconds % 3600) / 60);
-                    const s = totalSeconds % 60;
-                    const timeStr = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                    timeRemainingEl.textContent = timeStr;
-                    if (statusLoggingEnabled) {
-                        logDebug(`  Time remaining: ${timeStr}`, 'info');
+                // Only update if not dirty (user hasn't modified timer)
+                if (!timerDirty) {
+                    if (totalSeconds > 0) {
+                        const h = Math.floor(totalSeconds / 3600);
+                        const m = Math.floor((totalSeconds % 3600) / 60);
+                        const s = totalSeconds % 60;
+                        const timeStr = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                        timeRemainingEl.textContent = timeStr;
+                        if (statusLoggingEnabled) {
+                            logDebug(`  Time remaining: ${timeStr}`, 'info');
+                        }
+                    } else {
+                        timeRemainingEl.textContent = '--';
                     }
-                } else {
-                    timeRemainingEl.textContent = '--';
                 }
 
                 // Parse mode (bytes 13, 14)
@@ -2116,6 +2400,21 @@
             // Update temperature slider range when mode changes
             updateTempSliderRange();
             updateBackgroundColor();
+
+            // Update timer limits when mode changes
+            updateTimerLimitIndicator();
+
+            // Check if current timer exceeds new mode's limit
+            if (timerPendingMinutes !== null) {
+                const limits = getTimerLimits();
+                if (timerPendingMinutes > limits.maxMinutes) {
+                    timerPendingMinutes = limits.maxMinutes;
+                    updateTimerDisplay(timerPendingMinutes);
+                    updateTimerButtonStates(timerPendingMinutes, limits);
+                    logDebug(`Timer clamped to ${limits.maxMinutes} min for ${currentMode.toUpperCase()} mode`, 'warn');
+                    // Timer stays dirty - user must confirm clamped value
+                }
+            }
         }
 
         function updateBackgroundColor() {
@@ -2625,6 +2924,9 @@
                 logDebug('No saved device found', 'info');
             }
             updateButtonVisibility();
+
+            // Initialize timer limit indicator
+            updateTimerLimitIndicator();
         }
 
         // PWA Service Worker Registration
