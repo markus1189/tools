@@ -11,8 +11,7 @@
             crossorigin="anonymous"></script>
 
     <!-- fflate - Compression Library -->
-    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.1/umd/index.js"
-            integrity="sha256-WQRDDQs9+7jG0JgMPGA5W2C2Pq6l8azQP7vVVySaV6A="
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"
             crossorigin="anonymous"></script>
 
     <style>
@@ -776,18 +775,18 @@
 
         // Load items from URL params first, then localStorage with validation
         function loadItems() {
-            // TEMPORARILY DISABLED: First, try to load from URL parameters
-            // const urlItems = decodeStateFromURL();
-            // if (urlItems) {
-            //     state.items = urlItems;
-            //     // Also save to localStorage for persistence
-            //     try {
-            //         localStorage.setItem('random-picker-items', JSON.stringify(state.items));
-            //     } catch (e) {
-            //         console.error('Failed to save URL items to localStorage:', e);
-            //     }
-            //     return;
-            // }
+            // First, try to load from URL parameters
+            const urlItems = decodeStateFromURL();
+            if (urlItems) {
+                state.items = urlItems;
+                // Also save to localStorage for persistence
+                try {
+                    localStorage.setItem('random-picker-items', JSON.stringify(state.items));
+                } catch (e) {
+                    console.error('Failed to save URL items to localStorage:', e);
+                }
+                return;
+            }
 
             // Fallback to localStorage
             try {
@@ -822,8 +821,8 @@
                 console.error('Failed to save items:', e);
                 announce('Error saving items');
             }
-            // TEMPORARILY DISABLED: Update URL with current state
-            // encodeStateToURL();
+            // Update URL with current state
+            encodeStateToURL();
             render();
         }
 
