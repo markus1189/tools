@@ -74,9 +74,10 @@
     {
       "id": "birthday-dominic",
       "title": "Birthday Dominic",
-      "description": "Mind-blowing birthday animations with fireworks, confetti, and spectacular effects - randomized on each load",
+      "description": "Interactive birthday celebration with score tracking, combos, achievements, and collectibles powered by GSAP animations",
       "icon": "party-popper",
-      "dateAdded": "2025-12-30"
+      "dateAdded": "2025-12-30",
+      "dateUpdated": "2025-12-30"
     }
   ]
 }
