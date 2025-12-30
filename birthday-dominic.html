@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Happy Birthday Dominic</title>
+    <title>Happy Birthday Dominic - Laser Game</title>
     <style>
         * {
             margin: 0;
@@ -15,11 +15,8 @@
             overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             height: 100vh;
-            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1e 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
+            background: linear-gradient(180deg, #0a0e27 0%, #1a1a2e 50%, #16213e 100%);
+            cursor: none;
         }
 
         #canvas {
@@ -31,33 +28,94 @@
             z-index: 1;
         }
 
+        /* Laser Crosshair */
+        .crosshair {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            z-index: 100;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 0, 0, 0.8);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+        }
+
+        .crosshair::before {
+            width: 2px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .crosshair::after {
+            height: 2px;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .crosshair-center {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 0, 0, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 1);
+        }
+
+        .crosshair-ring {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(255, 0, 0, 0.6);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
+        }
+
+        /* Birthday Header */
         .container {
-            position: relative;
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 2;
             text-align: center;
             pointer-events: none;
         }
 
         .birthday-text {
-            font-size: 4rem;
+            font-size: 3rem;
             font-weight: 300;
             color: #fff;
-            letter-spacing: 8px;
+            letter-spacing: 6px;
             text-transform: uppercase;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             background-size: 200% 200%;
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 30px rgba(102, 126, 234, 0.4));
+            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.4));
         }
 
         .subtitle {
-            margin-top: 20px;
-            font-size: 1.5rem;
+            margin-top: 10px;
+            font-size: 1.2rem;
             font-weight: 200;
-            color: rgba(255, 255, 255, 0.6);
-            letter-spacing: 4px;
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 3px;
         }
 
         /* Stats HUD */
@@ -87,6 +145,22 @@
             color: #667eea;
             font-weight: 500;
             font-size: 1.1rem;
+        }
+
+        .ammo-value {
+            color: #ff6b6b;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .ammo-value.reload {
+            color: #ffd700;
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         /* Combo display */
@@ -140,37 +214,27 @@
             font-weight: 300;
         }
 
-        /* Interactive elements */
-        .interactive-element {
+        /* Moving target */
+        .target {
             position: fixed;
-            font-size: 2.5rem;
+            font-size: 3rem;
             z-index: 3;
-            cursor: pointer;
+            cursor: none;
             pointer-events: all;
-            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
-            transition: transform 0.2s ease;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+            transition: transform 0.1s ease;
         }
 
-        .interactive-element:hover {
-            transform: scale(1.2);
-        }
-
-        /* Collectible item */
-        .collectible {
-            position: fixed;
-            font-size: 2rem;
-            z-index: 4;
-            cursor: pointer;
-            pointer-events: all;
-            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6));
+        .target:hover {
+            transform: scale(1.1);
         }
 
         /* Score popup */
         .score-popup {
             position: fixed;
             z-index: 20;
-            font-size: 1.8rem;
-            font-weight: 300;
+            font-size: 2rem;
+            font-weight: 500;
             color: #667eea;
             letter-spacing: 2px;
             pointer-events: none;
@@ -193,6 +257,13 @@
             text-transform: uppercase;
         }
 
+        /* Laser beam */
+        .laser-beam {
+            position: fixed;
+            z-index: 50;
+            pointer-events: none;
+        }
+
         /* Instructions */
         .instructions {
             position: fixed;
@@ -200,46 +271,162 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 10;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
             font-weight: 300;
             letter-spacing: 2px;
             text-align: center;
             pointer-events: none;
         }
 
+        /* Reload indicator */
+        .reload-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            font-size: 3rem;
+            color: #ffd700;
+            font-weight: 500;
+            letter-spacing: 4px;
+            pointer-events: none;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+            opacity: 0;
+        }
+
+        /* Reload Button */
+        .reload-button {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 100;
+            background: rgba(255, 107, 107, 0.2);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 107, 107, 0.6);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: all;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .reload-button:active {
+            transform: scale(0.95);
+            background: rgba(255, 107, 107, 0.3);
+        }
+
+        .reload-button.reloading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .reload-icon {
+            font-size: 2rem;
+            color: #ff6b6b;
+            margin-bottom: 4px;
+        }
+
+        .reload-text {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .birthday-text {
-                font-size: 2.5rem;
-                letter-spacing: 4px;
+                font-size: 1.8rem;
+                letter-spacing: 3px;
             }
             .subtitle {
-                font-size: 1rem;
+                font-size: 0.85rem;
             }
             .stats {
-                font-size: 0.8rem;
-                top: 15px;
-                left: 15px;
+                font-size: 0.7rem;
+                top: 10px;
+                left: 10px;
+            }
+            .stat-item {
+                padding: 8px 14px;
+                margin-bottom: 8px;
             }
             .combo-display {
-                font-size: 1.3rem;
-                top: 15px;
-                right: 15px;
+                font-size: 1.2rem;
+                top: 10px;
+                right: 10px;
+            }
+            .reload-button {
+                width: 70px;
+                height: 70px;
+                bottom: 30px;
+                right: 30px;
+            }
+            .reload-icon {
+                font-size: 1.8rem;
+            }
+            .reload-text {
+                font-size: 0.65rem;
+            }
+            .crosshair {
+                width: 50px;
+                height: 50px;
+            }
+            .crosshair-ring {
+                width: 35px;
+                height: 35px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .birthday-text {
+                font-size: 1.5rem;
+                letter-spacing: 2px;
+            }
+            .subtitle {
+                font-size: 0.75rem;
+            }
+            .reload-button {
+                width: 60px;
+                height: 60px;
+                bottom: 20px;
+                right: 20px;
+            }
+            .reload-icon {
+                font-size: 1.5rem;
+            }
+            .reload-text {
+                font-size: 0.6rem;
             }
         }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
+
+    <!-- Crosshair -->
+    <div class="crosshair" id="crosshair">
+        <div class="crosshair-ring"></div>
+        <div class="crosshair-center"></div>
+    </div>
+
+    <!-- Birthday Header -->
     <div class="container">
         <div class="birthday-text" id="birthdayText">Happy Birthday</div>
-        <div class="subtitle">Dominic</div>
+        <div class="subtitle">Dominic 🎯</div>
     </div>
 
     <!-- Stats HUD -->
     <div class="stats">
         <div class="stat-item">Score <span class="stat-value" id="score">0</span></div>
+        <div class="stat-item">Ammo <span class="ammo-value" id="ammo">10/10</span></div>
         <div class="stat-item">Level <span class="stat-value" id="level">1</span></div>
         <div class="stat-item">Best <span class="stat-value" id="highScore">0</span></div>
     </div>
@@ -249,9 +436,18 @@
         <span id="comboText"></span>
     </div>
 
+    <!-- Reload indicator -->
+    <div class="reload-indicator" id="reloadIndicator">RELOADING...</div>
+
+    <!-- Reload Button -->
+    <div class="reload-button" id="reloadButton">
+        <div class="reload-icon">🔄</div>
+        <div class="reload-text">RELOAD</div>
+    </div>
+
     <!-- Instructions -->
     <div class="instructions" id="instructions">
-        Click anywhere • Catch the stars • Build combos
+        Tap to shoot • Tap reload button • Hit the targets!
     </div>
 
     <!-- Libraries -->
@@ -266,11 +462,16 @@
             combo: 0,
             comboTimer: null,
             highScore: parseInt(localStorage.getItem('birthdayHighScore')) || 0,
-            achievements: []
+            achievements: [],
+            ammo: 10,
+            maxAmmo: 10,
+            isReloading: false,
+            targets: []
         };
 
         // Update high score display
         document.getElementById('highScore').textContent = gameState.highScore;
+        updateAmmoDisplay();
 
         // Canvas setup
         const canvas = document.getElementById('canvas');
@@ -283,23 +484,129 @@
             canvas.height = window.innerHeight;
         });
 
-        // Element collections
-        const elements = {
-            decorative: ['✨', '⭐', '💫', '🌟', '✦', '◆', '◇', '♦'],
-            special: ['🎁', '🎈', '🎉', '🎊', '🎆', '💝'],
-            rare: ['💎', '👑', '🏆', '🌠']
-        };
+        // Crosshair movement
+        const crosshair = document.getElementById('crosshair');
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+
+        // Mouse movement
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            crosshair.style.left = mouseX + 'px';
+            crosshair.style.top = mouseY + 'px';
+        });
+
+        // Touch movement
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+                crosshair.style.left = mouseX + 'px';
+                crosshair.style.top = mouseY + 'px';
+            }
+        }, { passive: true });
+
+        // Touch start (show crosshair)
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+                crosshair.style.left = mouseX + 'px';
+                crosshair.style.top = mouseY + 'px';
+            }
+        }, { passive: true });
+
+        // Target types
+        const targetTypes = [
+            { emoji: '🐔', points: 10, speed: 2, size: 3 },      // Chicken (Moorhuhn!)
+            { emoji: '🦆', points: 15, speed: 2.5, size: 3 },    // Duck
+            { emoji: '🦅', points: 25, speed: 3.5, size: 2.5 },  // Eagle (fast)
+            { emoji: '🎈', points: 20, speed: 1.5, size: 3.5 },  // Balloon
+            { emoji: '🎂', points: 30, speed: 1, size: 4 },      // Cake (slow, high value)
+            { emoji: '🎁', points: 50, speed: 2, size: 3 },      // Gift (rare)
+            { emoji: '⭐', points: 15, speed: 2.2, size: 2.5 },  // Star
+            { emoji: '💝', points: 40, speed: 1.8, size: 3 }     // Heart
+        ];
 
         // Achievements
         const achievements = [
-            { id: 'starter', name: 'Getting Started', desc: 'First 10 points', icon: '🎯', check: () => gameState.score >= 10 },
-            { id: 'combo5', name: 'Combo Starter', desc: '5x combo achieved', icon: '🔥', check: () => gameState.combo >= 5 },
-            { id: 'fifty', name: 'Half Century', desc: '50 points scored', icon: '⭐', check: () => gameState.score >= 50 },
-            { id: 'hundred', name: 'Century', desc: '100 points reached', icon: '💫', check: () => gameState.score >= 100 },
-            { id: 'combo10', name: 'Combo Master', desc: '10x combo achieved', icon: '💥', check: () => gameState.combo >= 10 },
-            { id: 'level5', name: 'Expert', desc: 'Reached level 5', icon: '🌟', check: () => gameState.level >= 5 },
-            { id: 'pro', name: 'Professional', desc: '250 points scored', icon: '👑', check: () => gameState.score >= 250 }
+            { id: 'first_shot', name: 'First Blood', desc: 'Hit your first target', icon: '🎯', check: () => gameState.score >= 10 },
+            { id: 'marksman', name: 'Marksman', desc: '50 points scored', icon: '🏹', check: () => gameState.score >= 50 },
+            { id: 'sharpshooter', name: 'Sharpshooter', desc: '100 points scored', icon: '⭐', check: () => gameState.score >= 100 },
+            { id: 'combo5', name: 'Combo Master', desc: '5x combo achieved', icon: '🔥', check: () => gameState.combo >= 5 },
+            { id: 'combo10', name: 'Combo Legend', desc: '10x combo achieved', icon: '💥', check: () => gameState.combo >= 10 },
+            { id: 'sniper', name: 'Sniper Elite', desc: '250 points scored', icon: '👑', check: () => gameState.score >= 250 },
+            { id: 'level5', name: 'Master Hunter', desc: 'Reached level 5', icon: '🌟', check: () => gameState.level >= 5 }
         ];
+
+        // Update ammo display
+        function updateAmmoDisplay() {
+            const ammoElement = document.getElementById('ammo');
+            ammoElement.textContent = `${gameState.ammo}/${gameState.maxAmmo}`;
+
+            if (gameState.ammo === 0) {
+                ammoElement.classList.add('reload');
+                // Auto-reload after a short delay when empty
+                setTimeout(() => {
+                    if (gameState.ammo === 0 && !gameState.isReloading) {
+                        reload();
+                    }
+                }, 800);
+            } else {
+                ammoElement.classList.remove('reload');
+            }
+        }
+
+        // Reload
+        function reload() {
+            if (gameState.isReloading || gameState.ammo === gameState.maxAmmo) return;
+
+            gameState.isReloading = true;
+            const indicator = document.getElementById('reloadIndicator');
+            const reloadBtn = document.getElementById('reloadButton');
+
+            // Visual feedback on button
+            reloadBtn.classList.add('reloading');
+
+            gsap.to(indicator, {
+                opacity: 1,
+                duration: 0.2,
+                onComplete: () => {
+                    setTimeout(() => {
+                        gameState.ammo = gameState.maxAmmo;
+                        gameState.isReloading = false;
+                        updateAmmoDisplay();
+                        reloadBtn.classList.remove('reloading');
+
+                        gsap.to(indicator, {
+                            opacity: 0,
+                            duration: 0.3
+                        });
+                    }, 1500);
+                }
+            });
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                reload();
+            }
+        });
+
+        // Reload button click/touch
+        const reloadBtn = document.getElementById('reloadButton');
+        reloadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            reload();
+        });
+
+        reloadBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            reload();
+        });
 
         // Update score
         function updateScore(points, x, y) {
@@ -327,7 +634,7 @@
             showScorePopup(earnedPoints, x, y);
 
             // Level up check
-            const newLevel = Math.floor(gameState.score / 100) + 1;
+            const newLevel = Math.floor(gameState.score / 150) + 1;
             if (newLevel > gameState.level) {
                 gameState.level = newLevel;
                 document.getElementById('level').textContent = gameState.level;
@@ -357,7 +664,7 @@
             gameState.comboTimer = setTimeout(() => {
                 gameState.combo = 0;
                 gsap.to(display, { opacity: 0, duration: 0.3 });
-            }, 2000);
+            }, 2500);
 
             checkAchievements();
         }
@@ -459,158 +766,268 @@
             });
         }
 
-        // Create interactive elements
-        function createInteractiveElements() {
-            const positions = [
-                { x: '10%', y: '15%' },
-                { x: '90%', y: '15%' },
-                { x: '10%', y: '85%' },
-                { x: '90%', y: '85%' },
-                { x: '15%', y: '50%' },
-                { x: '85%', y: '50%' }
-            ];
+        // Create laser beam effect
+        function createLaserBeam(startX, startY, endX, endY, hit = true) {
+            const beam = document.createElement('canvas');
+            beam.className = 'laser-beam';
+            beam.width = window.innerWidth;
+            beam.height = window.innerHeight;
+            beam.style.left = '0';
+            beam.style.top = '0';
+            document.body.appendChild(beam);
 
-            positions.forEach((pos, index) => {
-                const element = document.createElement('div');
-                element.className = 'interactive-element';
-                element.textContent = elements.decorative[Math.floor(Math.random() * elements.decorative.length)];
-                element.style.left = pos.x;
-                element.style.top = pos.y;
+            const beamCtx = beam.getContext('2d');
+            const gradient = beamCtx.createLinearGradient(startX, startY, endX, endY);
+            gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+            gradient.addColorStop(0.5, hit ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 100, 0, 0.6)');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
 
-                element.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    updateScore(10, e.clientX, e.clientY);
+            beamCtx.strokeStyle = gradient;
+            beamCtx.lineWidth = 3;
+            beamCtx.shadowBlur = 15;
+            beamCtx.shadowColor = hit ? 'rgba(255, 0, 0, 1)' : 'rgba(255, 100, 0, 1)';
 
-                    gsap.to(element, {
-                        rotation: 360,
-                        scale: 1.5,
-                        duration: 0.5,
-                        onComplete: () => {
-                            gsap.set(element, { rotation: 0, scale: 1 });
-                        }
-                    });
+            beamCtx.beginPath();
+            beamCtx.moveTo(startX, startY);
+            beamCtx.lineTo(endX, endY);
+            beamCtx.stroke();
 
-                    confetti({
-                        particleCount: 20,
-                        spread: 60,
-                        origin: {
-                            x: e.clientX / window.innerWidth,
-                            y: e.clientY / window.innerHeight
-                        }
-                    });
-                });
+            // Impact flash
+            if (hit) {
+                beamCtx.beginPath();
+                beamCtx.arc(endX, endY, 15, 0, Math.PI * 2);
+                beamCtx.fillStyle = 'rgba(255, 255, 100, 0.8)';
+                beamCtx.shadowBlur = 25;
+                beamCtx.shadowColor = 'rgba(255, 255, 0, 1)';
+                beamCtx.fill();
+            }
 
-                document.body.appendChild(element);
-
-                // Subtle floating animation
-                gsap.to(element, {
-                    y: '+=20',
-                    duration: 2 + Math.random() * 2,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'sine.inOut',
-                    delay: Math.random() * 2
-                });
+            gsap.to(beam, {
+                opacity: 0,
+                duration: 0.3,
+                onComplete: () => beam.remove()
             });
         }
 
-        // Spawn collectibles
-        function spawnCollectible() {
-            const collectible = document.createElement('div');
-            collectible.className = 'collectible';
+        // Screen shake effect
+        function screenShake() {
+            gsap.to('body', {
+                x: -3,
+                duration: 0.05,
+                yoyo: true,
+                repeat: 3,
+                onComplete: () => gsap.set('body', { x: 0 })
+            });
+        }
 
-            const isRare = Math.random() > 0.85;
-            const collection = isRare ? elements.rare : elements.special;
-            collectible.textContent = collection[Math.floor(Math.random() * collection.length)];
+        // Crosshair recoil
+        function crosshairRecoil() {
+            gsap.to(crosshair, {
+                scale: 1.3,
+                duration: 0.1,
+                yoyo: true,
+                repeat: 1
+            });
+        }
 
-            const startX = Math.random() * (window.innerWidth - 100);
-            const startY = Math.random() * (window.innerHeight - 100);
+        // Spawn moving target
+        function spawnTarget() {
+            const typeIndex = Math.random() > 0.85 ?
+                (Math.random() > 0.5 ? 5 : 7) : // Rare targets (Gift, Heart)
+                Math.floor(Math.random() * 5); // Common targets
 
-            collectible.style.left = startX + 'px';
-            collectible.style.top = startY + 'px';
+            const type = targetTypes[typeIndex];
 
-            collectible.addEventListener('click', (e) => {
+            const target = document.createElement('div');
+            target.className = 'target';
+            target.textContent = type.emoji;
+            target.style.fontSize = type.size + 'rem';
+            target.dataset.points = type.points;
+
+            // Random vertical position
+            const startY = Math.random() * (window.innerHeight - 100) + 50;
+            target.style.top = startY + 'px';
+
+            // Random direction (left to right or right to left)
+            const leftToRight = Math.random() > 0.5;
+            const startX = leftToRight ? -100 : window.innerWidth + 100;
+            const endX = leftToRight ? window.innerWidth + 100 : -100;
+            target.style.left = startX + 'px';
+
+            // Add some vertical variation
+            const verticalVariation = (Math.random() - 0.5) * 150;
+
+            // Click event
+            target.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const points = isRare ? 50 : 25;
-                updateScore(points, e.clientX, e.clientY);
-
-                gsap.to(collectible, {
-                    scale: 2,
-                    opacity: 0,
-                    duration: 0.4,
-                    ease: 'power2.out',
-                    onComplete: () => collectible.remove()
-                });
-
-                confetti({
-                    particleCount: isRare ? 80 : 40,
-                    spread: isRare ? 100 : 70,
-                    origin: {
-                        x: e.clientX / window.innerWidth,
-                        y: e.clientY / window.innerHeight
-                    },
-                    colors: isRare ? ['#f093fb', '#ffd700', '#ff69b4'] : ['#667eea', '#764ba2', '#f093fb']
-                });
+                shootTarget(target, e.clientX, e.clientY);
             });
 
-            document.body.appendChild(collectible);
+            // Touch event for mobile
+            target.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const touch = e.changedTouches[0];
+                shootTarget(target, touch.clientX, touch.clientY);
+            });
 
-            // Animate appearance and floating
-            gsap.fromTo(collectible,
-                { scale: 0, opacity: 0 },
-                { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' }
-            );
+            document.body.appendChild(target);
+            gameState.targets.push(target);
 
-            gsap.to(collectible, {
-                y: '+=30',
-                duration: 2,
+            // Animate movement
+            gsap.to(target, {
+                x: endX - startX,
+                y: verticalVariation,
+                duration: 10 / type.speed,
+                ease: 'none',
+                onComplete: () => {
+                    if (document.body.contains(target)) {
+                        target.remove();
+                        const index = gameState.targets.indexOf(target);
+                        if (index > -1) gameState.targets.splice(index, 1);
+                    }
+                }
+            });
+
+            // Slight bobbing motion
+            gsap.to(target, {
+                y: '+=20',
+                duration: 1 + Math.random(),
                 yoyo: true,
                 repeat: -1,
                 ease: 'sine.inOut'
             });
-
-            gsap.to(collectible, {
-                rotation: 360,
-                duration: 4,
-                repeat: -1,
-                ease: 'none'
-            });
-
-            // Remove after timeout
-            setTimeout(() => {
-                if (document.body.contains(collectible)) {
-                    gsap.to(collectible, {
-                        scale: 0,
-                        opacity: 0,
-                        duration: 0.5,
-                        onComplete: () => collectible.remove()
-                    });
-                }
-            }, 6000);
         }
 
-        // Spawn collectibles periodically
-        setInterval(spawnCollectible, 3500);
+        // Shoot target
+        function shootTarget(target, clickX, clickY) {
+            if (gameState.ammo <= 0) {
+                // Empty gun click
+                screenShake();
+                return;
+            }
 
-        // Particle system
+            gameState.ammo--;
+            updateAmmoDisplay();
+
+            const points = parseInt(target.dataset.points);
+            const rect = target.getBoundingClientRect();
+            const targetCenterX = rect.left + rect.width / 2;
+            const targetCenterY = rect.top + rect.height / 2;
+
+            // Laser beam from crosshair to target
+            createLaserBeam(mouseX, mouseY, targetCenterX, targetCenterY, true);
+            crosshairRecoil();
+            screenShake();
+
+            // Update score
+            updateScore(points, clickX, clickY);
+
+            // Remove target with animation
+            gsap.to(target, {
+                scale: 0,
+                rotation: 360,
+                opacity: 0,
+                duration: 0.3,
+                ease: 'back.in(2)',
+                onComplete: () => {
+                    if (document.body.contains(target)) {
+                        target.remove();
+                        const index = gameState.targets.indexOf(target);
+                        if (index > -1) gameState.targets.splice(index, 1);
+                    }
+                }
+            });
+
+            // Confetti on hit
+            confetti({
+                particleCount: 30,
+                spread: 70,
+                origin: {
+                    x: targetCenterX / window.innerWidth,
+                    y: targetCenterY / window.innerHeight
+                },
+                colors: ['#667eea', '#764ba2', '#f093fb', '#ffd700']
+            });
+        }
+
+        // Miss shot handler
+        function handleMissShot(x, y) {
+            if (gameState.ammo <= 0) {
+                screenShake();
+                return;
+            }
+
+            gameState.ammo--;
+            updateAmmoDisplay();
+
+            // Reset combo on miss
+            gameState.combo = 0;
+            const display = document.getElementById('comboDisplay');
+            gsap.to(display, { opacity: 0, duration: 0.3 });
+
+            // Laser beam to click point
+            createLaserBeam(mouseX, mouseY, x, y, false);
+            crosshairRecoil();
+            screenShake();
+
+            // Show miss indicator
+            const miss = document.createElement('div');
+            miss.className = 'score-popup';
+            miss.textContent = 'MISS';
+            miss.style.color = '#ff6b6b';
+            miss.style.left = x + 'px';
+            miss.style.top = y + 'px';
+            document.body.appendChild(miss);
+
+            gsap.fromTo(miss,
+                { opacity: 1, scale: 0.8 },
+                {
+                    opacity: 0,
+                    scale: 1.2,
+                    duration: 0.5,
+                    onComplete: () => miss.remove()
+                }
+            );
+        }
+
+        // Miss shot (click on empty space)
+        canvas.addEventListener('click', (e) => {
+            handleMissShot(e.clientX, e.clientY);
+        });
+
+        // Touch event for canvas (miss shots on mobile)
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            handleMissShot(touch.clientX, touch.clientY);
+        });
+
+        // Spawn targets periodically
+        function startTargetSpawning() {
+            spawnTarget();
+
+            // Spawn more frequently as level increases
+            const spawnInterval = Math.max(1000, 2500 - (gameState.level * 150));
+            setTimeout(startTargetSpawning, spawnInterval);
+        }
+
+        // Particle system for background
         class Particle {
             constructor(x, y, color) {
                 this.x = x;
                 this.y = y;
-                this.vx = (Math.random() - 0.5) * 4;
-                this.vy = (Math.random() - 0.5) * 4;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
                 this.color = color;
-                this.alpha = 1;
-                this.size = Math.random() * 3 + 1;
+                this.alpha = 0.5;
+                this.size = Math.random() * 2 + 0.5;
             }
 
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vy += 0.05;
-                this.vx *= 0.99;
-                this.vy *= 0.99;
-                this.alpha -= 0.008;
+                this.alpha -= 0.005;
                 this.size *= 0.99;
             }
 
@@ -627,15 +1044,8 @@
 
         let particles = [];
 
-        function createParticles(x, y, count = 30) {
-            const colors = ['#667eea', '#764ba2', '#f093fb', '#fff'];
-            for (let i = 0; i < count; i++) {
-                particles.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
-            }
-        }
-
         function animateParticles() {
-            ctx.fillStyle = 'rgba(26, 26, 46, 0.1)';
+            ctx.fillStyle = 'rgba(10, 14, 39, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             particles = particles.filter(particle => particle.alpha > 0);
@@ -647,49 +1057,19 @@
             requestAnimationFrame(animateParticles);
         }
 
-        // Click interaction
-        canvas.addEventListener('click', (e) => {
-            updateScore(5, e.clientX, e.clientY);
-            createParticles(e.clientX, e.clientY, 40);
-
-            confetti({
-                particleCount: 30,
-                spread: 50,
-                origin: {
-                    x: e.clientX / window.innerWidth,
-                    y: e.clientY / window.innerHeight
-                },
-                colors: ['#667eea', '#764ba2', '#f093fb']
-            });
-        });
-
-        // Mouse trail
-        document.addEventListener('mousemove', (e) => {
-            if (Math.random() > 0.92) {
-                createParticles(e.clientX, e.clientY, 2);
-            }
-        });
-
         // Ambient particles
         setInterval(() => {
             const x = Math.random() * canvas.width;
             const y = Math.random() * canvas.height;
-            createParticles(x, y, 15);
-        }, 4000);
-
-        // Ambient confetti
-        setInterval(() => {
-            confetti({
-                particleCount: 20,
-                spread: 100,
-                origin: { x: Math.random(), y: Math.random() * 0.6 },
-                colors: ['#667eea', '#764ba2', '#f093fb']
-            });
-        }, 3000);
+            const colors = ['#667eea', '#764ba2', '#f093fb'];
+            for (let i = 0; i < 10; i++) {
+                particles.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
+            }
+        }, 2000);
 
         // Initialize
-        createInteractiveElements();
         animateParticles();
+        startTargetSpawning();
 
         // Initial animations
         gsap.from('.birthday-text', {
@@ -716,7 +1096,7 @@
         gsap.to('.instructions', {
             opacity: 0,
             duration: 1,
-            delay: 5
+            delay: 6
         });
 
         // Initial celebration
