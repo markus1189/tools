@@ -776,18 +776,18 @@
 
         // Load items from URL params first, then localStorage with validation
         function loadItems() {
-            // First, try to load from URL parameters
-            const urlItems = decodeStateFromURL();
-            if (urlItems) {
-                state.items = urlItems;
-                // Also save to localStorage for persistence
-                try {
-                    localStorage.setItem('random-picker-items', JSON.stringify(state.items));
-                } catch (e) {
-                    console.error('Failed to save URL items to localStorage:', e);
-                }
-                return;
-            }
+            // TEMPORARILY DISABLED: First, try to load from URL parameters
+            // const urlItems = decodeStateFromURL();
+            // if (urlItems) {
+            //     state.items = urlItems;
+            //     // Also save to localStorage for persistence
+            //     try {
+            //         localStorage.setItem('random-picker-items', JSON.stringify(state.items));
+            //     } catch (e) {
+            //         console.error('Failed to save URL items to localStorage:', e);
+            //     }
+            //     return;
+            // }
 
             // Fallback to localStorage
             try {
@@ -822,8 +822,8 @@
                 console.error('Failed to save items:', e);
                 announce('Error saving items');
             }
-            // Update URL with current state
-            encodeStateToURL();
+            // TEMPORARILY DISABLED: Update URL with current state
+            // encodeStateToURL();
             render();
         }
 
