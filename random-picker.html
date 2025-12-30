@@ -10,6 +10,11 @@
             integrity="sha256-aEIb1Iz5HLS6m3J6op2mGnwZTe+HTkI3cvT8YNVsakI="
             crossorigin="anonymous"></script>
 
+    <!-- fflate - Compression Library -->
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.1/umd/index.js"
+            integrity="sha256-WQRDDQs9+7jG0JgMPGA5W2C2Pq6l8azQP7vVVySaV6A="
+            crossorigin="anonymous"></script>
+
     <style>
         * {
             margin: 0;
@@ -642,7 +647,7 @@
             isThinking: false
         };
 
-        // URL State Management
+        // URL State Management with Compression
         function encodeStateToURL() {
             if (state.items.length === 0) {
                 // Clear URL params if no items
@@ -653,8 +658,20 @@
             }
 
             try {
+                // Convert to JSON
                 const json = JSON.stringify(state.items);
-                const encoded = btoa(encodeURIComponent(json));
+
+                // Compress using fflate
+                const jsonBytes = fflate.strToU8(json);
+                const compressed = fflate.zlibSync(jsonBytes, { level: 9 });
+
+                // Convert to base64 (URL-safe)
+                const binaryString = Array.from(compressed, byte => String.fromCharCode(byte)).join('');
+                const encoded = btoa(binaryString)
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '');
+
                 const url = new URL(window.location);
                 url.searchParams.set('items', encoded);
                 window.history.replaceState({}, '', url);
@@ -670,7 +687,22 @@
 
                 if (!encoded) return null;
 
-                const json = decodeURIComponent(atob(encoded));
+                // Decode base64 (URL-safe)
+                const base64 = encoded
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/');
+                const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+                const binaryString = atob(base64 + padding);
+
+                // Convert to Uint8Array
+                const compressed = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    compressed[i] = binaryString.charCodeAt(i);
+                }
+
+                // Decompress using fflate
+                const decompressed = fflate.unzlibSync(compressed);
+                const json = fflate.strFromU8(decompressed);
                 const items = JSON.parse(json);
 
                 // Validate: must be array of strings
