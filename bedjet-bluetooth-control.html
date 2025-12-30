@@ -1461,6 +1461,9 @@
                 tempSlider.disabled = false;
                 tempSlider.style.opacity = '1';
             }
+
+            // Update temperature button states based on current value and range
+            updateTempButtonStates();
         }
 
         function logDebug(message, level = 'info') {
@@ -1644,6 +1647,40 @@
             minus1Btn.disabled = atMin;
             minus10Btn.disabled = currentMinutes - 10 < limits.minMinutes;
             minus60Btn.disabled = currentMinutes - 60 < limits.minMinutes;
+        }
+
+        function updateTempButtonStates() {
+            // Disable both buttons in TURBO mode (fixed temperature)
+            if (currentMode === 'turbo') {
+                tempUpBtn.disabled = true;
+                tempDownBtn.disabled = true;
+                return;
+            }
+
+            // Get current temperature value from slider or display
+            let currentTemp = parseInt(tempSlider.value);
+            if (isNaN(currentTemp)) {
+                const displayTemp = targetTempEl.textContent;
+                if (displayTemp !== '--') {
+                    currentTemp = parseInt(displayTemp);
+                } else {
+                    // No valid temperature yet, disable both buttons
+                    tempUpBtn.disabled = true;
+                    tempDownBtn.disabled = true;
+                    return;
+                }
+            }
+
+            // Get temperature range for current mode
+            const range = getTempRange();
+
+            // Disable increment button if at max temperature
+            const atMax = currentTemp >= range.max;
+            tempUpBtn.disabled = atMax;
+
+            // Disable decrement button if at min temperature
+            const atMin = currentTemp <= range.min;
+            tempDownBtn.disabled = atMin;
         }
 
         function adjustTimer(deltaMinutes) {
@@ -1866,6 +1903,9 @@
             // Update gauge visual
             const fahrenheit = inputToFahrenheit(sliderValue);
             updateTempGauge(fahrenheit);
+
+            // Update button states based on new temperature value
+            updateTempButtonStates();
         });
 
         document.getElementById('tempConfirm').addEventListener('click', () => {
@@ -2435,6 +2475,7 @@
                         tempSlider.value = displayTarget;
                         updateSliderFill(tempSlider);
                         updateTempGauge(targetTempF);
+                        updateTempButtonStates();
                     }
 
                     if (statusLoggingEnabled) {
