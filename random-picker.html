@@ -642,6 +642,55 @@
             isThinking: false
         };
 
+        // URL State Management
+        function encodeStateToURL() {
+            if (state.items.length === 0) {
+                // Clear URL params if no items
+                const url = new URL(window.location);
+                url.searchParams.delete('items');
+                window.history.replaceState({}, '', url);
+                return;
+            }
+
+            try {
+                const json = JSON.stringify(state.items);
+                const encoded = btoa(encodeURIComponent(json));
+                const url = new URL(window.location);
+                url.searchParams.set('items', encoded);
+                window.history.replaceState({}, '', url);
+            } catch (e) {
+                console.error('Failed to encode state to URL:', e);
+            }
+        }
+
+        function decodeStateFromURL() {
+            try {
+                const url = new URL(window.location);
+                const encoded = url.searchParams.get('items');
+
+                if (!encoded) return null;
+
+                const json = decodeURIComponent(atob(encoded));
+                const items = JSON.parse(json);
+
+                // Validate: must be array of strings
+                if (!Array.isArray(items)) {
+                    throw new Error('Invalid data format');
+                }
+
+                // Filter and sanitize items
+                const validItems = items
+                    .filter(item => typeof item === 'string' && item.trim().length > 0)
+                    .map(item => item.trim().substring(0, MAX_ITEM_LENGTH))
+                    .slice(0, MAX_ITEMS);
+
+                return validItems;
+            } catch (e) {
+                console.error('Failed to decode state from URL:', e);
+                return null;
+            }
+        }
+
         // DOM Elements
         const els = {
             input: document.getElementById('item-input'),
@@ -693,8 +742,22 @@
             setupEvents();
         }
 
-        // Load items from localStorage with validation
+        // Load items from URL params first, then localStorage with validation
         function loadItems() {
+            // First, try to load from URL parameters
+            const urlItems = decodeStateFromURL();
+            if (urlItems) {
+                state.items = urlItems;
+                // Also save to localStorage for persistence
+                try {
+                    localStorage.setItem('random-picker-items', JSON.stringify(state.items));
+                } catch (e) {
+                    console.error('Failed to save URL items to localStorage:', e);
+                }
+                return;
+            }
+
+            // Fallback to localStorage
             try {
                 const saved = localStorage.getItem('random-picker-items');
                 if (!saved) return;
@@ -719,7 +782,7 @@
             }
         }
 
-        // Save items to localStorage
+        // Save items to localStorage and URL
         function save() {
             try {
                 localStorage.setItem('random-picker-items', JSON.stringify(state.items));
@@ -727,6 +790,8 @@
                 console.error('Failed to save items:', e);
                 announce('Error saving items');
             }
+            // Update URL with current state
+            encodeStateToURL();
             render();
         }
 
