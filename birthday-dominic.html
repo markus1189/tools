@@ -295,24 +295,115 @@
             opacity: 0;
         }
 
+        /* Reload Button */
+        .reload-button {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 100;
+            background: rgba(255, 107, 107, 0.2);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 107, 107, 0.6);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: all;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .reload-button:active {
+            transform: scale(0.95);
+            background: rgba(255, 107, 107, 0.3);
+        }
+
+        .reload-button.reloading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .reload-icon {
+            font-size: 2rem;
+            color: #ff6b6b;
+            margin-bottom: 4px;
+        }
+
+        .reload-text {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .birthday-text {
-                font-size: 2rem;
+                font-size: 1.8rem;
                 letter-spacing: 3px;
             }
             .subtitle {
-                font-size: 0.9rem;
+                font-size: 0.85rem;
             }
             .stats {
-                font-size: 0.75rem;
-                top: 15px;
-                left: 15px;
+                font-size: 0.7rem;
+                top: 10px;
+                left: 10px;
+            }
+            .stat-item {
+                padding: 8px 14px;
+                margin-bottom: 8px;
             }
             .combo-display {
-                font-size: 1.3rem;
-                top: 15px;
-                right: 15px;
+                font-size: 1.2rem;
+                top: 10px;
+                right: 10px;
+            }
+            .reload-button {
+                width: 70px;
+                height: 70px;
+                bottom: 30px;
+                right: 30px;
+            }
+            .reload-icon {
+                font-size: 1.8rem;
+            }
+            .reload-text {
+                font-size: 0.65rem;
+            }
+            .crosshair {
+                width: 50px;
+                height: 50px;
+            }
+            .crosshair-ring {
+                width: 35px;
+                height: 35px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .birthday-text {
+                font-size: 1.5rem;
+                letter-spacing: 2px;
+            }
+            .subtitle {
+                font-size: 0.75rem;
+            }
+            .reload-button {
+                width: 60px;
+                height: 60px;
+                bottom: 20px;
+                right: 20px;
+            }
+            .reload-icon {
+                font-size: 1.5rem;
+            }
+            .reload-text {
+                font-size: 0.6rem;
             }
         }
     </style>
@@ -348,9 +439,15 @@
     <!-- Reload indicator -->
     <div class="reload-indicator" id="reloadIndicator">RELOADING...</div>
 
+    <!-- Reload Button -->
+    <div class="reload-button" id="reloadButton">
+        <div class="reload-icon">🔄</div>
+        <div class="reload-text">RELOAD</div>
+    </div>
+
     <!-- Instructions -->
     <div class="instructions" id="instructions">
-        Click to shoot • Press R to reload • Hit the targets!
+        Tap to shoot • Tap reload button • Hit the targets!
     </div>
 
     <!-- Libraries -->
@@ -392,12 +489,33 @@
         let mouseX = window.innerWidth / 2;
         let mouseY = window.innerHeight / 2;
 
+        // Mouse movement
         document.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
             crosshair.style.left = mouseX + 'px';
             crosshair.style.top = mouseY + 'px';
         });
+
+        // Touch movement
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+                crosshair.style.left = mouseX + 'px';
+                crosshair.style.top = mouseY + 'px';
+            }
+        }, { passive: true });
+
+        // Touch start (show crosshair)
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+                crosshair.style.left = mouseX + 'px';
+                crosshair.style.top = mouseY + 'px';
+            }
+        }, { passive: true });
 
         // Target types
         const targetTypes = [
@@ -429,6 +547,12 @@
 
             if (gameState.ammo === 0) {
                 ammoElement.classList.add('reload');
+                // Auto-reload after a short delay when empty
+                setTimeout(() => {
+                    if (gameState.ammo === 0 && !gameState.isReloading) {
+                        reload();
+                    }
+                }, 800);
             } else {
                 ammoElement.classList.remove('reload');
             }
@@ -440,6 +564,10 @@
 
             gameState.isReloading = true;
             const indicator = document.getElementById('reloadIndicator');
+            const reloadBtn = document.getElementById('reloadButton');
+
+            // Visual feedback on button
+            reloadBtn.classList.add('reloading');
 
             gsap.to(indicator, {
                 opacity: 1,
@@ -449,6 +577,7 @@
                         gameState.ammo = gameState.maxAmmo;
                         gameState.isReloading = false;
                         updateAmmoDisplay();
+                        reloadBtn.classList.remove('reloading');
 
                         gsap.to(indicator, {
                             opacity: 0,
@@ -464,6 +593,19 @@
             if (e.key === 'r' || e.key === 'R') {
                 reload();
             }
+        });
+
+        // Reload button click/touch
+        const reloadBtn = document.getElementById('reloadButton');
+        reloadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            reload();
+        });
+
+        reloadBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            reload();
         });
 
         // Update score
@@ -715,9 +857,18 @@
             // Add some vertical variation
             const verticalVariation = (Math.random() - 0.5) * 150;
 
+            // Click event
             target.addEventListener('click', (e) => {
                 e.stopPropagation();
                 shootTarget(target, e.clientX, e.clientY);
+            });
+
+            // Touch event for mobile
+            target.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const touch = e.changedTouches[0];
+                shootTarget(target, touch.clientX, touch.clientY);
             });
 
             document.body.appendChild(target);
@@ -800,8 +951,8 @@
             });
         }
 
-        // Miss shot (click on empty space)
-        canvas.addEventListener('click', (e) => {
+        // Miss shot handler
+        function handleMissShot(x, y) {
             if (gameState.ammo <= 0) {
                 screenShake();
                 return;
@@ -816,7 +967,7 @@
             gsap.to(display, { opacity: 0, duration: 0.3 });
 
             // Laser beam to click point
-            createLaserBeam(mouseX, mouseY, e.clientX, e.clientY, false);
+            createLaserBeam(mouseX, mouseY, x, y, false);
             crosshairRecoil();
             screenShake();
 
@@ -825,8 +976,8 @@
             miss.className = 'score-popup';
             miss.textContent = 'MISS';
             miss.style.color = '#ff6b6b';
-            miss.style.left = e.clientX + 'px';
-            miss.style.top = e.clientY + 'px';
+            miss.style.left = x + 'px';
+            miss.style.top = y + 'px';
             document.body.appendChild(miss);
 
             gsap.fromTo(miss,
@@ -838,6 +989,18 @@
                     onComplete: () => miss.remove()
                 }
             );
+        }
+
+        // Miss shot (click on empty space)
+        canvas.addEventListener('click', (e) => {
+            handleMissShot(e.clientX, e.clientY);
+        });
+
+        // Touch event for canvas (miss shots on mobile)
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            handleMissShot(touch.clientX, touch.clientY);
         });
 
         // Spawn targets periodically
