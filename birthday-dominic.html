@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alles Gute zum Geburtstag Dominic!</title>
+    <title>Happy Birthday Dominic</title>
     <style>
         * {
             margin: 0;
@@ -13,12 +13,13 @@
 
         body {
             overflow: hidden;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1e 100%);
             display: flex;
             justify-content: center;
             align-items: center;
+            cursor: pointer;
         }
 
         #canvas {
@@ -39,165 +40,238 @@
 
         .birthday-text {
             font-size: 4rem;
-            font-weight: bold;
+            font-weight: 300;
             color: #fff;
-            text-shadow:
-                0 0 10px rgba(255, 255, 255, 0.8),
-                0 0 20px rgba(255, 215, 0, 0.6),
-                0 0 30px rgba(255, 105, 180, 0.4);
-            animation: rainbow-pulse 3s ease-in-out infinite, text-bounce 2s ease-in-out infinite;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #f7dc6f, #bb8fce, #ff6b6b);
-            background-size: 400% 400%;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 200% 200%;
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 30px rgba(102, 126, 234, 0.4));
         }
 
-        @keyframes rainbow-pulse {
-            0%, 100% {
-                background-position: 0% 50%;
-                filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.6));
-            }
-            50% {
-                background-position: 100% 50%;
-                filter: drop-shadow(0 0 40px rgba(255, 255, 255, 1));
-            }
+        .subtitle {
+            margin-top: 20px;
+            font-size: 1.5rem;
+            font-weight: 200;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 4px;
         }
 
-        @keyframes text-bounce {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-10px) scale(1.05); }
-        }
-
-        /* Responsive text size */
-        @media (max-width: 768px) {
-            .birthday-text {
-                font-size: 2rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .birthday-text {
-                font-size: 1.5rem;
-            }
-        }
-
-        /* Animal styles */
-        .animal {
+        /* Stats HUD */
+        .stats {
             position: fixed;
-            font-size: 4rem;
+            top: 30px;
+            left: 30px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+
+        .stat-item {
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        /* Combo display */
+        .combo-display {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            z-index: 10;
+            font-size: 1.8rem;
+            color: #f093fb;
+            font-weight: 300;
+            letter-spacing: 3px;
+            opacity: 0;
+            pointer-events: none;
+            text-shadow: 0 0 20px rgba(240, 147, 251, 0.6);
+        }
+
+        /* Achievement popup */
+        .achievement {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 15;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 24px 30px;
+            min-width: 320px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+
+        .achievement-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .achievement-title {
+            color: #f093fb;
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .achievement-desc {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            font-weight: 300;
+        }
+
+        /* Interactive elements */
+        .interactive-element {
+            position: fixed;
+            font-size: 2.5rem;
             z-index: 3;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
-            animation-timing-function: ease-in-out;
-            animation-iteration-count: infinite;
+            cursor: pointer;
+            pointer-events: all;
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+            transition: transform 0.2s ease;
         }
 
-        .animal.dancing {
-            animation: dance 1s infinite;
+        .interactive-element:hover {
+            transform: scale(1.2);
         }
 
-        .animal.floating {
-            animation: float 3s infinite;
-        }
-
-        .animal.bouncing {
-            animation: bounce 2s infinite;
-        }
-
-        .animal.spinning {
-            animation: spin 4s infinite linear;
-        }
-
-        .animal.wiggle {
-            animation: wiggle 0.8s infinite;
-        }
-
-        .animal.party {
-            animation: party 1.5s infinite;
-        }
-
-        @keyframes dance {
-            0%, 100% { transform: rotate(-10deg) translateY(0); }
-            25% { transform: rotate(10deg) translateY(-10px); }
-            50% { transform: rotate(-10deg) translateY(0); }
-            75% { transform: rotate(10deg) translateY(-10px); }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-30px) rotate(5deg); }
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-40px) scale(1.1); }
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes wiggle {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            25% { transform: rotate(-15deg) scale(1.1); }
-            50% { transform: rotate(15deg) scale(0.9); }
-            75% { transform: rotate(-15deg) scale(1.1); }
-        }
-
-        @keyframes party {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            25% { transform: scale(1.2) rotate(-10deg); }
-            50% { transform: scale(0.9) rotate(10deg); }
-            75% { transform: scale(1.1) rotate(-5deg); }
-        }
-
-        /* Flying animals */
-        .flying-animal {
+        /* Collectible item */
+        .collectible {
             position: fixed;
-            font-size: 3rem;
+            font-size: 2rem;
             z-index: 4;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+            cursor: pointer;
+            pointer-events: all;
+            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6));
         }
 
-        /* Balloon animals */
-        .balloon-animal {
+        /* Score popup */
+        .score-popup {
             position: fixed;
-            z-index: 5;
-            font-size: 3.5rem;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+            z-index: 20;
+            font-size: 1.8rem;
+            font-weight: 300;
+            color: #667eea;
+            letter-spacing: 2px;
+            pointer-events: none;
+            text-shadow: 0 0 15px rgba(102, 126, 234, 0.8);
         }
 
-        /* Party hats for animals */
-        .party-hat {
-            position: absolute;
-            top: -20px;
+        /* Level up notification */
+        .level-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 25;
+            font-size: 4rem;
+            font-weight: 300;
+            color: #f093fb;
+            letter-spacing: 8px;
+            pointer-events: none;
+            text-shadow: 0 0 40px rgba(240, 147, 251, 0.8);
+            text-transform: uppercase;
+        }
+
+        /* Instructions */
+        .instructions {
+            position: fixed;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 2rem;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-align: center;
+            pointer-events: none;
         }
 
-        /* Confetti particles */
-        .confetti-particle {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            z-index: 1;
+        /* Responsive */
+        @media (max-width: 768px) {
+            .birthday-text {
+                font-size: 2.5rem;
+                letter-spacing: 4px;
+            }
+            .subtitle {
+                font-size: 1rem;
+            }
+            .stats {
+                font-size: 0.8rem;
+                top: 15px;
+                left: 15px;
+            }
+            .combo-display {
+                font-size: 1.3rem;
+                top: 15px;
+                right: 15px;
+            }
         }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
     <div class="container">
-        <div class="birthday-text" id="birthdayText">
-            Alles Gute zum Geburtstag Dominic
-        </div>
+        <div class="birthday-text" id="birthdayText">Happy Birthday</div>
+        <div class="subtitle">Dominic</div>
     </div>
 
-    <!-- Canvas Confetti Library -->
+    <!-- Stats HUD -->
+    <div class="stats">
+        <div class="stat-item">Score <span class="stat-value" id="score">0</span></div>
+        <div class="stat-item">Level <span class="stat-value" id="level">1</span></div>
+        <div class="stat-item">Best <span class="stat-value" id="highScore">0</span></div>
+    </div>
+
+    <!-- Combo display -->
+    <div class="combo-display" id="comboDisplay">
+        <span id="comboText"></span>
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions" id="instructions">
+        Click anywhere • Catch the stars • Build combos
+    </div>
+
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 
     <script>
+        // Game state
+        const gameState = {
+            score: 0,
+            level: 1,
+            combo: 0,
+            comboTimer: null,
+            highScore: parseInt(localStorage.getItem('birthdayHighScore')) || 0,
+            achievements: []
+        };
+
+        // Update high score display
+        document.getElementById('highScore').textContent = gameState.highScore;
+
         // Canvas setup
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -209,212 +283,334 @@
             canvas.height = window.innerHeight;
         });
 
-        // Animal emojis with categories
-        const animals = {
-            cute: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵'],
-            birds: ['🐦', '🦆', '🦅', '🦉', '🦜', '🦩', '🐧'],
-            wild: ['🦒', '🦘', '🦙', '🦌', '🐘', '🦏', '🦛', '🦓'],
-            party: ['🎉', '🎊', '🎈', '🎁', '🎂', '🎆', '✨', '🌟', '💫', '⭐'],
-            marine: ['🐠', '🐟', '🐡', '🦈', '🐙', '🦑', '🐬', '🐳', '🦭']
+        // Element collections
+        const elements = {
+            decorative: ['✨', '⭐', '💫', '🌟', '✦', '◆', '◇', '♦'],
+            special: ['🎁', '🎈', '🎉', '🎊', '🎆', '💝'],
+            rare: ['💎', '👑', '🏆', '🌠']
         };
 
-        // Create dancing animals around the screen
-        function createDancingAnimals() {
-            const positions = [
-                { top: '10%', left: '10%', animation: 'dancing' },
-                { top: '10%', right: '10%', animation: 'bouncing' },
-                { bottom: '10%', left: '10%', animation: 'wiggle' },
-                { bottom: '10%', right: '10%', animation: 'party' },
-                { top: '30%', left: '5%', animation: 'floating' },
-                { top: '30%', right: '5%', animation: 'floating' },
-                { top: '60%', left: '5%', animation: 'dancing' },
-                { top: '60%', right: '5%', animation: 'wiggle' }
-            ];
+        // Achievements
+        const achievements = [
+            { id: 'starter', name: 'Getting Started', desc: 'First 10 points', icon: '🎯', check: () => gameState.score >= 10 },
+            { id: 'combo5', name: 'Combo Starter', desc: '5x combo achieved', icon: '🔥', check: () => gameState.combo >= 5 },
+            { id: 'fifty', name: 'Half Century', desc: '50 points scored', icon: '⭐', check: () => gameState.score >= 50 },
+            { id: 'hundred', name: 'Century', desc: '100 points reached', icon: '💫', check: () => gameState.score >= 100 },
+            { id: 'combo10', name: 'Combo Master', desc: '10x combo achieved', icon: '💥', check: () => gameState.combo >= 10 },
+            { id: 'level5', name: 'Expert', desc: 'Reached level 5', icon: '🌟', check: () => gameState.level >= 5 },
+            { id: 'pro', name: 'Professional', desc: '250 points scored', icon: '👑', check: () => gameState.score >= 250 }
+        ];
 
-            positions.forEach((pos, index) => {
-                const animal = document.createElement('div');
-                animal.className = `animal ${pos.animation}`;
+        // Update score
+        function updateScore(points, x, y) {
+            const multiplier = Math.max(1, gameState.combo);
+            const earnedPoints = points * multiplier;
+            gameState.score += earnedPoints;
 
-                // Randomly select from cute or wild animals
-                const category = Math.random() > 0.5 ? 'cute' : 'wild';
-                const emoji = animals[category][Math.floor(Math.random() * animals[category].length)];
-                animal.textContent = emoji;
+            document.getElementById('score').textContent = gameState.score;
 
-                Object.keys(pos).forEach(key => {
-                    if (key !== 'animation') {
-                        animal.style[key] = pos[key];
-                    }
+            // High score
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('birthdayHighScore', gameState.highScore);
+                document.getElementById('highScore').textContent = gameState.highScore;
+
+                gsap.to('#highScore', {
+                    scale: 1.3,
+                    duration: 0.3,
+                    yoyo: true,
+                    repeat: 1
                 });
+            }
 
-                // Random animation delay
-                animal.style.animationDelay = `${Math.random() * 2}s`;
+            // Show score popup
+            showScorePopup(earnedPoints, x, y);
 
-                // Add party hat occasionally
-                if (Math.random() > 0.6) {
-                    const hat = document.createElement('span');
-                    hat.className = 'party-hat';
-                    hat.textContent = '🎩';
-                    animal.appendChild(hat);
+            // Level up check
+            const newLevel = Math.floor(gameState.score / 100) + 1;
+            if (newLevel > gameState.level) {
+                gameState.level = newLevel;
+                document.getElementById('level').textContent = gameState.level;
+                showLevelUp();
+            }
+
+            // Combo
+            updateCombo();
+
+            // Check achievements
+            checkAchievements();
+        }
+
+        // Combo system
+        function updateCombo() {
+            gameState.combo++;
+            const display = document.getElementById('comboDisplay');
+            const text = document.getElementById('comboText');
+
+            if (gameState.combo > 1) {
+                text.textContent = `${gameState.combo}× COMBO`;
+                gsap.to(display, { opacity: 1, scale: 1.1, duration: 0.2 });
+                gsap.to(display, { scale: 1, duration: 0.2, delay: 0.2 });
+            }
+
+            clearTimeout(gameState.comboTimer);
+            gameState.comboTimer = setTimeout(() => {
+                gameState.combo = 0;
+                gsap.to(display, { opacity: 0, duration: 0.3 });
+            }, 2000);
+
+            checkAchievements();
+        }
+
+        // Show score popup
+        function showScorePopup(points, x, y) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = `+${points}`;
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            document.body.appendChild(popup);
+
+            gsap.fromTo(popup,
+                { opacity: 1, y: 0, scale: 0.5 },
+                {
+                    opacity: 0,
+                    y: -100,
+                    scale: 1.5,
+                    duration: 1,
+                    ease: 'power2.out',
+                    onComplete: () => popup.remove()
                 }
+            );
+        }
 
-                document.body.appendChild(animal);
+        // Level up notification
+        function showLevelUp() {
+            const notification = document.createElement('div');
+            notification.className = 'level-notification';
+            notification.textContent = `Level ${gameState.level}`;
+            document.body.appendChild(notification);
+
+            gsap.fromTo(notification,
+                { opacity: 0, scale: 0 },
+                {
+                    opacity: 1,
+                    scale: 1,
+                    duration: 0.5,
+                    ease: 'back.out(1.7)'
+                }
+            );
+
+            gsap.to(notification, {
+                opacity: 0,
+                scale: 0.5,
+                duration: 0.5,
+                delay: 1.5,
+                onComplete: () => notification.remove()
+            });
+
+            confetti({
+                particleCount: 100,
+                spread: 120,
+                origin: { y: 0.5 },
+                colors: ['#667eea', '#764ba2', '#f093fb']
             });
         }
 
-        // Create flying birds
-        function createFlyingBirds() {
-            setInterval(() => {
-                const bird = document.createElement('div');
-                bird.className = 'flying-animal';
-                bird.textContent = animals.birds[Math.floor(Math.random() * animals.birds.length)];
-
-                // Start from random side
-                const fromLeft = Math.random() > 0.5;
-                bird.style.left = fromLeft ? '-100px' : (window.innerWidth + 100) + 'px';
-                bird.style.top = Math.random() * window.innerHeight * 0.8 + 'px';
-
-                document.body.appendChild(bird);
-
-                // Animate across screen
-                const duration = 8000 + Math.random() * 4000;
-                const targetX = fromLeft ? window.innerWidth + 100 : -100;
-
-                bird.animate([
-                    {
-                        transform: `translateX(0) rotate(${fromLeft ? 0 : 180}deg) translateY(${Math.sin(0) * 30}px)`,
-                        opacity: 1
-                    },
-                    {
-                        transform: `translateX(${targetX}px) rotate(${fromLeft ? 0 : 180}deg) translateY(${Math.sin(Math.PI) * 30}px)`,
-                        opacity: 1
-                    }
-                ], {
-                    duration: duration,
-                    easing: 'linear'
-                }).onfinish = () => bird.remove();
-            }, 3000);
+        // Achievement system
+        function checkAchievements() {
+            achievements.forEach(achievement => {
+                if (!gameState.achievements.includes(achievement.id) && achievement.check()) {
+                    gameState.achievements.push(achievement.id);
+                    showAchievement(achievement);
+                }
+            });
         }
 
-        // Create balloon animals floating up
-        function createBalloonAnimals() {
-            setInterval(() => {
-                const balloonAnimal = document.createElement('div');
-                balloonAnimal.className = 'balloon-animal';
+        function showAchievement(achievement) {
+            const div = document.createElement('div');
+            div.className = 'achievement';
+            div.innerHTML = `
+                <div class="achievement-icon">${achievement.icon}</div>
+                <div class="achievement-title">${achievement.name}</div>
+                <div class="achievement-desc">${achievement.desc}</div>
+            `;
+            document.body.appendChild(div);
 
-                // Create balloon with animal
-                const animal = animals.cute[Math.floor(Math.random() * animals.cute.length)];
-                balloonAnimal.innerHTML = `🎈<br>${animal}`;
+            gsap.fromTo(div,
+                { x: 400, opacity: 0 },
+                { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }
+            );
 
-                balloonAnimal.style.left = Math.random() * (window.innerWidth - 100) + 'px';
-                balloonAnimal.style.top = window.innerHeight + 100 + 'px';
+            gsap.to(div, {
+                x: 400,
+                opacity: 0,
+                duration: 0.5,
+                delay: 3.5,
+                ease: 'power3.in',
+                onComplete: () => div.remove()
+            });
 
-                document.body.appendChild(balloonAnimal);
-
-                // Float up and sway
-                const duration = 10000 + Math.random() * 5000;
-                const sway = (Math.random() - 0.5) * 200;
-
-                balloonAnimal.animate([
-                    {
-                        transform: `translateY(0) translateX(0) rotate(0deg)`,
-                        opacity: 1
-                    },
-                    {
-                        transform: `translateY(${-window.innerHeight - 200}px) translateX(${sway}px) rotate(${sway > 0 ? 20 : -20}deg)`,
-                        opacity: 0.8
-                    }
-                ], {
-                    duration: duration,
-                    easing: 'ease-out'
-                }).onfinish = () => balloonAnimal.remove();
-            }, 2500);
+            confetti({
+                particleCount: 50,
+                spread: 60,
+                origin: { x: 0.9, y: 0.8 },
+                colors: ['#f093fb', '#667eea', '#764ba2']
+            });
         }
 
-        // Swimming fish across screen
-        function createSwimmingFish() {
-            setInterval(() => {
-                const fish = document.createElement('div');
-                fish.className = 'flying-animal';
-                fish.textContent = animals.marine[Math.floor(Math.random() * animals.marine.length)];
-                fish.style.fontSize = '2.5rem';
+        // Create interactive elements
+        function createInteractiveElements() {
+            const positions = [
+                { x: '10%', y: '15%' },
+                { x: '90%', y: '15%' },
+                { x: '10%', y: '85%' },
+                { x: '90%', y: '85%' },
+                { x: '15%', y: '50%' },
+                { x: '85%', y: '50%' }
+            ];
 
-                const fromLeft = Math.random() > 0.5;
-                fish.style.left = fromLeft ? '-100px' : (window.innerWidth + 100) + 'px';
-                fish.style.top = Math.random() * window.innerHeight + 'px';
+            positions.forEach((pos, index) => {
+                const element = document.createElement('div');
+                element.className = 'interactive-element';
+                element.textContent = elements.decorative[Math.floor(Math.random() * elements.decorative.length)];
+                element.style.left = pos.x;
+                element.style.top = pos.y;
 
-                document.body.appendChild(fish);
+                element.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    updateScore(10, e.clientX, e.clientY);
 
-                const duration = 6000 + Math.random() * 4000;
-                const targetX = fromLeft ? window.innerWidth + 100 : -100;
-                const waveHeight = 50;
+                    gsap.to(element, {
+                        rotation: 360,
+                        scale: 1.5,
+                        duration: 0.5,
+                        onComplete: () => {
+                            gsap.set(element, { rotation: 0, scale: 1 });
+                        }
+                    });
 
-                fish.animate([
-                    {
-                        transform: `translateX(0) scaleX(${fromLeft ? 1 : -1}) translateY(${Math.sin(0) * waveHeight}px)`,
-                        opacity: 0.9
-                    },
-                    {
-                        transform: `translateX(${targetX}px) scaleX(${fromLeft ? 1 : -1}) translateY(${Math.sin(Math.PI * 4) * waveHeight}px)`,
-                        opacity: 0.9
-                    }
-                ], {
-                    duration: duration,
-                    easing: 'linear'
-                }).onfinish = () => fish.remove();
-            }, 4000);
+                    confetti({
+                        particleCount: 20,
+                        spread: 60,
+                        origin: {
+                            x: e.clientX / window.innerWidth,
+                            y: e.clientY / window.innerHeight
+                        }
+                    });
+                });
+
+                document.body.appendChild(element);
+
+                // Subtle floating animation
+                gsap.to(element, {
+                    y: '+=20',
+                    duration: 2 + Math.random() * 2,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'sine.inOut',
+                    delay: Math.random() * 2
+                });
+            });
         }
 
-        // Create random party items raining down
-        function createPartyRain() {
-            setInterval(() => {
-                const item = document.createElement('div');
-                item.className = 'flying-animal';
-                item.textContent = animals.party[Math.floor(Math.random() * animals.party.length)];
-                item.style.fontSize = Math.random() * 2 + 1.5 + 'rem';
+        // Spawn collectibles
+        function spawnCollectible() {
+            const collectible = document.createElement('div');
+            collectible.className = 'collectible';
 
-                item.style.left = Math.random() * window.innerWidth + 'px';
-                item.style.top = '-100px';
+            const isRare = Math.random() > 0.85;
+            const collection = isRare ? elements.rare : elements.special;
+            collectible.textContent = collection[Math.floor(Math.random() * collection.length)];
 
-                document.body.appendChild(item);
+            const startX = Math.random() * (window.innerWidth - 100);
+            const startY = Math.random() * (window.innerHeight - 100);
 
-                const duration = 4000 + Math.random() * 3000;
-                const drift = (Math.random() - 0.5) * 200;
+            collectible.style.left = startX + 'px';
+            collectible.style.top = startY + 'px';
 
-                item.animate([
-                    {
-                        transform: `translateY(0) translateX(0) rotate(0deg)`,
-                        opacity: 1
+            collectible.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const points = isRare ? 50 : 25;
+                updateScore(points, e.clientX, e.clientY);
+
+                gsap.to(collectible, {
+                    scale: 2,
+                    opacity: 0,
+                    duration: 0.4,
+                    ease: 'power2.out',
+                    onComplete: () => collectible.remove()
+                });
+
+                confetti({
+                    particleCount: isRare ? 80 : 40,
+                    spread: isRare ? 100 : 70,
+                    origin: {
+                        x: e.clientX / window.innerWidth,
+                        y: e.clientY / window.innerHeight
                     },
-                    {
-                        transform: `translateY(${window.innerHeight + 100}px) translateX(${drift}px) rotate(${360 * (Math.random() > 0.5 ? 1 : -1)}deg)`,
-                        opacity: 0.7
-                    }
-                ], {
-                    duration: duration,
-                    easing: 'ease-in'
-                }).onfinish = () => item.remove();
-            }, 800);
+                    colors: isRare ? ['#f093fb', '#ffd700', '#ff69b4'] : ['#667eea', '#764ba2', '#f093fb']
+                });
+            });
+
+            document.body.appendChild(collectible);
+
+            // Animate appearance and floating
+            gsap.fromTo(collectible,
+                { scale: 0, opacity: 0 },
+                { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' }
+            );
+
+            gsap.to(collectible, {
+                y: '+=30',
+                duration: 2,
+                yoyo: true,
+                repeat: -1,
+                ease: 'sine.inOut'
+            });
+
+            gsap.to(collectible, {
+                rotation: 360,
+                duration: 4,
+                repeat: -1,
+                ease: 'none'
+            });
+
+            // Remove after timeout
+            setTimeout(() => {
+                if (document.body.contains(collectible)) {
+                    gsap.to(collectible, {
+                        scale: 0,
+                        opacity: 0,
+                        duration: 0.5,
+                        onComplete: () => collectible.remove()
+                    });
+                }
+            }, 6000);
         }
 
-        // Particle system for extra effects
+        // Spawn collectibles periodically
+        setInterval(spawnCollectible, 3500);
+
+        // Particle system
         class Particle {
-            constructor(x, y, color, velocity) {
+            constructor(x, y, color) {
                 this.x = x;
                 this.y = y;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
                 this.color = color;
-                this.velocity = velocity;
                 this.alpha = 1;
-                this.decay = Math.random() * 0.01 + 0.005;
-                this.size = Math.random() * 3 + 2;
+                this.size = Math.random() * 3 + 1;
             }
 
             update() {
-                this.velocity.x *= 0.99;
-                this.velocity.y *= 0.99;
-                this.velocity.y += 0.1;
-                this.x += this.velocity.x;
-                this.y += this.velocity.y;
-                this.alpha -= this.decay;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.05;
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+                this.alpha -= 0.008;
                 this.size *= 0.99;
             }
 
@@ -431,147 +627,107 @@
 
         let particles = [];
 
-        function createFirework(x, y) {
-            const colors = ['#ff0080', '#ff8c00', '#40e0d0', '#9d00ff', '#ffd700', '#ff1493'];
-            const particleCount = 80;
-
-            for (let i = 0; i < particleCount; i++) {
-                const angle = (Math.PI * 2 * i) / particleCount;
-                const velocity = {
-                    x: Math.cos(angle) * (Math.random() * 6 + 2),
-                    y: Math.sin(angle) * (Math.random() * 6 + 2)
-                };
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                particles.push(new Particle(x, y, color, velocity));
+        function createParticles(x, y, count = 30) {
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#fff'];
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
             }
         }
 
         function animateParticles() {
-            ctx.fillStyle = 'rgba(103, 126, 234, 0.05)';
+            ctx.fillStyle = 'rgba(26, 26, 46, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            particles.forEach((particle, index) => {
+            particles = particles.filter(particle => particle.alpha > 0);
+            particles.forEach(particle => {
                 particle.update();
                 particle.draw();
-
-                if (particle.alpha <= 0) {
-                    particles.splice(index, 1);
-                }
             });
 
             requestAnimationFrame(animateParticles);
         }
 
-        // Continuous confetti celebration
-        function continuousConfetti() {
-            const duration = 60 * 1000; // 60 seconds
-            const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
-            function randomInRange(min, max) {
-                return Math.random() * (max - min) + min;
-            }
-
-            const interval = setInterval(function() {
-                const timeLeft = animationEnd - Date.now();
-
-                if (timeLeft <= 0) {
-                    return clearInterval(interval);
-                }
-
-                const particleCount = 50;
-                confetti({
-                    ...defaults,
-                    particleCount,
-                    origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
-                });
-                confetti({
-                    ...defaults,
-                    particleCount,
-                    origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
-                });
-            }, 400);
-        }
-
-        // Auto fireworks
-        function autoFireworks() {
-            setInterval(() => {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height * 0.7;
-                createFirework(x, y);
-
-                confetti({
-                    particleCount: 50,
-                    spread: 70,
-                    origin: {
-                        x: x / window.innerWidth,
-                        y: y / window.innerHeight
-                    },
-                    colors: ['#ff0080', '#ff8c00', '#40e0d0', '#9d00ff', '#ffd700']
-                });
-            }, 2000);
-        }
-
-        // Click anywhere for extra celebration
+        // Click interaction
         canvas.addEventListener('click', (e) => {
-            createFirework(e.clientX, e.clientY);
+            updateScore(5, e.clientX, e.clientY);
+            createParticles(e.clientX, e.clientY, 40);
+
             confetti({
-                particleCount: 100,
-                spread: 90,
+                particleCount: 30,
+                spread: 50,
                 origin: {
                     x: e.clientX / window.innerWidth,
                     y: e.clientY / window.innerHeight
-                }
+                },
+                colors: ['#667eea', '#764ba2', '#f093fb']
             });
-
-            // Spawn a random animal at click
-            const animal = document.createElement('div');
-            animal.className = 'animal party';
-            const allAnimals = [...animals.cute, ...animals.wild, ...animals.birds];
-            animal.textContent = allAnimals[Math.floor(Math.random() * allAnimals.length)];
-            animal.style.left = e.clientX - 30 + 'px';
-            animal.style.top = e.clientY - 30 + 'px';
-            animal.style.fontSize = '3rem';
-            document.body.appendChild(animal);
-
-            setTimeout(() => {
-                animal.style.transition = 'all 2s ease-out';
-                animal.style.transform = 'translateY(-200px) scale(2)';
-                animal.style.opacity = '0';
-                setTimeout(() => animal.remove(), 2000);
-            }, 100);
         });
 
-        // Mouse trail particles
+        // Mouse trail
         document.addEventListener('mousemove', (e) => {
-            if (Math.random() > 0.85) {
-                const colors = ['#ff0080', '#ff8c00', '#40e0d0', '#9d00ff', '#ffd700'];
-                particles.push(new Particle(e.clientX, e.clientY,
-                    colors[Math.floor(Math.random() * colors.length)],
-                    { x: (Math.random() - 0.5) * 3, y: (Math.random() - 0.5) * 3 }
-                ));
+            if (Math.random() > 0.92) {
+                createParticles(e.clientX, e.clientY, 2);
             }
         });
 
-        // Initialize all animations
-        createDancingAnimals();
-        createFlyingBirds();
-        createBalloonAnimals();
-        createSwimmingFish();
-        createPartyRain();
-        animateParticles();
-        continuousConfetti();
-        autoFireworks();
+        // Ambient particles
+        setInterval(() => {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            createParticles(x, y, 15);
+        }, 4000);
 
-        // Big initial celebration
+        // Ambient confetti
+        setInterval(() => {
+            confetti({
+                particleCount: 20,
+                spread: 100,
+                origin: { x: Math.random(), y: Math.random() * 0.6 },
+                colors: ['#667eea', '#764ba2', '#f093fb']
+            });
+        }, 3000);
+
+        // Initialize
+        createInteractiveElements();
+        animateParticles();
+
+        // Initial animations
+        gsap.from('.birthday-text', {
+            opacity: 0,
+            y: -50,
+            duration: 1.5,
+            ease: 'power3.out'
+        });
+
+        gsap.from('.subtitle', {
+            opacity: 0,
+            duration: 1.5,
+            delay: 0.5,
+            ease: 'power3.out'
+        });
+
+        gsap.to('.birthday-text', {
+            backgroundPosition: '200% center',
+            duration: 5,
+            repeat: -1,
+            ease: 'none'
+        });
+
+        gsap.to('.instructions', {
+            opacity: 0,
+            duration: 1,
+            delay: 5
+        });
+
+        // Initial celebration
         setTimeout(() => {
             confetti({
-                particleCount: 200,
-                spread: 180,
+                particleCount: 150,
+                spread: 100,
                 origin: { y: 0.6 },
-                colors: ['#ff0080', '#ff8c00', '#40e0d0', '#9d00ff', '#ffd700']
+                colors: ['#667eea', '#764ba2', '#f093fb']
             });
-        }, 500);
+        }, 800);
     </script>
 </body>
 </html>
