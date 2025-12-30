@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alles Gute zum Geburtstag Dominic!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .birthday-text {
+            font-size: 4rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            transform: scale(0.5) rotateY(180deg);
+        }
+
+        .word {
+            display: inline-block;
+            margin: 0 0.3rem;
+        }
+
+        /* Animation 1: Fireworks Explosion */
+        .animation-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .animation-1 .birthday-text {
+            color: #fff;
+            animation: explode-in 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        @keyframes explode-in {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(360deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(0deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        /* Animation 2: Rainbow Wave */
+        .animation-2 {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #f7dc6f, #bb8fce);
+            background-size: 400% 400%;
+            animation: gradient-shift 8s ease infinite;
+        }
+
+        .animation-2 .birthday-text {
+            background: linear-gradient(90deg, #ff0080, #ff8c00, #40e0d0, #ff0080);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow-wave 3s ease-in-out forwards, text-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes rainbow-wave {
+            0% {
+                opacity: 0;
+                transform: translateY(100px) scale(0.5);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                background-position: 200% 0;
+            }
+        }
+
+        @keyframes text-glow {
+            0%, 100% {
+                filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+            }
+            50% {
+                filter: drop-shadow(0 0 30px rgba(255, 255, 255, 1));
+            }
+        }
+
+        /* Animation 3: Neon Glow */
+        .animation-3 {
+            background: #0a0a0a;
+        }
+
+        .animation-3 .birthday-text {
+            color: #fff;
+            text-shadow:
+                0 0 10px #fff,
+                0 0 20px #fff,
+                0 0 30px #fff,
+                0 0 40px #ff00de,
+                0 0 70px #ff00de,
+                0 0 80px #ff00de,
+                0 0 100px #ff00de,
+                0 0 150px #ff00de;
+            animation: neon-flicker 3s ease-in-out forwards, neon-pulse 2s ease-in-out infinite 3s;
+        }
+
+        @keyframes neon-flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {
+                opacity: 1;
+                transform: scale(1) rotateX(0);
+            }
+            20%, 24%, 55% {
+                opacity: 0.4;
+                transform: scale(0.95) rotateX(10deg);
+            }
+        }
+
+        @keyframes neon-pulse {
+            0%, 100% {
+                text-shadow:
+                    0 0 10px #fff,
+                    0 0 20px #fff,
+                    0 0 30px #fff,
+                    0 0 40px #ff00de,
+                    0 0 70px #ff00de,
+                    0 0 80px #ff00de,
+                    0 0 100px #ff00de,
+                    0 0 150px #ff00de;
+            }
+            50% {
+                text-shadow:
+                    0 0 5px #fff,
+                    0 0 10px #fff,
+                    0 0 15px #fff,
+                    0 0 20px #ff00de,
+                    0 0 35px #ff00de,
+                    0 0 40px #ff00de,
+                    0 0 50px #ff00de,
+                    0 0 75px #ff00de;
+            }
+        }
+
+        /* Animation 4: 3D Spiral */
+        .animation-4 {
+            background: radial-gradient(circle at center, #141e30, #243b55);
+            perspective: 1000px;
+        }
+
+        .animation-4 .birthday-text {
+            color: #ffd700;
+            animation: spiral-3d 3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+            transform-style: preserve-3d;
+        }
+
+        @keyframes spiral-3d {
+            0% {
+                opacity: 0;
+                transform: translateZ(-1000px) rotateY(720deg) rotateX(360deg) scale(0);
+            }
+            100% {
+                opacity: 1;
+                transform: translateZ(0) rotateY(0deg) rotateX(0deg) scale(1);
+            }
+        }
+
+        /* Animation 5: Matrix Rain */
+        .animation-5 {
+            background: #000;
+        }
+
+        .animation-5 .birthday-text {
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 20px #00ff41;
+            animation: matrix-reveal 4s steps(20) forwards;
+        }
+
+        @keyframes matrix-reveal {
+            0% {
+                opacity: 0;
+                filter: blur(20px);
+                transform: scale(2);
+            }
+            50% {
+                filter: blur(5px);
+            }
+            100% {
+                opacity: 1;
+                filter: blur(0);
+                transform: scale(1);
+            }
+        }
+
+        /* Animation 6: Bouncing Balloons */
+        .animation-6 {
+            background: linear-gradient(to bottom, #87ceeb, #e0f6ff);
+        }
+
+        .animation-6 .birthday-text {
+            color: #ff1493;
+            animation: balloon-bounce 3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        @keyframes balloon-bounce {
+            0% {
+                opacity: 0;
+                transform: translateY(100vh) scale(0.5) rotate(-45deg);
+            }
+            60% {
+                transform: translateY(-30px) scale(1.1) rotate(5deg);
+            }
+            80% {
+                transform: translateY(10px) scale(0.95) rotate(-3deg);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(0deg);
+            }
+        }
+
+        /* Animation 7: Glitch Effect */
+        .animation-7 {
+            background: linear-gradient(45deg, #000428, #004e92);
+        }
+
+        .animation-7 .birthday-text {
+            color: #fff;
+            position: relative;
+            animation: glitch-main 3s forwards;
+        }
+
+        .animation-7 .birthday-text::before,
+        .animation-7 .birthday-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .animation-7 .birthday-text::before {
+            color: #ff00ff;
+            animation: glitch-1 2.5s infinite;
+            clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+        }
+
+        .animation-7 .birthday-text::after {
+            color: #00ffff;
+            animation: glitch-2 2.5s infinite;
+            clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+        }
+
+        @keyframes glitch-main {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes glitch-1 {
+            0% {
+                transform: translateX(0);
+            }
+            20% {
+                transform: translateX(-5px);
+            }
+            40% {
+                transform: translateX(5px);
+            }
+            60% {
+                transform: translateX(-5px);
+            }
+            80% {
+                transform: translateX(5px);
+            }
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes glitch-2 {
+            0% {
+                transform: translateX(0);
+            }
+            20% {
+                transform: translateX(5px);
+            }
+            40% {
+                transform: translateX(-5px);
+            }
+            60% {
+                transform: translateX(5px);
+            }
+            80% {
+                transform: translateX(-5px);
+            }
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        /* Animation 8: Starfield */
+        .animation-8 {
+            background: #000;
+        }
+
+        .animation-8 .birthday-text {
+            color: #fff;
+            animation: starfield-zoom 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes starfield-zoom {
+            0% {
+                opacity: 0;
+                transform: scale(10) translateZ(0);
+                filter: blur(50px);
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateZ(0);
+                filter: blur(0);
+            }
+        }
+
+        /* Responsive text size */
+        @media (max-width: 768px) {
+            .birthday-text {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .birthday-text {
+                font-size: 1.5rem;
+            }
+        }
+
+        .balloon {
+            position: fixed;
+            width: 60px;
+            height: 80px;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            z-index: 0;
+        }
+
+        .balloon::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .star {
+            position: fixed;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="container">
+        <div class="birthday-text" id="birthdayText" data-text="Alles Gute zum Geburtstag Dominic">
+            Alles Gute zum Geburtstag Dominic
+        </div>
+    </div>
+
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <script>
+        // Select random animation
+        const animations = [
+            'animation-1', // Fireworks
+            'animation-2', // Rainbow Wave
+            'animation-3', // Neon Glow
+            'animation-4', // 3D Spiral
+            'animation-5', // Matrix Rain
+            'animation-6', // Balloons
+            'animation-7', // Glitch
+            'animation-8'  // Starfield
+        ];
+
+        const randomAnimation = animations[Math.floor(Math.random() * animations.length)];
+        document.body.classList.add(randomAnimation);
+
+        // Canvas setup for particles
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Particle system
+        class Particle {
+            constructor(x, y, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.01 + 0.005;
+                this.size = Math.random() * 3 + 2;
+            }
+
+            update() {
+                this.velocity.x *= 0.99;
+                this.velocity.y *= 0.99;
+                this.velocity.y += 0.1;
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= this.decay;
+                this.size *= 0.99;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        let particles = [];
+
+        function createFirework(x, y) {
+            const colors = ['#ff0080', '#ff8c00', '#40e0d0', '#9d00ff', '#ffd700', '#ff1493'];
+            const particleCount = 100;
+
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const velocity = {
+                    x: Math.cos(angle) * (Math.random() * 6 + 2),
+                    y: Math.sin(angle) * (Math.random() * 6 + 2)
+                };
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                particles.push(new Particle(x, y, color, velocity));
+            }
+        }
+
+        function animateParticles() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach((particle, index) => {
+                particle.update();
+                particle.draw();
+
+                if (particle.alpha <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+
+            requestAnimationFrame(animateParticles);
+        }
+
+        // Animation-specific effects
+        function initAnimation() {
+            switch(randomAnimation) {
+                case 'animation-1': // Fireworks
+                    setTimeout(() => {
+                        for (let i = 0; i < 5; i++) {
+                            setTimeout(() => {
+                                const x = Math.random() * canvas.width;
+                                const y = Math.random() * canvas.height * 0.5;
+                                createFirework(x, y);
+                            }, i * 400);
+                        }
+                    }, 500);
+
+                    // Continuous confetti
+                    const duration = 15 * 1000;
+                    const animationEnd = Date.now() + duration;
+                    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+                    function randomInRange(min, max) {
+                        return Math.random() * (max - min) + min;
+                    }
+
+                    const interval = setInterval(function() {
+                        const timeLeft = animationEnd - Date.now();
+
+                        if (timeLeft <= 0) {
+                            return clearInterval(interval);
+                        }
+
+                        const particleCount = 50 * (timeLeft / duration);
+                        confetti({
+                            ...defaults,
+                            particleCount,
+                            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+                        });
+                        confetti({
+                            ...defaults,
+                            particleCount,
+                            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+                        });
+                    }, 250);
+                    break;
+
+                case 'animation-2': // Rainbow Wave
+                    confetti({
+                        particleCount: 200,
+                        spread: 180,
+                        origin: { y: 0.6 },
+                        colors: ['#ff0080', '#ff8c00', '#40e0d0', '#9d00ff', '#ffd700']
+                    });
+                    break;
+
+                case 'animation-3': // Neon Glow
+                    // Create floating particles
+                    for (let i = 0; i < 50; i++) {
+                        setTimeout(() => {
+                            const x = Math.random() * canvas.width;
+                            const y = Math.random() * canvas.height;
+                            particles.push(new Particle(x, y, '#ff00de', {
+                                x: (Math.random() - 0.5) * 2,
+                                y: (Math.random() - 0.5) * 2
+                            }));
+                        }, i * 100);
+                    }
+                    break;
+
+                case 'animation-4': // 3D Spiral
+                    setTimeout(() => {
+                        confetti({
+                            particleCount: 100,
+                            spread: 70,
+                            origin: { y: 0.6 },
+                            colors: ['#ffd700', '#ffed4e', '#fff']
+                        });
+                    }, 2500);
+                    break;
+
+                case 'animation-5': // Matrix Rain
+                    const matrixChars = '01アイウエオカキクケコサシスセソタチツテト';
+                    const fontSize = 16;
+                    const columns = canvas.width / fontSize;
+                    const drops = Array(Math.floor(columns)).fill(1);
+
+                    function drawMatrix() {
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                        ctx.fillStyle = '#00ff41';
+                        ctx.font = fontSize + 'px monospace';
+
+                        for (let i = 0; i < drops.length; i++) {
+                            const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+                            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                                drops[i] = 0;
+                            }
+                            drops[i]++;
+                        }
+                    }
+
+                    const matrixInterval = setInterval(drawMatrix, 50);
+                    setTimeout(() => clearInterval(matrixInterval), 10000);
+                    break;
+
+                case 'animation-6': // Balloons
+                    const balloonColors = ['#ff1493', '#ff6347', '#40e0d0', '#ffd700', '#9d00ff', '#00ff00'];
+                    for (let i = 0; i < 15; i++) {
+                        const balloon = document.createElement('div');
+                        balloon.className = 'balloon';
+                        balloon.style.left = Math.random() * 100 + '%';
+                        balloon.style.bottom = '-100px';
+                        balloon.style.background = balloonColors[Math.floor(Math.random() * balloonColors.length)];
+                        balloon.style.animationDelay = (Math.random() * 2) + 's';
+                        balloon.style.opacity = '0.8';
+                        document.body.appendChild(balloon);
+
+                        // Animate balloon rising
+                        setTimeout(() => {
+                            balloon.style.transition = 'bottom 4s ease-out, transform 2s ease-in-out infinite';
+                            balloon.style.bottom = '120vh';
+                            balloon.style.transform = `rotate(${Math.random() * 20 - 10}deg)`;
+                        }, i * 200);
+                    }
+
+                    confetti({
+                        particleCount: 100,
+                        spread: 160,
+                        origin: { y: 0.8 },
+                        colors: balloonColors
+                    });
+                    break;
+
+                case 'animation-7': // Glitch
+                    // Random glitch particles
+                    for (let i = 0; i < 30; i++) {
+                        setTimeout(() => {
+                            const x = Math.random() * canvas.width;
+                            const y = Math.random() * canvas.height;
+                            particles.push(new Particle(x, y, Math.random() > 0.5 ? '#ff00ff' : '#00ffff', {
+                                x: (Math.random() - 0.5) * 10,
+                                y: (Math.random() - 0.5) * 10
+                            }));
+                        }, i * 150);
+                    }
+                    break;
+
+                case 'animation-8': // Starfield
+                    // Create stars
+                    for (let i = 0; i < 200; i++) {
+                        const star = document.createElement('div');
+                        star.className = 'star';
+                        star.style.left = Math.random() * 100 + '%';
+                        star.style.top = Math.random() * 100 + '%';
+                        star.style.width = star.style.height = Math.random() * 3 + 'px';
+                        star.style.opacity = Math.random();
+                        star.style.animation = `twinkle ${Math.random() * 3 + 1}s infinite`;
+                        document.body.appendChild(star);
+                    }
+
+                    // Add twinkle animation
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        @keyframes twinkle {
+                            0%, 100% { opacity: 0.2; }
+                            50% { opacity: 1; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+
+                    setTimeout(() => {
+                        confetti({
+                            particleCount: 150,
+                            spread: 180,
+                            origin: { y: 0.5 },
+                            colors: ['#ffffff', '#ffff00', '#00ffff']
+                        });
+                    }, 2500);
+                    break;
+            }
+        }
+
+        // Start animations
+        animateParticles();
+        initAnimation();
+
+        // Add some sparkle on mouse move for extra flair
+        document.addEventListener('mousemove', (e) => {
+            if (Math.random() > 0.9) {
+                const colors = ['#ff0080', '#ff8c00', '#40e0d0', '#9d00ff', '#ffd700'];
+                particles.push(new Particle(e.clientX, e.clientY,
+                    colors[Math.floor(Math.random() * colors.length)],
+                    { x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2 }
+                ));
+            }
+        });
+
+        // Click for extra fireworks
+        canvas.addEventListener('click', (e) => {
+            createFirework(e.clientX, e.clientY);
+            confetti({
+                particleCount: 50,
+                spread: 70,
+                origin: {
+                    x: e.clientX / window.innerWidth,
+                    y: e.clientY / window.innerHeight
+                }
+            });
+        });
+    </script>
+</body>
+</html>
