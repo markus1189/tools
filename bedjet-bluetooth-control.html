@@ -1261,7 +1261,6 @@
         let timerPendingMinutes = null;  // Store in minutes for easier math
         let deviceMaxHours = null;       // From status byte 10
         let deviceMaxMinutes = null;     // From status byte 11
-        let currentBioStep = 0;          // Biorhythm sequence step (byte 27): 0 = inactive, 1-32 = active step
 
         // Auto-reconnect state
         let reconnectAttempts = 0;
@@ -2344,7 +2343,6 @@
             disconnectBtn.style.display = 'none';
             deviceName.textContent = '';
             currentMode = null;
-            currentBioStep = 0;
             updateBackgroundColor();
             updateModeButtons();
             updateButtonVisibility();
@@ -2361,7 +2359,7 @@
         function handleStatusUpdate(event) {
             const data = new Uint8Array(event.target.value.buffer);
 
-            if (data.length >= 28) {  // Need at least 28 bytes to read biorhythm step at byte 27
+            if (data.length >= 17) {  // Need at least 17 bytes to read ambient temp at byte 16
                 const hexData = Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
                 console.log('Status data:', hexData);
 
@@ -2400,16 +2398,6 @@
                 // Update temperature slider range if bounds changed (important for DRY mode)
                 if (boundsChanged && currentMode === 'dry') {
                     updateTempSliderRange();
-                }
-
-                // Parse biorhythm sequence step (byte 27)
-                // 0 = no active sequence, 1-32 = active step number
-                const newBioStep = data[27];
-                if (newBioStep !== currentBioStep) {
-                    currentBioStep = newBioStep;
-                    if (statusLoggingEnabled && newBioStep > 0) {
-                        logDebug(`  Biorhythm step: ${newBioStep}`, 'info');
-                    }
                 }
 
                 // Parse current temperature (byte 7)
@@ -2493,24 +2481,13 @@
                         const h = Math.floor(totalSeconds / 3600);
                         const m = Math.floor((totalSeconds % 3600) / 60);
                         const s = totalSeconds % 60;
-                        let timeStr = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-
-                        // Append biorhythm step if active
-                        if (currentBioStep > 0) {
-                            timeStr += ` • Step ${currentBioStep}`;
-                        }
-
+                        const timeStr = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
                         timeRemainingEl.textContent = timeStr;
                         if (statusLoggingEnabled) {
                             logDebug(`  Time remaining: ${timeStr}`, 'info');
                         }
                     } else {
-                        // Show biorhythm step even when timer is off
-                        let displayText = '--';
-                        if (currentBioStep > 0) {
-                            displayText = `Step ${currentBioStep}`;
-                        }
-                        timeRemainingEl.textContent = displayText;
+                        timeRemainingEl.textContent = '--';
                     }
                 }
 
