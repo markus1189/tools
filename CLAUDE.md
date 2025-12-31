@@ -50,7 +50,8 @@ Minimal required structure for each tool:
    - `icon`: Lucide icon name from https://lucide.dev/icons/ (required)
    - `dateAdded`: ISO 8601 date (YYYY-MM-DD) when tool was created (required)
    - `dateUpdated`: Optional - only add when tool receives significant updates
-3. The `index.html` reads from `tools.json` dynamically - no manual update needed
+3. Update `README.md` to include the new tool in the "Available Tools" list
+4. The `index.html` reads from `tools.json` dynamically - no manual update needed
 
 ## Manifest: tools.json
 
