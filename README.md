@@ -14,7 +14,6 @@ A personal collection of self-contained web-based tools, hosted at **[markus1189
 - **Barcode Wallet** - Store and display loyalty cards, tickets, and membership barcodes offline as a PWA
 - **Interval Timer** - Interval timer for work/rest workouts with customizable blocks and ramp generator
 - **BedJet Bluetooth Control** - Control BedJet climate comfort system via Bluetooth LE with real-time status monitoring
-- **Birthday Dominic** - Moorhuhn-style laser shooting game with moving targets, ammo system, reloading mechanics, combos, and birthday celebrations
 
 ## Tech Stack
 

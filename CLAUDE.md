@@ -97,3 +97,7 @@ gh run watch <RUN_ID>
 # Watch latest run
 gh run watch $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
+
+## References
+
+- **BedJet**: [markus1189/bedjet-re](https://github.com/markus1189/bedjet-re) - Decompiled official Android application with notes

@@ -70,14 +70,6 @@
       "icon": "bluetooth",
       "dateAdded": "2025-12-29",
       "dateUpdated": "2025-12-30"
-    },
-    {
-      "id": "birthday-dominic",
-      "title": "Birthday Dominic",
-      "description": "Moorhuhn-style laser shooting game with moving targets, ammo system, reloading mechanics, combos, and birthday celebrations",
-      "icon": "party-popper",
-      "dateAdded": "2025-12-30",
-      "dateUpdated": "2025-12-30"
     }
   ]
 }
