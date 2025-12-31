@@ -1217,10 +1217,10 @@
         };
 
         // Temperature ranges by mode (in Fahrenheit for direct use)
-        // Source: /tmp/bedjet-source/docs/temperature-ranges.md
+        // Source: https://github.com/markus1189/bedjet-re/blob/main/docs/temperature-ranges.md
         // Note: DRY mode uses dynamic bounds from device (see dry-mode-temperature-bounds.md)
         const TEMP_RANGES = {
-            'heat': { minF: 72, maxF: 104, minC: 22, maxC: 40 },      // Heat: 22.5-40°C (72.5-104°F) - rounded
+            'heat': { minF: 73, maxF: 104, minC: 23, maxC: 40 },      // Heat: 22.5-40°C (72.5-104°F) per official spec
             'turbo': { minF: 109, maxF: 109, minC: 43, maxC: 43 },    // Turbo: Fixed 43°C (109.4°F)
             'ext_ht': { minF: 66, maxF: 92, minC: 19, maxC: 33 },     // Extended Heat: 19-33.5°C (66.2-92.3°F) - rounded
             'cool': { minF: 66, maxF: 88, minC: 19, maxC: 31 },       // Cool: 19-31°C (66.2-87.8°F)
@@ -2413,20 +2413,22 @@
                 }
 
                 // Parse current temperature (byte 7)
-                if (data[7] !== 0 && data[7] !== 0x26) {
-                    const rawCurrent = data[7] - 0x26;
-                    const currentTempF = Math.round((rawCurrent + 66) - (rawCurrent / 9));
+                // BedJet uses half-degrees Celsius format: value 80 = 40.0°C
+                if (data[7] !== 0) {
+                    const rawCurrent = data[7];  // Half-degree Celsius value
+                    const currentTempF = Math.round(((rawCurrent * 9) / 10) + 32);
                     const displayCurrent = displayTemp(currentTempF);
                     currentTempEl.textContent = displayCurrent;
                     if (statusLoggingEnabled) {
-                        logDebug(`  Current temp: ${currentTempF}°F (${fToC(currentTempF)}°C) (byte[7]=0x${data[7].toString(16)})`, 'info');
+                        logDebug(`  Current temp: ${currentTempF}°F (${fToC(currentTempF)}°C) (raw=${data[7]}, half-deg-C=${(data[7]/2).toFixed(1)}°C)`, 'info');
                     }
                 }
 
                 // Parse target temperature (byte 8)
-                if (data[8] !== 0 && data[8] !== 0x26) {
-                    const rawTarget = data[8] - 0x26;
-                    const targetTempF = Math.round((rawTarget + 66) - (rawTarget / 9));
+                // BedJet uses half-degrees Celsius format: value 80 = 40.0°C
+                if (data[8] !== 0) {
+                    const rawTarget = data[8];  // Half-degree Celsius value
+                    const targetTempF = Math.round(((rawTarget * 9) / 10) + 32);
                     const displayTarget = displayTemp(targetTempF);
 
                     // Only update if not dirty (user hasn't changed slider)
@@ -2438,7 +2440,7 @@
                     }
 
                     if (statusLoggingEnabled) {
-                        logDebug(`  Target temp: ${targetTempF}°F (${fToC(targetTempF)}°C) (byte[8]=0x${data[8].toString(16)})`, 'info');
+                        logDebug(`  Target temp: ${targetTempF}°F (${fToC(targetTempF)}°C) (raw=${data[8]}, half-deg-C=${(data[8]/2).toFixed(1)}°C)`, 'info');
                     }
                 }
 
@@ -2634,13 +2636,14 @@
                 return;
             }
 
-            // Convert temperature to BedJet format (matches Python implementations)
-            // Formula: temp_byte = (temp - 60) / 9 + (temp - 66) + 0x26
-            const tempByte = Math.round((temp - 60) / 9 + (temp - 66) + 0x26);
+            // Convert temperature to BedJet half-degrees Celsius format (official encoding)
+            // Formula: ceil(((°F - 32) × 10) / 9) → value 80 = 40.0°C
+            // Reference: https://github.com/markus1189/bedjet-re/blob/main/docs/temperature-ranges.md
+            const tempByte = Math.ceil(((temp - 32) * 10) / 9);
             const clampedByte = Math.max(0, Math.min(255, tempByte));
 
             console.log(`Setting temperature ${temp}°F (byte: 0x${clampedByte.toString(16)})`);
-            logDebug(`  Temp byte: 0x${clampedByte.toString(16)}`, 'info');
+            logDebug(`  Temp byte: ${clampedByte} (0x${clampedByte.toString(16)}, half-deg-C: ${(clampedByte/2).toFixed(1)}°C)`, 'info');
             await sendCommand([0x03, clampedByte]);
         }
 
