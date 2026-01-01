@@ -706,6 +706,101 @@
             transform: scale(0.95);
         }
 
+        /* Timer Mode Tabs */
+        .timer-mode-tabs {
+            display: flex;
+            gap: 5px;
+            background: #333;
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .timer-mode-tab {
+            padding: 6px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            color: #aaa;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timer-mode-tab.active {
+            background: #ff9800;
+            color: white;
+        }
+
+        /* End Time Picker */
+        .endtime-picker-container {
+            background: #222;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .endtime-picker-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .endtime-label {
+            font-size: 14px;
+            color: #aaa;
+            font-weight: 600;
+            min-width: 60px;
+        }
+
+        .endtime-input {
+            flex: 1;
+            padding: 10px 12px;
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 6px;
+            color: #eee;
+            font-size: 16px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .endtime-input:focus {
+            outline: none;
+            border-color: #ff9800;
+        }
+
+        .endtime-info {
+            padding: 10px;
+            background: #333;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .endtime-info-label {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .endtime-info-value {
+            font-size: 16px;
+            color: #ff9800;
+            font-weight: 700;
+        }
+
+        .endtime-warning {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 152, 0, 0.15);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 6px;
+            color: #ff9800;
+            font-size: 12px;
+            text-align: center;
+        }
+
         /* Mobile-optimized touch targets */
         @media (pointer: coarse) {
             input[type="range"]::-webkit-slider-thumb {
@@ -1022,6 +1117,10 @@
                     <div class="timer-modal-content">
                         <div class="timer-modal-header">
                             <div class="timer-modal-title">Set Timer</div>
+                            <div class="timer-mode-tabs">
+                                <button class="timer-mode-tab active" data-mode="duration">Duration</button>
+                                <button class="timer-mode-tab" data-mode="endtime">End Time</button>
+                            </div>
                             <button class="timer-modal-close" id="timerModalClose">×</button>
                         </div>
 
@@ -1031,7 +1130,29 @@
                             <div class="timer-limit-text" id="timerModalLimit">Max: --</div>
                         </div>
 
-                        <div class="timer-section">
+                        <!-- End Time Section (hidden by default) -->
+                        <div class="timer-section timer-endtime-section" style="display: none;">
+                            <div class="timer-section-title">Set End Time</div>
+
+                            <div class="endtime-picker-container">
+                                <div class="endtime-picker-row">
+                                    <label class="endtime-label">Time:</label>
+                                    <input type="time" id="endTimeInput" class="endtime-input" value="08:00">
+                                </div>
+
+                                <div class="endtime-info" id="endTimeInfo">
+                                    <div class="endtime-info-label">Timer Duration:</div>
+                                    <div class="endtime-info-value" id="endTimeDuration">--</div>
+                                </div>
+
+                                <div class="endtime-warning" id="endTimeWarning" style="display: none;">
+                                    <span>⚠️ Clamped to max duration</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Duration Section (show/hide with tab) -->
+                        <div class="timer-section timer-duration-section">
                             <div class="timer-section-title">Quick Presets</div>
                             <div class="timer-presets">
                                 <button class="timer-preset-btn off" data-minutes="0">Off</button>
@@ -1045,7 +1166,7 @@
                             </div>
                         </div>
 
-                        <div class="timer-section">
+                        <div class="timer-section timer-duration-section">
                             <div class="timer-section-title">Fine Tune</div>
                             <div class="timer-adjustments">
                                 <button class="timer-adjust-btn" id="timerMinus60">
@@ -1261,6 +1382,9 @@
         let timerPendingMinutes = null;  // Store in minutes for easier math
         let deviceMaxHours = null;       // From status byte 10
         let deviceMaxMinutes = null;     // From status byte 11
+        let timerMode = 'duration';      // 'duration' or 'endtime'
+        let timerEndTime = null;         // Stored as { hours, minutes } when in endtime mode
+        let timerClamped = false;        // Track if end time was clamped to max
 
         // Auto-reconnect state
         let reconnectAttempts = 0;
@@ -1665,6 +1789,11 @@
             // Update button states (disable if at limits)
             updateTimerButtonStates(newMinutes, limits);
 
+            // If in end time mode, also update the end time input
+            if (timerMode === 'endtime') {
+                syncEndTimeInputFromDuration(newMinutes);
+            }
+
             logDebug(`Timer adjusted: ${deltaMinutes > 0 ? '+' : ''}${deltaMinutes} min → ${newMinutes} min`, 'info');
         }
 
@@ -1707,6 +1836,11 @@
                 timerPendingMinutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
             }
 
+            // Reset to duration mode by default
+            timerMode = 'duration';
+            timerClamped = false;
+            switchTimerMode('duration');
+
             // Update modal display and limits
             updateTimerModalDisplay(timerPendingMinutes);
             const limits = getTimerLimits();
@@ -1720,14 +1854,16 @@
 
         function closeTimerModal(apply = false) {
             if (apply && timerPendingMinutes !== null) {
+                // Both modes use the same pending minutes value
                 setRuntime(timerPendingMinutes);
-                logDebug(`Timer applied: ${timerPendingMinutes} min`, 'info');
+                logDebug(`Timer applied: ${timerPendingMinutes} min (mode: ${timerMode}${timerClamped ? ', clamped' : ''})`, 'info');
             } else {
                 logDebug('Timer modal cancelled', 'info');
             }
 
             // Reset state
             timerPendingMinutes = null;
+            timerClamped = false;
 
             // Hide modal
             document.getElementById('timerModal').classList.remove('active');
@@ -2023,6 +2159,133 @@
                 activatePreset(preset);
             });
         });
+
+        // Timer mode tab switching
+        document.querySelectorAll('.timer-mode-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const mode = tab.dataset.mode;
+                switchTimerMode(mode);
+            });
+        });
+
+        // End time input change listener
+        document.getElementById('endTimeInput').addEventListener('input', () => {
+            updateEndTimeDuration();
+        });
+
+        function switchTimerMode(mode) {
+            timerMode = mode;
+
+            // Update tab visual state
+            document.querySelectorAll('.timer-mode-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.mode === mode);
+            });
+
+            // Show/hide sections
+            const durationSections = document.querySelectorAll('.timer-duration-section');
+            const endTimeSections = document.querySelectorAll('.timer-endtime-section');
+
+            if (mode === 'duration') {
+                durationSections.forEach(s => s.style.display = '');
+                endTimeSections.forEach(s => s.style.display = 'none');
+            } else {
+                durationSections.forEach(s => s.style.display = 'none');
+                endTimeSections.forEach(s => s.style.display = '');
+
+                // Initialize end time input if switching to this mode
+                initializeEndTimeInput();
+            }
+
+            logDebug(`Timer mode switched to: ${mode}`, 'info');
+        }
+
+        function initializeEndTimeInput() {
+            const now = new Date();
+            const currentMinutes = timerPendingMinutes !== null ? timerPendingMinutes : 60; // Default 1 hour
+
+            // Calculate end time based on current pending duration
+            const endTime = new Date(now.getTime() + currentMinutes * 60000);
+            const hours = endTime.getHours().toString().padStart(2, '0');
+            const minutes = endTime.getMinutes().toString().padStart(2, '0');
+
+            document.getElementById('endTimeInput').value = `${hours}:${minutes}`;
+            updateEndTimeDuration();
+        }
+
+        function updateEndTimeDuration() {
+            const endTimeInput = document.getElementById('endTimeInput').value;
+            if (!endTimeInput) {
+                document.getElementById('endTimeDuration').textContent = '--';
+                return;
+            }
+
+            const [hours, minutes] = endTimeInput.split(':').map(Number);
+            const now = new Date();
+            const endTime = new Date();
+            endTime.setHours(hours, minutes, 0, 0);
+
+            // If end time is before current time, assume it's tomorrow
+            let isTomorrow = false;
+            if (endTime <= now) {
+                endTime.setDate(endTime.getDate() + 1);
+                isTomorrow = true;
+            }
+
+            // Calculate duration in minutes
+            const durationMs = endTime - now;
+            let durationMinutes = Math.ceil(durationMs / 60000); // Round up to nearest minute
+
+            // Get device limits and clamp if needed
+            const limits = getTimerLimits();
+            timerClamped = false;
+
+            if (durationMinutes > limits.maxMinutes) {
+                durationMinutes = limits.maxMinutes;
+                timerClamped = true;
+                document.getElementById('endTimeWarning').style.display = '';
+                logDebug(`End time clamped to max duration: ${limits.maxMinutes} min`, 'warn');
+            } else if (durationMinutes < limits.minMinutes) {
+                durationMinutes = limits.minMinutes;
+                timerClamped = true;
+                document.getElementById('endTimeWarning').style.display = '';
+                logDebug(`End time clamped to min duration: ${limits.minMinutes} min`, 'warn');
+            } else {
+                document.getElementById('endTimeWarning').style.display = 'none';
+            }
+
+            // Update pending minutes
+            timerPendingMinutes = durationMinutes;
+
+            // Format duration display
+            const durationHours = Math.floor(durationMinutes / 60);
+            const durationMins = durationMinutes % 60;
+
+            let durationText = '';
+            if (durationHours > 0) {
+                durationText = `${durationHours}h ${durationMins}m`;
+            } else {
+                durationText = `${durationMins} min`;
+            }
+
+            if (isTomorrow) {
+                durationText += ' (tomorrow)';
+            }
+
+            document.getElementById('endTimeDuration').textContent = durationText;
+
+            // Update main modal display
+            updateTimerModalDisplay(durationMinutes);
+        }
+
+        function syncEndTimeInputFromDuration(durationMinutes) {
+            const now = new Date();
+            const endTime = new Date(now.getTime() + durationMinutes * 60000);
+            const hours = endTime.getHours().toString().padStart(2, '0');
+            const minutes = endTime.getMinutes().toString().padStart(2, '0');
+
+            document.getElementById('endTimeInput').value = `${hours}:${minutes}`;
+            // Don't call updateEndTimeDuration() to avoid circular updates
+        }
 
         async function connectToBedJet() {
             try {
