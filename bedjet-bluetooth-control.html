@@ -2904,10 +2904,8 @@
                     // Show fan as OFF
                     fanSpeedEl.textContent = 'OFF';
 
-                    // Show only current temp (copy current to target display)
-                    if (currentTempEl.textContent !== '--') {
-                        targetTempEl.textContent = currentTempEl.textContent;
-                    }
+                    // Show no target temp when off (only current temp is relevant)
+                    targetTempEl.textContent = '--';
                 }
 
                 updateModeButtons();
