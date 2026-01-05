@@ -2899,6 +2899,17 @@
                     }
                 }
 
+                // Update display for OFF state
+                if (currentMode === 'off') {
+                    // Show fan as OFF
+                    fanSpeedEl.textContent = 'OFF';
+
+                    // Show only current temp (copy current to target display)
+                    if (currentTempEl.textContent !== '--') {
+                        targetTempEl.textContent = currentTempEl.textContent;
+                    }
+                }
+
                 updateModeButtons();
             } else {
                 if (statusLoggingEnabled) {
