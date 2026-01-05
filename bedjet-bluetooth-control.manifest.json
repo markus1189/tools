@@ -1,7 +1,7 @@
 {
-  "name": "BedJet Bluetooth Control",
-  "short_name": "BedJet",
-  "description": "Control BedJet climate comfort system via Bluetooth LE with real-time status monitoring",
+  "name": "JetCommand",
+  "short_name": "JetCommand",
+  "description": "Control your BedJet climate comfort system via Bluetooth LE with real-time status monitoring",
   "start_url": "./bedjet-bluetooth-control.html",
   "display": "standalone",
   "background_color": "#ffffff",
