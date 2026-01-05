@@ -1126,6 +1126,10 @@
                 <input type="checkbox" id="useCelsius" style="margin-right: 8px; cursor: pointer;">
                 <span>Use Fahrenheit (°F)</span>
             </label>
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #aaa; margin-bottom: 12px;">
+                <input type="checkbox" id="enableVibration" style="margin-right: 8px; cursor: pointer;">
+                <span>Enable haptic feedback</span>
+            </label>
             <button id="installBtn" class="btn btn-primary" style="display: none; width: 100%;">Install App</button>
         </div>
     </div>
@@ -1462,6 +1466,7 @@
         const STORAGE_KEY_DEVICE_NAME = 'bedjet_device_name';
         const STORAGE_KEY_DEBUG_LOGGING = 'bedjet_debug_logging_enabled';
         const STORAGE_KEY_STATUS_LOGGING = 'bedjet_status_logging_enabled';
+        const STORAGE_KEY_VIBRATION_ENABLED = 'bedjet_vibration_enabled';
 
         // LocalStorage functions
         function saveDeviceToStorage(deviceId, deviceName) {
@@ -1531,11 +1536,66 @@
             }
         }
 
+        function saveVibrationPreference(enabled) {
+            try {
+                localStorage.setItem(STORAGE_KEY_VIBRATION_ENABLED, enabled ? 'true' : 'false');
+            } catch (error) {
+                console.warn('Failed to save vibration preference:', error);
+            }
+        }
+
+        function getVibrationPreference() {
+            try {
+                const value = localStorage.getItem(STORAGE_KEY_VIBRATION_ENABLED);
+                return value === null ? true : value === 'true'; // Default enabled
+            } catch (error) {
+                return true;
+            }
+        }
+
         // Debug logging
         let debugLoggingEnabled = getDebugLoggingPreference(); // Default to disabled
         let statusLoggingEnabled = getStatusLoggingPreference(); // Default to disabled
+        let vibrationEnabled = getVibrationPreference(); // Default to enabled
         let debugLogContent = '';
         const debugLogEl = document.getElementById('debugLog');
+
+        /**
+         * Trigger haptic feedback if supported and enabled
+         * @param {string} pattern - 'success' or 'error'
+         */
+        function triggerVibration(pattern) {
+            if (!vibrationEnabled) return;
+
+            if (!navigator.vibrate) {
+                if (debugLoggingEnabled) {
+                    logDebug('⚠ Vibration API not supported', 'warn');
+                }
+                return;
+            }
+
+            const patterns = {
+                success: 50,
+                error: [50, 100, 50]
+            };
+
+            const vibrationPattern = patterns[pattern];
+            if (!vibrationPattern) {
+                console.warn(`Unknown vibration pattern: ${pattern}`);
+                return;
+            }
+
+            try {
+                navigator.vibrate(vibrationPattern);
+                if (debugLoggingEnabled) {
+                    logDebug(`📳 Vibration: ${pattern}`, 'info');
+                }
+            } catch (error) {
+                if (debugLoggingEnabled) {
+                    logDebug(`⚠ Vibration failed: ${error.message}`, 'warn');
+                }
+            }
+        }
 
         // Temperature conversion helpers
         function fToC(fahrenheit) {
@@ -1935,6 +1995,7 @@
         const useCelsiusCheckbox = document.getElementById('useCelsius');
         const enableDebugLoggingCheckbox = document.getElementById('enableDebugLogging');
         const enableStatusLoggingCheckbox = document.getElementById('enableStatusLogging');
+        const enableVibrationCheckbox = document.getElementById('enableVibration');
 
         // State displays
         const currentTempEl = document.getElementById('currentTemp');
@@ -2029,6 +2090,16 @@
                 logDebug(`Status notification logging ${statusLoggingEnabled ? 'enabled' : 'disabled'}`, 'info');
             } else {
                 console.log(`Status notification logging ${statusLoggingEnabled ? 'enabled' : 'disabled'}`);
+            }
+        });
+
+        enableVibrationCheckbox.addEventListener('change', (e) => {
+            vibrationEnabled = e.target.checked;
+            saveVibrationPreference(vibrationEnabled);
+            if (debugLoggingEnabled) {
+                logDebug(`Haptic feedback ${vibrationEnabled ? 'enabled' : 'disabled'}`, 'info');
+            } else {
+                console.log(`Haptic feedback ${vibrationEnabled ? 'enabled' : 'disabled'}`);
             }
         });
 
@@ -2446,6 +2517,7 @@
                 disconnectBtn.style.display = '';
 
                 logDebug('=== Connection Complete ===', 'success');
+                triggerVibration('success');
 
             } catch (error) {
                 console.error('Connection failed:', error);
@@ -2564,6 +2636,7 @@
                 disconnectBtn.style.display = '';
 
                 logDebug('=== Reconnection Complete ===', 'success');
+                triggerVibration('success');
 
             } catch (error) {
                 console.error('Reconnection failed:', error);
@@ -2590,6 +2663,7 @@
             if (device && device.gatt.connected) {
                 device.gatt.disconnect();
                 logDebug('Disconnect command sent', 'info');
+                triggerVibration('success');
             } else {
                 logDebug('No active connection to disconnect', 'warn');
             }
@@ -2647,6 +2721,7 @@
                     isReconnecting = false;
 
                     logDebug('=== Auto-reconnection Complete ===', 'success');
+                    triggerVibration('success');
                 } catch (error) {
                     logDebug(`Reconnect attempt ${reconnectAttempts} failed: ${error.message}`, 'error');
                     isReconnecting = false;
@@ -2875,6 +2950,7 @@
             if (!commandCharacteristic) {
                 showError('Not connected to BedJet');
                 logDebug('❌ Cannot send command: Not connected', 'error');
+                triggerVibration('error');
                 return;
             }
 
@@ -2886,12 +2962,14 @@
 
                 await commandCharacteristic.writeValue(commandArray);
                 logDebug('✓ Command sent successfully', 'success');
+                triggerVibration('success');
 
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
                 console.error('Command failed:', error);
                 logDebug(`❌ Command failed: ${error.message}`, 'error');
                 showError(`Command failed: ${error.message}`);
+                triggerVibration('error');
             }
         }
 
@@ -3040,6 +3118,7 @@
             // Initialize debug logging checkboxes
             enableDebugLoggingCheckbox.checked = debugLoggingEnabled;
             enableStatusLoggingCheckbox.checked = statusLoggingEnabled;
+            enableVibrationCheckbox.checked = vibrationEnabled;
 
             const savedDevice = getSavedDevice();
             if (savedDevice) {
