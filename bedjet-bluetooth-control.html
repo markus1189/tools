@@ -1342,11 +1342,11 @@
         // Note: DRY mode previously attempted dynamic bounds, but byte 13 is the mode indicator (not a temp value).
         // All modes now use static ranges. If dynamic DRY bounds are found in future, update getTempRange().
         const TEMP_RANGES = {
-            'heat': { minF: 73, maxF: 104, minC: 23, maxC: 40 },      // Heat: 22.5-40°C (72.5-104°F) per official spec
+            'heat': { minF: 72, maxF: 104, minC: 22, maxC: 40 },      // Heat: 22-40°C (72-104°F)
             'turbo': { minF: 109, maxF: 109, minC: 43, maxC: 43 },    // Turbo: Fixed 43°C (109.4°F)
-            'ext_ht': { minF: 66, maxF: 92, minC: 19, maxC: 33 },     // Extended Heat: 19-33.5°C (66.2-92.3°F) - rounded
-            'cool': { minF: 66, maxF: 88, minC: 19, maxC: 31 },       // Cool: 19-31°C (66.2-87.8°F)
-            'dry': { minF: 68, maxF: 104, minC: 20, maxC: 40 },       // Dry: 20-40°C (68-104°F) - static range (dynamic bounds not identified)
+            'ext_ht': { minF: 72, maxF: 91, minC: 22, maxC: 33 },     // Extended Heat: 22-33°C (72-91°F)
+            'cool': { minF: 66, maxF: 79, minC: 19, maxC: 26 },       // Cool: 19-26°C (66-79°F)
+            'dry': { minF: 61, maxF: 88, minC: 16, maxC: 31 },        // Dry: 16-31°C (61-88°F) - static range
             'off': { minF: 66, maxF: 104, minC: 19, maxC: 40 }        // Default range when off
         };
 
