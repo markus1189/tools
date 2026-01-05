@@ -1032,6 +1032,58 @@
             color: #89d185;
         }
 
+        /* Empty State */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            color: #eee;
+        }
+
+        .empty-state-content {
+            background: rgba(34, 34, 34, 0.6);
+            padding: 40px 30px;
+            border-radius: 16px;
+            max-width: 400px;
+            width: 100%;
+            border: 2px solid #444;
+            backdrop-filter: blur(10px);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #ff9800;
+        }
+
+        .empty-state p {
+            color: #aaa;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        /* Reconnecting Animation */
+        .status-indicator.reconnecting {
+            background: #ff9800;
+            box-shadow: 0 0 8px rgba(255, 152, 0, 0.8);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
         @media (max-width: 360px) {
             .gauges-container {
                 grid-template-columns: 1fr;
@@ -1086,6 +1138,16 @@
                 <span class="status-indicator" id="statusIndicator"></span>
                 <span id="statusText">Not Connected</span>
                 <span class="device-name" id="deviceName"></span>
+            </div>
+        </div>
+
+        <!-- Empty State (Connect Prompt) -->
+        <div id="emptyState" class="empty-state">
+            <div class="empty-state-content">
+                <span class="empty-state-icon">🛏️</span>
+                <h2>Welcome to JetCommand</h2>
+                <p>Connect to your BedJet device to start controlling your sleep comfort.</p>
+                <button id="mainConnectBtn" class="btn btn-primary">Connect BedJet</button>
             </div>
         </div>
 
@@ -1935,6 +1997,12 @@
             connectToBedJet();
             closeMenu();
         });
+        
+        // Empty state main connect button
+        document.getElementById('mainConnectBtn').addEventListener('click', () => {
+            connectToBedJet();
+        });
+
         reconnectBtn.addEventListener('click', () => {
             reconnectToSavedDevice();
             closeMenu();
@@ -2372,6 +2440,7 @@
                 // Update UI
                 updateConnectionStatus(true);
                 controls.style.display = 'block';
+                document.getElementById('emptyState').style.display = 'none';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = '';
@@ -2393,6 +2462,7 @@
             try {
                 hideError();
                 statusText.textContent = 'Reconnecting...';
+                statusIndicator.className = 'status-indicator reconnecting';
 
                 // Reset reconnect state
                 userDisconnected = false;
@@ -2488,6 +2558,7 @@
                 // Update UI
                 updateConnectionStatus(true);
                 controls.style.display = 'block';
+                document.getElementById('emptyState').style.display = 'none';
                 connectBtn.style.display = 'none';
                 reconnectBtn.style.display = 'none';
                 disconnectBtn.style.display = '';
@@ -2540,6 +2611,10 @@
 
             isReconnecting = true;
             reconnectAttempts++;
+            
+            // Show pulsing orange status
+            statusIndicator.className = 'status-indicator reconnecting';
+            statusText.textContent = `Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})...`;
 
             const delayMs = reconnectBaseDelay * reconnectAttempts; // Linear backoff
             logDebug(`Reconnect attempt ${reconnectAttempts}/${maxReconnectAttempts} in ${delayMs/1000}s...`, 'warn');
@@ -2562,6 +2637,7 @@
                     // Update UI
                     updateConnectionStatus(true);
                     controls.style.display = 'block';
+                    document.getElementById('emptyState').style.display = 'none';
                     connectBtn.style.display = 'none';
                     reconnectBtn.style.display = 'none';
                     disconnectBtn.style.display = '';
@@ -2591,6 +2667,7 @@
             logDebug(`Device: ${device?.name || 'Unknown'}`, 'info');
             updateConnectionStatus(false);
             controls.style.display = 'none';
+            document.getElementById('emptyState').style.display = 'flex';
             disconnectBtn.style.display = 'none';
             deviceName.textContent = '';
             currentMode = null;
@@ -2915,11 +2992,13 @@
         }
 
         function updateConnectionStatus(connected) {
+            // Reset to base class to remove 'reconnecting' animation
+            statusIndicator.className = 'status-indicator';
+            
             if (connected) {
                 statusIndicator.classList.add('connected');
                 statusText.textContent = 'Connected';
             } else {
-                statusIndicator.classList.remove('connected');
                 statusText.textContent = 'Not Connected';
             }
         }

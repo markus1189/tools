@@ -13,7 +13,7 @@ A personal collection of self-contained web-based tools, hosted at **[markus1189
 - **Markdown Preview** - Live markdown editor with split-screen preview and HTML export
 - **Barcode Wallet** - Store and display loyalty cards, tickets, and membership barcodes offline as a PWA
 - **Interval Timer** - Interval timer for work/rest workouts with customizable blocks and ramp generator
-- **BedJet Bluetooth Control** - Control BedJet climate comfort system via Bluetooth LE with real-time status monitoring
+- **BedJet Bluetooth Control** - Control BedJet climate comfort system via Bluetooth LE with real-time status monitoring, timer/runtime control, and auto-reconnect capability
 
 ## Tech Stack
 
