@@ -342,6 +342,120 @@
             white-space: nowrap;
             border-width: 0;
         }
+
+        /* Recent Bookmarks */
+        .recent-bookmarks {
+            margin-top: 1rem;
+        }
+
+        .bookmark-item {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .bookmark-item:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .bookmark-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .bookmark-title {
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .bookmark-url {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .bookmark-url a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .bookmark-url a:hover {
+            text-decoration: underline;
+        }
+
+        .bookmark-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+
+        .loading-text {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .error-text {
+            text-align: center;
+            color: var(--danger);
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .empty-text {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .refresh-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: var(--bg-input);
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        .refresh-btn.refreshing {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .refresh-btn .refresh-icon {
+            display: inline-block;
+            transition: transform 0.3s;
+        }
+
+        .refresh-btn.refreshing .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body>
@@ -409,6 +523,19 @@
                 </button>
             </form>
         </div>
+
+        <!-- Recent Bookmarks Card -->
+        <div class="card recent-bookmarks">
+            <div class="refresh-header">
+                <h2>Recent Bookmarks</h2>
+                <button type="button" class="refresh-btn" id="refreshBtn" onclick="loadRecentBookmarks()">
+                    <span class="refresh-icon">↻</span> Refresh
+                </button>
+            </div>
+            <div id="bookmarksList">
+                <div class="loading-text">Loading...</div>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification -->
@@ -429,7 +556,8 @@
         // State
         const state = {
             accessToken: null,
-            isSubmitting: false
+            isSubmitting: false,
+            isLoadingBookmarks: false
         };
 
         // DOM Elements
@@ -445,7 +573,9 @@
             toastIcon: document.querySelector('.toast-icon'),
             toastMessage: document.querySelector('.toast-message'),
             chevron: document.querySelector('.chevron'),
-            announcer: document.getElementById('announcer')
+            announcer: document.getElementById('announcer'),
+            bookmarksList: document.getElementById('bookmarksList'),
+            refreshBtn: document.getElementById('refreshBtn')
         };
 
         // Initialize on page load
@@ -454,6 +584,7 @@
             updateUI();
             setupEventListeners();
             handleSharedContent();
+            loadRecentBookmarks();
         }
 
         // Handle shared content from share target
@@ -672,6 +803,9 @@
                 elements.urlInput.value = '';
                 elements.urlInput.focus();
 
+                // Reload recent bookmarks to show the new one
+                loadRecentBookmarks();
+
             } catch (error) {
                 console.error('Failed to add bookmark:', error);
 
@@ -721,6 +855,81 @@
 
             showToast(errorMessage, 'error');
             announce(errorMessage);
+        }
+
+        // Load Recent Bookmarks
+        async function loadRecentBookmarks() {
+            if (!state.accessToken) {
+                elements.bookmarksList.innerHTML = '<div class="empty-text">Configure your access token to view recent bookmarks</div>';
+                return;
+            }
+
+            if (state.isLoadingBookmarks) return;
+
+            state.isLoadingBookmarks = true;
+            elements.refreshBtn.classList.add('refreshing');
+            elements.refreshBtn.disabled = true;
+
+            try {
+                const response = await fetch(
+                    `${RAINDROP_API_BASE}/raindrops/${UNSORTED_COLLECTION_ID}?perpage=5&sort=-created`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.accessToken}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        elements.bookmarksList.innerHTML = '<div class="error-text">Invalid token. Please check your access token.</div>';
+                    } else {
+                        elements.bookmarksList.innerHTML = '<div class="error-text">Failed to load bookmarks</div>';
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                const bookmarks = data.items || [];
+
+                if (bookmarks.length === 0) {
+                    elements.bookmarksList.innerHTML = '<div class="empty-text">No bookmarks yet. Add one above!</div>';
+                    return;
+                }
+
+                // Render bookmarks
+                elements.bookmarksList.innerHTML = bookmarks.map(bookmark => {
+                    const title = bookmark.title || bookmark.link || 'Untitled';
+                    const url = bookmark.link;
+                    const hasMetadata = bookmark.title && bookmark.title !== url;
+                    const metaText = hasMetadata ? 'Metadata loaded' : 'Waiting for metadata...';
+
+                    return `
+                        <div class="bookmark-item">
+                            <div class="bookmark-title">${escapeHtml(title)}</div>
+                            <div class="bookmark-url">
+                                <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>
+                            </div>
+                            <div class="bookmark-meta">${metaText}</div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Failed to load bookmarks:', error);
+                elements.bookmarksList.innerHTML = '<div class="error-text">Network error. Check your connection.</div>';
+            } finally {
+                state.isLoadingBookmarks = false;
+                elements.refreshBtn.classList.remove('refreshing');
+                elements.refreshBtn.disabled = false;
+            }
+        }
+
+        // HTML escape helper
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Toast Notification
