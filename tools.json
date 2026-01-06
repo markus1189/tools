@@ -70,6 +70,13 @@
       "icon": "bluetooth",
       "dateAdded": "2025-12-29",
       "dateUpdated": "2026-01-05"
+    },
+    {
+      "id": "gzip-compressor",
+      "title": "GZIP Compressor",
+      "description": "Compress and decompress text using GZIP with Base64 encoding and optional URL-safe replacements",
+      "icon": "file-archive",
+      "dateAdded": "2026-01-06"
     }
   ]
 }
