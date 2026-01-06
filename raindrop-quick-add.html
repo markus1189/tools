@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raindrop Quick Add</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --bg-input: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #f97316;
+            --accent-hover: #fb923c;
+            --accent-dim: #c2410c;
+            --success: #22c55e;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        /* Settings Section */
+        .settings-section {
+            margin-bottom: 1rem;
+        }
+
+        .settings-toggle {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+        }
+
+        .settings-toggle:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .settings-toggle-text {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .settings-status {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .settings-status.configured {
+            color: var(--success);
+        }
+
+        .chevron {
+            transition: transform 0.2s;
+            color: var(--text-muted);
+        }
+
+        .chevron.expanded {
+            transform: rotate(180deg);
+        }
+
+        .settings-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .settings-content.expanded {
+            max-height: 500px;
+        }
+
+        .settings-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            padding: 1.5rem;
+            margin-top: -1px;
+        }
+
+        /* Form Elements */
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .help-text a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Buttons */
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: var(--bg-input);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background: var(--bg-card-hover);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .button-group button {
+            flex: 1;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--success);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+
+        .toast.hidden {
+            display: none;
+        }
+
+        .toast.error {
+            border-left-color: var(--danger);
+        }
+
+        .toast.success {
+            border-left-color: var(--success);
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .toast-message {
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Form spacing */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .toast {
+                left: 20px;
+                right: 20px;
+                min-width: 0;
+            }
+        }
+
+        /* Screen reader only */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Raindrop Quick Add</h1>
+            <p class="subtitle">Add bookmarks to your Raindrop.io collection</p>
+        </header>
+
+        <!-- Settings Section -->
+        <div class="settings-section">
+            <div class="settings-toggle" id="settingsToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="settingsContent">
+                <div class="settings-toggle-text">
+                    <span style="font-weight: 500;">Settings</span>
+                    <span class="settings-status" id="settingsStatus">Not configured</span>
+                </div>
+                <span class="chevron" aria-hidden="true">▼</span>
+            </div>
+            <div class="settings-content" id="settingsContent">
+                <div class="settings-card">
+                    <h2>Access Token</h2>
+                    <div class="form-group">
+                        <label for="accessToken">Bearer Token</label>
+                        <input
+                            type="password"
+                            id="accessToken"
+                            placeholder="Enter your Raindrop.io access token"
+                            aria-describedby="tokenHelp"
+                        >
+                        <p class="help-text" id="tokenHelp">
+                            Get your access token from
+                            <a href="https://app.raindrop.io/settings/integrations" target="_blank" rel="noopener noreferrer">
+                                Raindrop.io Settings → Apps
+                            </a>
+                            (create a test token)
+                        </p>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="secondary" onclick="clearToken()">Clear</button>
+                        <button type="button" onclick="saveToken()">Save Token</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Input Card -->
+        <div class="card">
+            <form onsubmit="handleSubmit(event)" id="bookmarkForm">
+                <div class="form-group">
+                    <label for="urlInput">URL</label>
+                    <input
+                        type="url"
+                        id="urlInput"
+                        placeholder="https://example.com"
+                        required
+                        aria-required="true"
+                        aria-describedby="urlHelp"
+                    >
+                    <p class="help-text" id="urlHelp">
+                        Enter a URL to add to your Unsorted collection. Raindrop will automatically parse the page metadata.
+                    </p>
+                </div>
+                <button type="submit" id="submitBtn" disabled>
+                    Add to Raindrop
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true">
+        <span class="toast-icon"></span>
+        <span class="toast-message"></span>
+    </div>
+
+    <!-- Screen reader announcer -->
+    <div class="sr-only" aria-live="polite" aria-atomic="true" id="announcer"></div>
+
+    <script>
+        // Constants
+        const RAINDROP_API_BASE = 'https://api.raindrop.io/rest/v1';
+        const UNSORTED_COLLECTION_ID = -1;
+        const STORAGE_KEY_TOKEN = 'raindrop-access-token';
+
+        // State
+        const state = {
+            accessToken: null,
+            isSubmitting: false
+        };
+
+        // DOM Elements
+        const elements = {
+            settingsToggle: document.getElementById('settingsToggle'),
+            settingsContent: document.getElementById('settingsContent'),
+            settingsStatus: document.getElementById('settingsStatus'),
+            accessTokenInput: document.getElementById('accessToken'),
+            urlInput: document.getElementById('urlInput'),
+            submitBtn: document.getElementById('submitBtn'),
+            bookmarkForm: document.getElementById('bookmarkForm'),
+            toast: document.getElementById('toast'),
+            toastIcon: document.querySelector('.toast-icon'),
+            toastMessage: document.querySelector('.toast-message'),
+            chevron: document.querySelector('.chevron'),
+            announcer: document.getElementById('announcer')
+        };
+
+        // Initialize on page load
+        function init() {
+            loadToken();
+            updateUI();
+            setupEventListeners();
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Settings toggle
+            elements.settingsToggle.addEventListener('click', toggleSettings);
+            elements.settingsToggle.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleSettings();
+                }
+            });
+
+            // Auto-save token on blur
+            elements.accessTokenInput.addEventListener('blur', () => {
+                const value = elements.accessTokenInput.value.trim();
+                if (value && value !== state.accessToken) {
+                    saveToken();
+                }
+            });
+        }
+
+        // Settings Toggle
+        function toggleSettings() {
+            const isExpanded = elements.settingsContent.classList.contains('expanded');
+
+            if (isExpanded) {
+                elements.settingsContent.classList.remove('expanded');
+                elements.chevron.classList.remove('expanded');
+                elements.settingsToggle.setAttribute('aria-expanded', 'false');
+            } else {
+                elements.settingsContent.classList.add('expanded');
+                elements.chevron.classList.add('expanded');
+                elements.settingsToggle.setAttribute('aria-expanded', 'true');
+                elements.accessTokenInput.focus();
+            }
+        }
+
+        // LocalStorage Functions
+        function loadToken() {
+            try {
+                const token = localStorage.getItem(STORAGE_KEY_TOKEN);
+                if (token && token.trim().length > 0) {
+                    state.accessToken = token.trim();
+                    elements.accessTokenInput.value = token.trim();
+                    return true;
+                }
+            } catch (error) {
+                console.error('Failed to load access token:', error);
+            }
+            return false;
+        }
+
+        function saveToken() {
+            try {
+                const token = elements.accessTokenInput.value.trim();
+
+                if (!token) {
+                    showToast('Please enter an access token', 'error');
+                    return false;
+                }
+
+                localStorage.setItem(STORAGE_KEY_TOKEN, token);
+                state.accessToken = token;
+
+                showToast('Access token saved successfully', 'success');
+                updateUI();
+
+                // Collapse settings after saving
+                setTimeout(() => {
+                    if (elements.settingsContent.classList.contains('expanded')) {
+                        toggleSettings();
+                    }
+                }, 1000);
+
+                return true;
+            } catch (error) {
+                console.error('Failed to save access token:', error);
+                showToast('Failed to save token: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        function clearToken() {
+            try {
+                localStorage.removeItem(STORAGE_KEY_TOKEN);
+                state.accessToken = null;
+                elements.accessTokenInput.value = '';
+
+                showToast('Access token cleared', 'success');
+                updateUI();
+            } catch (error) {
+                console.error('Failed to clear token:', error);
+                showToast('Failed to clear token', 'error');
+            }
+        }
+
+        // UI Updates
+        function updateUI() {
+            const hasToken = state.accessToken !== null;
+
+            // Update submit button state
+            elements.submitBtn.disabled = !hasToken;
+
+            // Update settings status
+            if (hasToken) {
+                elements.settingsStatus.textContent = 'Configured';
+                elements.settingsStatus.classList.add('configured');
+            } else {
+                elements.settingsStatus.textContent = 'Not configured';
+                elements.settingsStatus.classList.remove('configured');
+            }
+        }
+
+        // Form Submission
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            if (state.isSubmitting) return;
+
+            const url = elements.urlInput.value.trim();
+
+            // Validate URL
+            try {
+                new URL(url);
+            } catch (error) {
+                showToast('Please enter a valid URL', 'error');
+                elements.urlInput.focus();
+                return;
+            }
+
+            if (!state.accessToken) {
+                showToast('Please configure your access token first', 'error');
+                toggleSettings();
+                return;
+            }
+
+            // Add bookmark
+            await addBookmark(url);
+        }
+
+        // Raindrop API
+        async function addBookmark(url) {
+            state.isSubmitting = true;
+
+            // Show loading state
+            const originalText = elements.submitBtn.innerHTML;
+            elements.submitBtn.innerHTML = '<span class="spinner"></span>Adding...';
+            elements.submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${RAINDROP_API_BASE}/raindrop`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        link: url,
+                        collection: { $id: UNSORTED_COLLECTION_ID },
+                        pleaseParse: {}
+                    })
+                });
+
+                if (!response.ok) {
+                    await handleApiError(response);
+                    return;
+                }
+
+                const data = await response.json();
+                const title = data.item?.title || url;
+
+                showToast(`Bookmark added: ${title}`, 'success');
+                announce(`Bookmark added successfully: ${title}`);
+
+                // Clear input and focus
+                elements.urlInput.value = '';
+                elements.urlInput.focus();
+
+            } catch (error) {
+                console.error('Failed to add bookmark:', error);
+
+                if (error.message.includes('Failed to fetch')) {
+                    showToast('Network error. Check your connection.', 'error');
+                } else {
+                    showToast('Failed to add bookmark: ' + error.message, 'error');
+                }
+            } finally {
+                state.isSubmitting = false;
+                elements.submitBtn.innerHTML = originalText;
+                elements.submitBtn.disabled = !state.accessToken;
+            }
+        }
+
+        // API Error Handling
+        async function handleApiError(response) {
+            let errorMessage = 'Failed to add bookmark';
+
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.errorMessage || errorData.message || errorMessage;
+            } catch (e) {
+                // Use status-based messages if JSON parsing fails
+            }
+
+            switch (response.status) {
+                case 401:
+                    errorMessage = 'Invalid token. Please check your access token.';
+                    // Show settings
+                    if (!elements.settingsContent.classList.contains('expanded')) {
+                        toggleSettings();
+                    }
+                    break;
+                case 400:
+                    errorMessage = errorMessage || 'Invalid URL or request.';
+                    break;
+                case 429:
+                    errorMessage = 'Rate limit exceeded. Wait a moment and try again.';
+                    break;
+                case 500:
+                case 502:
+                case 503:
+                    errorMessage = 'Raindrop service error. Please try again later.';
+                    break;
+            }
+
+            showToast(errorMessage, 'error');
+            announce(errorMessage);
+        }
+
+        // Toast Notification
+        function showToast(message, type = 'success', duration = 4000) {
+            // Update toast content
+            elements.toastMessage.textContent = message;
+
+            // Set icon based on type
+            elements.toastIcon.textContent = type === 'success' ? '✓' : '✕';
+
+            // Update toast class
+            elements.toast.classList.remove('success', 'error');
+            elements.toast.classList.add(type);
+
+            // Show toast
+            elements.toast.classList.remove('hidden');
+
+            // Auto-hide after duration
+            setTimeout(() => {
+                elements.toast.classList.add('hidden');
+            }, duration);
+        }
+
+        // Screen Reader Announcements
+        function announce(message) {
+            elements.announcer.textContent = message;
+            setTimeout(() => {
+                elements.announcer.textContent = '';
+            }, 1000);
+        }
+
+        // Initialize app
+        init();
+    </script>
+</body>
+</html>

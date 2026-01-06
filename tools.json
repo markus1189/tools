@@ -77,6 +77,13 @@
       "description": "Compress and decompress text using GZIP with Base64 encoding and optional URL-safe replacements",
       "icon": "file-archive",
       "dateAdded": "2026-01-06"
+    },
+    {
+      "id": "raindrop-quick-add",
+      "title": "Raindrop Quick Add",
+      "description": "Quickly add bookmarks to Raindrop.io with automatic metadata parsing",
+      "icon": "bookmark-plus",
+      "dateAdded": "2026-01-06"
     }
   ]
 }
