@@ -1,7 +1,7 @@
 // Raindrop Quick Add - Service Worker
-// Version: 1.1.0
+// Version: 1.2.0
 
-const CACHE_NAME = 'raindrop-quick-add-v2';
+const CACHE_NAME = 'raindrop-quick-add-v3';
 const urlsToCache = [
   './raindrop-quick-add.html',
   './raindrop-quick-add.manifest.json'

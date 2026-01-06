@@ -28,7 +28,7 @@
   "categories": ["utilities", "productivity"],
   "screenshots": [],
   "share_target": {
-    "action": "./raindrop-quick-add.html",
+    "action": "https://markus1189.github.io/tools/raindrop-quick-add.html",
     "method": "GET",
     "enctype": "application/x-www-form-urlencoded",
     "params": {
