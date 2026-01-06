@@ -355,6 +355,9 @@
             padding: 0.75rem 1rem;
             margin-bottom: 0.5rem;
             transition: background-color 0.2s;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
         }
 
         .bookmark-item:hover {
@@ -363,6 +366,40 @@
 
         .bookmark-item:last-child {
             margin-bottom: 0;
+        }
+
+        .bookmark-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bookmark-delete-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            line-height: 1;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bookmark-delete-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .bookmark-delete-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .bookmark-title {
@@ -901,16 +938,25 @@
                 elements.bookmarksList.innerHTML = bookmarks.map(bookmark => {
                     const title = bookmark.title || bookmark.link || 'Untitled';
                     const url = bookmark.link;
+                    const id = bookmark._id;
                     const hasMetadata = bookmark.title && bookmark.title !== url;
                     const metaText = hasMetadata ? 'Metadata loaded' : 'Waiting for metadata...';
 
                     return `
                         <div class="bookmark-item">
-                            <div class="bookmark-title">${escapeHtml(title)}</div>
-                            <div class="bookmark-url">
-                                <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>
+                            <div class="bookmark-content">
+                                <div class="bookmark-title">${escapeHtml(title)}</div>
+                                <div class="bookmark-url">
+                                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>
+                                </div>
+                                <div class="bookmark-meta">${metaText}</div>
                             </div>
-                            <div class="bookmark-meta">${metaText}</div>
+                            <button
+                                class="bookmark-delete-btn"
+                                onclick="deleteBookmark(${id}, '${escapeHtml(title).replace(/'/g, "\\'")}')"
+                                title="Delete bookmark"
+                                aria-label="Delete bookmark: ${escapeHtml(title)}"
+                            >🗑️</button>
                         </div>
                     `;
                 }).join('');
@@ -922,6 +968,43 @@
                 state.isLoadingBookmarks = false;
                 elements.refreshBtn.classList.remove('refreshing');
                 elements.refreshBtn.disabled = false;
+            }
+        }
+
+        // Delete Bookmark
+        async function deleteBookmark(id, title) {
+            // Confirmation dialog
+            const confirmMessage = `Delete "${title}"?\n\nThis will move it to Trash.`;
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${RAINDROP_API_BASE}/raindrop/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        showToast('Invalid token. Please check your access token.', 'error');
+                    } else {
+                        showToast('Failed to delete bookmark', 'error');
+                    }
+                    return;
+                }
+
+                showToast('Bookmark moved to trash', 'success');
+                announce('Bookmark deleted successfully');
+
+                // Reload the list
+                loadRecentBookmarks();
+
+            } catch (error) {
+                console.error('Failed to delete bookmark:', error);
+                showToast('Network error. Check your connection.', 'error');
             }
         }
 
