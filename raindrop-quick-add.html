@@ -453,6 +453,46 @@
             loadToken();
             updateUI();
             setupEventListeners();
+            handleSharedContent();
+        }
+
+        // Handle shared content from share target
+        function handleSharedContent() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sharedUrl = urlParams.get('url') || urlParams.get('text');
+            const sharedTitle = urlParams.get('title');
+
+            if (sharedUrl) {
+                // Validate that it's a URL
+                try {
+                    new URL(sharedUrl);
+                    elements.urlInput.value = sharedUrl;
+
+                    // Clear URL parameters from address bar for cleaner UX
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+
+                    // Show notification
+                    const message = sharedTitle
+                        ? `Ready to add: ${sharedTitle}`
+                        : 'URL received from share';
+                    showToast(message, 'success', 3000);
+
+                    // Focus the submit button if token is configured, otherwise focus URL input
+                    if (state.accessToken) {
+                        elements.submitBtn.focus();
+                    } else {
+                        showToast('Please configure your access token first', 'error');
+                        toggleSettings();
+                    }
+                } catch (error) {
+                    console.log('Shared content is not a valid URL:', sharedUrl);
+                    // If not a valid URL, still put it in the field - user might want to edit it
+                    elements.urlInput.value = sharedUrl;
+                    elements.urlInput.focus();
+                }
+            }
         }
 
         // Event Listeners
