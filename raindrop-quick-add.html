@@ -597,6 +597,71 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.6; }
         }
+
+        /* Skeleton Loader */
+        .skeleton-item {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+        }
+
+        .skeleton-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .skeleton-line {
+            background: linear-gradient(
+                90deg,
+                var(--border) 25%,
+                var(--bg-card-hover) 50%,
+                var(--border) 75%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+            height: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .skeleton-line:last-child {
+            margin-bottom: 0;
+        }
+
+        .skeleton-line.short {
+            width: 60%;
+        }
+
+        .skeleton-line.medium {
+            width: 80%;
+        }
+
+        .skeleton-line.tiny {
+            width: 40%;
+            height: 0.7rem;
+        }
+
+        .skeleton-button {
+            width: 28px;
+            height: 28px;
+            background: var(--border);
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -756,7 +821,7 @@
         }
 
         // Handle shared content from share target
-        function handleSharedContent() {
+        async function handleSharedContent() {
             const urlParams = new URLSearchParams(window.location.search);
             const sharedUrl = urlParams.get('url') || urlParams.get('text');
             const sharedTitle = urlParams.get('title');
@@ -772,16 +837,23 @@
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
 
-                    // Show notification
-                    const message = sharedTitle
-                        ? `Ready to add: ${sharedTitle}`
-                        : 'URL received from share';
-                    showToast(message, 'success', 3000);
-
-                    // Focus the submit button if token is configured, otherwise focus URL input
+                    // Auto-submit if token is configured, otherwise prompt for token
                     if (state.accessToken) {
-                        elements.submitBtn.focus();
+                        // Show notification
+                        const message = sharedTitle
+                            ? `Adding: ${sharedTitle}`
+                            : 'Adding bookmark...';
+                        showToast(message, 'success', 2000);
+
+                        // Automatically add the bookmark
+                        await addBookmark(sharedUrl);
                     } else {
+                        // Show notification
+                        const message = sharedTitle
+                            ? `Ready to add: ${sharedTitle}`
+                            : 'URL received from share';
+                        showToast(message, 'success', 3000);
+
                         showToast('Please configure your access token first', 'error');
                         toggleSettings();
                     }
@@ -1031,6 +1103,21 @@
             announce(errorMessage);
         }
 
+        // Generate skeleton loader HTML
+        function generateSkeletonLoader() {
+            const skeletons = Array(5).fill(0).map(() => `
+                <div class="skeleton-item">
+                    <div class="skeleton-content">
+                        <div class="skeleton-line medium"></div>
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line tiny"></div>
+                    </div>
+                    <div class="skeleton-button"></div>
+                </div>
+            `).join('');
+            return skeletons;
+        }
+
         // Load Recent Bookmarks
         async function loadRecentBookmarks() {
             if (!state.accessToken) {
@@ -1043,6 +1130,9 @@
             state.isLoadingBookmarks = true;
             elements.refreshBtn.classList.add('refreshing');
             elements.refreshBtn.disabled = true;
+
+            // Show skeleton loader
+            elements.bookmarksList.innerHTML = generateSkeletonLoader();
 
             try {
                 // Fetch from API
