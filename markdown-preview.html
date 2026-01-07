@@ -301,6 +301,9 @@ Try some **bold**, *italic*, or `code`.
 
         // Helper function to escape HTML
         function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') {
+                unsafe = String(unsafe);
+            }
             return unsafe
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
@@ -310,9 +313,12 @@ Try some **bold**, *italic*, or `code`.
         }
 
         // Custom renderer for code blocks with syntax highlighting
+        // In marked v17, renderers receive token objects
         const renderer = {
-            code(code, language) {
-                const lang = language || 'plaintext';
+            code(token) {
+                // Handle both old API (code, language) and new API (token object)
+                const code = typeof token === 'object' ? token.text : token;
+                const lang = typeof token === 'object' ? (token.lang || 'plaintext') : (arguments[1] || 'plaintext');
                 return `<pre><code class="language-${lang}">${escapeHtml(code)}</code></pre>`;
             }
         };
