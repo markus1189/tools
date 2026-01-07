@@ -45,9 +45,10 @@
     {
       "id": "markdown-preview",
       "title": "Markdown Preview",
-      "description": "Live markdown editor with split-screen preview and HTML export",
+      "description": "Live markdown editor with syntax highlighting, file import/export, and HTML export",
       "icon": "file-text",
-      "dateAdded": "2025-12-26"
+      "dateAdded": "2025-12-26",
+      "dateUpdated": "2026-01-07"
     },
     {
       "id": "barcode-wallet",
