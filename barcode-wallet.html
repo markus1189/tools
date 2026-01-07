@@ -1398,7 +1398,6 @@
             if ('wakeLock' in navigator) {
                 try {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Wake lock active');
                 } catch (err) {
                     console.warn('Wake lock failed:', err);
                 }
@@ -1696,12 +1695,6 @@
             // Update file diagnostics (including image preview)
             updateDiagnosticFile(file);
 
-            // Log file diagnostics (for desktop users)
-            console.log('=== File Upload Diagnostics ===');
-            console.log('File name:', file.name);
-            console.log('File size:', (file.size / 1024).toFixed(2), 'KB');
-            console.log('File type:', file.type);
-
             // Add file validation to diagnostic log
             addDiagnosticLog(`File accepted: ${file.name}`, 'success');
             addDiagnosticLog(`Type: ${file.type}, Size: ${(file.size / 1024).toFixed(2)} KB`, 'info');
@@ -1787,7 +1780,6 @@
                 { name: 'Combined: scale + contrast + sharpen', fn: () => scanWithCombinedProcessing(file, tempDiv) }
             ];
 
-            console.log(`Starting scan with ${strategies.length} strategies...`);
             addDiagnosticLog(`Starting scan with ${strategies.length} strategies...`, 'info');
 
             // Try each strategy sequentially
@@ -1800,16 +1792,13 @@
                         progressCallback(i + 1, strategies.length, strategy.name);
                     }
 
-                    console.log(`Trying strategy ${i + 1}/${strategies.length}: ${strategy.name}...`);
                     const result = await strategy.fn();
                     const duration = (performance.now() - startTime).toFixed(0);
-                    console.log(`✓ Success with: ${strategy.name} (${duration}ms)`);
                     addDiagnosticLog(`✓ ${strategy.name} (${duration}ms)`, 'success');
                     return result;
                 } catch (err) {
                     const duration = (performance.now() - startTime).toFixed(0);
                     const errorMsg = err.message || String(err);
-                    console.log(`✗ Failed: ${strategy.name} (${duration}ms) -`, errorMsg);
                     addDiagnosticLog(`✗ ${strategy.name} (${duration}ms)`, 'error');
                     addDiagnosticLog(`  Error: ${errorMsg}`, 'error');
                     // Continue to next strategy
@@ -1823,42 +1812,34 @@
 
         async function basicScan(file, tempDiv, decodeAllFormats) {
             // Load image and normalize to PNG blob for consistent processing
-            console.log(`  Loading image from file (${file.type}, ${(file.size / 1024).toFixed(2)} KB)...`);
             addDiagnosticLog(`  Loading image...`, 'info');
 
             const dataUrl = await readFileAsDataUrl(file);
-            console.log(`  Image loaded as data URL (${(dataUrl.length / 1024).toFixed(2)} KB)`);
 
             const img = await loadImage(dataUrl);
             const dimensions = `${img.width}x${img.height}px`;
-            console.log(`  Image dimensions: ${dimensions}`);
             updateDiagnosticDimensions(dimensions);
             addDiagnosticLog(`  Image loaded: ${dimensions}`, 'info');
 
             // Convert to PNG blob to ensure Html5Qrcode can handle the format
-            console.log(`  Normalizing to PNG format...`);
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
             const normalizedBlob = await canvasToBlob(canvas);
-            console.log(`  PNG blob created (${(normalizedBlob.size / 1024).toFixed(2)} KB)`);
             addDiagnosticLog(`  PNG normalized: ${(normalizedBlob.size / 1024).toFixed(2)} KB`, 'info');
 
-            console.log(`  Initializing Html5Qrcode scanner...`);
             tempDiv.innerHTML = '';
             // Configure scanner to decode all formats or QR-only
             // formatsToSupport: undefined means all formats (default)
             // formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] means QR only
             const config = decodeAllFormats ? {} : { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] };
             const scanner = new Html5Qrcode("temp-qr-reader", config);
-            console.log(`  Scanner initialized, starting decode (decodeAllFormats=${decodeAllFormats})...`);
             addDiagnosticLog(`  Decoding image...`, 'info');
 
             const result = await scanner.scanFile(normalizedBlob, false);
             await scanner.clear().catch(() => {});
-            console.log(`  Decoded result:`, result);
             addDiagnosticLog(`  Decode successful!`, 'success');
             return { decodedText: result, format: null };
         }
@@ -1866,7 +1847,6 @@
         async function scanWithScale(file, tempDiv, scale) {
             addDiagnosticLog(`  Preprocessing: ${scale}x upscaling...`, 'info');
             const scaledFile = await preprocessAndScaleImage(file, scale);
-            console.log(`  Scaled image size: ${(scaledFile.size / 1024).toFixed(2)} KB`);
             addDiagnosticLog(`  Scaled to ${(scaledFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
@@ -1879,7 +1859,6 @@
         async function scanWithInversion(file, tempDiv) {
             addDiagnosticLog(`  Preprocessing: inverting colors...`, 'info');
             const invertedFile = await invertImageColors(file);
-            console.log(`  Inverted image size: ${(invertedFile.size / 1024).toFixed(2)} KB`);
             addDiagnosticLog(`  Colors inverted: ${(invertedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
@@ -1892,7 +1871,6 @@
         async function scanWithContrast(file, tempDiv, contrastLevel) {
             addDiagnosticLog(`  Preprocessing: enhancing contrast (${contrastLevel}x)...`, 'info');
             const enhancedFile = await enhanceImageContrast(file, contrastLevel);
-            console.log(`  Contrast-enhanced size: ${(enhancedFile.size / 1024).toFixed(2)} KB`);
             addDiagnosticLog(`  Contrast enhanced: ${(enhancedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
@@ -1905,7 +1883,6 @@
         async function scanWithSharpening(file, tempDiv) {
             addDiagnosticLog(`  Preprocessing: applying sharpening...`, 'info');
             const sharpenedFile = await applySharpeningFilter(file);
-            console.log(`  Sharpened image size: ${(sharpenedFile.size / 1024).toFixed(2)} KB`);
             addDiagnosticLog(`  Sharpened: ${(sharpenedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
@@ -1963,7 +1940,6 @@
         async function scanWithCombinedProcessing(file, tempDiv) {
             addDiagnosticLog(`  Preprocessing: combined processing...`, 'info');
             const processedFile = await applyCombinedProcessing(file);
-            console.log(`  Combined processed size: ${(processedFile.size / 1024).toFixed(2)} KB`);
             addDiagnosticLog(`  Combined processed: ${(processedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
@@ -1976,7 +1952,6 @@
         async function scanWithRotation(file, tempDiv, degrees) {
             addDiagnosticLog(`  Preprocessing: rotating ${degrees}°...`, 'info');
             const rotatedFile = await rotateImage(file, degrees);
-            console.log(`  Rotated image size: ${(rotatedFile.size / 1024).toFixed(2)} KB`);
             addDiagnosticLog(`  Rotated ${degrees}°: ${(rotatedFile.size / 1024).toFixed(2)} KB`, 'info');
             tempDiv.innerHTML = '';
             const scanner = new Html5Qrcode("temp-qr-reader");
@@ -2749,7 +2724,6 @@
 
         function registerServiceWorker() {
             if (!('serviceWorker' in navigator)) {
-                console.log('Service Worker not supported');
                 return;
             }
 
@@ -2758,7 +2732,6 @@ const CACHE_NAME = 'barcode-wallet-v1';
 const ASSETS = [];
 
 self.addEventListener('install', (event) => {
-    console.log('Service Worker installing');
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
             return cache.addAll(ASSETS);
@@ -2768,13 +2741,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    console.log('Service Worker activating');
     event.waitUntil(
         caches.keys().then(keys => {
             return Promise.all(
                 keys.map(key => {
                     if (key !== CACHE_NAME) {
-                        console.log('Deleting old cache:', key);
                         return caches.delete(key);
                     }
                 })
@@ -2798,9 +2769,7 @@ self.addEventListener('fetch', (event) => {
                 const swUrl = URL.createObjectURL(blob);
 
                 navigator.serviceWorker.register(swUrl)
-                    .then(reg => {
-                        console.log('Service Worker registered:', reg);
-                    })
+                    .then(() => {})
                     .catch(err => {
                         console.error('Service Worker registration failed:', err);
                     });
@@ -2820,7 +2789,6 @@ self.addEventListener('fetch', (event) => {
             });
 
             window.addEventListener('appinstalled', () => {
-                console.log('PWA installed');
                 deferredPrompt = null;
                 hideInstallButton();
                 announce('App installed successfully');
@@ -2835,7 +2803,6 @@ self.addEventListener('fetch', (event) => {
 
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log('Install outcome:', outcome);
 
                 if (outcome === 'accepted') {
                     announce('Installing app...');
@@ -2921,9 +2888,6 @@ self.addEventListener('fetch', (event) => {
 
             // Initial render
             render();
-
-            console.log('Barcode Wallet initialized');
-            console.log(`Loaded ${state.items.length} items`);
         }
 
         // Start app when DOM is ready
