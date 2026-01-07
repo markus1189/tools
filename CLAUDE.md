@@ -10,6 +10,38 @@ Static HTML tools hosted on GitHub Pages. No build steps, no frameworks.
 - **Pin versions**: Never use `@latest` - always specify exact versions
 - **Naming**: Use kebab-case for filenames (e.g., `json-formatter.html`)
 
+## Verifying CDN Resources
+
+**Critical: Always verify CDN URLs before committing**
+
+Common issues found in git history:
+- Broken CDN URLs (404s)
+- Incorrect SRI integrity hashes causing tools to fail loading
+- Module loading failures ("grey curtain" bugs)
+- Version mismatches between URL and integrity hash
+
+**Verification checklist:**
+1. **Test the URL**: Open the CDN URL directly in browser - ensure it loads and shows the expected content
+2. **Verify SRI hash** (if using):
+   ```bash
+   curl -s 'https://cdn.example.com/lib.js' | openssl dgst -sha384 -binary | openssl base64 -A
+   ```
+   Compare output with your `integrity` attribute value
+3. **Test locally**: Open the tool in browser and check console for loading errors
+4. **Check crossorigin**: Ensure `crossorigin="anonymous"` is set for all CDN resources with integrity hashes
+
+**Common CDN patterns:**
+- unpkg: `https://unpkg.com/package@version/file.js`
+- jsdelivr: `https://cdn.jsdelivr.net/npm/package@version/file.js`
+- cdnjs: `https://cdnjs.cloudflare.com/ajax/libs/package/version/file.js`
+- esm.sh: `https://esm.sh/package@version`
+
+**SRI (Subresource Integrity):**
+- Always add `integrity` and `crossorigin` attributes for security
+- Format: `<script src="URL" integrity="sha384-HASH" crossorigin="anonymous"></script>`
+- Generate hashes: https://www.srihash.org/ or use curl command above
+- Recent batch update added these to all tools - maintain consistency
+
 ## Tool Structure
 
 Minimal required structure for each tool:
