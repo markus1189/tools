@@ -495,6 +495,129 @@
         }
 
         /* ===================================================================
+           File Upload UI Styles
+           ================================================================ */
+
+        .file-upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: var(--bg-input);
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+
+        .file-upload-zone:hover,
+        .file-upload-zone.drag-over {
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+        }
+
+        .file-upload-zone input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.6;
+        }
+
+        .file-upload-text {
+            color: var(--text);
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .file-upload-hint {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .file-selected {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-card-hover);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .file-selected.hidden {
+            display: none;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .file-clear-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-clear-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin: 1rem 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .divider span {
+            padding: 0 1rem;
+        }
+
+        /* ===================================================================
            Background Sync Queue UI Styles
            ================================================================ */
 
@@ -723,14 +846,35 @@
                         type="url"
                         id="urlInput"
                         placeholder="https://example.com"
-                        required
-                        aria-required="true"
                         aria-describedby="urlHelp"
                     >
                     <p class="help-text" id="urlHelp">
                         Enter a URL to add to your Unsorted collection. Raindrop will automatically parse the page metadata.
                     </p>
                 </div>
+
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+
+                <!-- File Upload Zone -->
+                <div class="file-upload-zone" id="fileUploadZone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept="image/*,video/*,audio/*,application/pdf,application/zip,application/x-rar-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/*">
+                    <div class="file-upload-icon">📁</div>
+                    <div class="file-upload-text">Click or drag to upload a file</div>
+                    <div class="file-upload-hint">Images, videos, PDFs, documents, and more</div>
+                </div>
+
+                <!-- Selected File Info -->
+                <div id="fileSelected" class="file-selected hidden">
+                    <div class="file-icon" id="fileIcon">📄</div>
+                    <div class="file-info">
+                        <div class="file-name" id="fileName">filename.pdf</div>
+                        <div class="file-meta" id="fileMeta">1.2 MB</div>
+                    </div>
+                    <button type="button" class="file-clear-btn" onclick="clearFile()" title="Clear file" aria-label="Clear selected file">✕</button>
+                </div>
+
                 <button type="submit" id="submitBtn" disabled>
                     Add to Raindrop
                     <span id="queueBadge" class="queue-badge hidden">0</span>
@@ -774,7 +918,8 @@
             isLoadingBookmarks: false,
             queueCount: 0,
             isSyncing: false,
-            supportsBackgroundSync: false
+            supportsBackgroundSync: false,
+            selectedFile: null
         };
 
         // DOM Elements
@@ -792,7 +937,13 @@
             chevron: document.querySelector('.chevron'),
             announcer: document.getElementById('announcer'),
             bookmarksList: document.getElementById('bookmarksList'),
-            refreshBtn: document.getElementById('refreshBtn')
+            refreshBtn: document.getElementById('refreshBtn'),
+            fileInput: document.getElementById('fileInput'),
+            fileUploadZone: document.getElementById('fileUploadZone'),
+            fileSelected: document.getElementById('fileSelected'),
+            fileName: document.getElementById('fileName'),
+            fileMeta: document.getElementById('fileMeta'),
+            fileIcon: document.getElementById('fileIcon')
         };
 
         // Initialize on page load
@@ -823,46 +974,121 @@
         // Handle shared content from share target
         async function handleSharedContent() {
             const urlParams = new URLSearchParams(window.location.search);
+
+            // Check if this is a share from the service worker
+            const isShared = urlParams.get('shared') === 'true';
+
+            if (isShared) {
+                // Get shared data from service worker cache
+                try {
+                    const cache = await caches.open('raindrop-share-data');
+                    const response = await cache.match('share-data');
+
+                    if (response) {
+                        const sharedData = await response.json();
+
+                        // Clear the cached data
+                        await cache.delete('share-data');
+
+                        // Clear URL parameters from address bar
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }
+
+                        // Handle shared file
+                        if (sharedData.file) {
+                            await handleSharedFile(sharedData);
+                            return;
+                        }
+
+                        // Handle shared URL
+                        const sharedUrl = sharedData.url || sharedData.text;
+                        if (sharedUrl) {
+                            await handleSharedUrl(sharedUrl, sharedData.title);
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to retrieve shared data:', error);
+                    showToast('Failed to process shared content', 'error');
+                }
+                return;
+            }
+
+            // Fallback: Handle legacy GET parameters (backward compatibility)
             const sharedUrl = urlParams.get('url') || urlParams.get('text');
             const sharedTitle = urlParams.get('title');
 
             if (sharedUrl) {
-                // Validate that it's a URL
-                try {
-                    new URL(sharedUrl);
-                    elements.urlInput.value = sharedUrl;
-
-                    // Clear URL parameters from address bar for cleaner UX
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    }
-
-                    // Auto-submit if token is configured, otherwise prompt for token
-                    if (state.accessToken) {
-                        // Show notification
-                        const message = sharedTitle
-                            ? `Adding: ${sharedTitle}`
-                            : 'Adding bookmark...';
-                        showToast(message, 'success', 2000);
-
-                        // Automatically add the bookmark
-                        await addBookmark(sharedUrl);
-                    } else {
-                        // Show notification
-                        const message = sharedTitle
-                            ? `Ready to add: ${sharedTitle}`
-                            : 'URL received from share';
-                        showToast(message, 'success', 3000);
-
-                        showToast('Please configure your access token first', 'error');
-                        toggleSettings();
-                    }
-                } catch (error) {
-                    console.log('Shared content is not a valid URL:', sharedUrl);
-                    // If not a valid URL, still put it in the field - user might want to edit it
-                    elements.urlInput.value = sharedUrl;
-                    elements.urlInput.focus();
+                // Clear URL parameters from address bar for cleaner UX
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
                 }
+
+                await handleSharedUrl(sharedUrl, sharedTitle);
+            }
+        }
+
+        // Handle shared URL
+        async function handleSharedUrl(url, title) {
+            // Validate that it's a URL
+            try {
+                new URL(url);
+                elements.urlInput.value = url;
+
+                // Auto-submit if token is configured, otherwise prompt for token
+                if (state.accessToken) {
+                    // Show notification
+                    const message = title
+                        ? `Adding: ${title}`
+                        : 'Adding bookmark...';
+                    showToast(message, 'success', 2000);
+
+                    // Automatically add the bookmark
+                    await addBookmark(url);
+                } else {
+                    // Show notification
+                    const message = title
+                        ? `Ready to add: ${title}`
+                        : 'URL received from share';
+                    showToast(message, 'success', 3000);
+
+                    showToast('Please configure your access token first', 'error');
+                    toggleSettings();
+                }
+            } catch (error) {
+                console.log('Shared content is not a valid URL:', url);
+                // If not a valid URL, still put it in the field - user might want to edit it
+                elements.urlInput.value = url;
+                elements.urlInput.focus();
+            }
+        }
+
+        // Handle shared file
+        async function handleSharedFile(sharedData) {
+            const fileInfo = sharedData.file;
+
+            // Show notification
+            showToast(`Processing file: ${fileInfo.name}`, 'success', 2000);
+
+            // Check if token is configured
+            if (!state.accessToken) {
+                showToast('Please configure your access token first', 'error');
+                toggleSettings();
+                return;
+            }
+
+            try {
+                // Reconstruct the File object from the cached data
+                const blob = new Blob([fileInfo.blob], { type: fileInfo.type });
+                const file = new File([blob], fileInfo.name, { type: fileInfo.type });
+
+                // Upload the file
+                await uploadFile(file);
+
+            } catch (error) {
+                console.error('Failed to process shared file:', error);
+                showToast('Failed to upload file: ' + error.message, 'error');
             }
         }
 
@@ -884,6 +1110,25 @@
                     saveToken();
                 }
             });
+
+            // Clear file when URL input is focused/changed
+            elements.urlInput.addEventListener('input', () => {
+                if (state.selectedFile && elements.urlInput.value.trim()) {
+                    clearFile();
+                }
+            });
+
+            // File input change
+            elements.fileInput.addEventListener('change', handleFileSelect);
+
+            // Drag and drop
+            elements.fileUploadZone.addEventListener('dragover', handleDragOver);
+            elements.fileUploadZone.addEventListener('dragleave', handleDragLeave);
+            elements.fileUploadZone.addEventListener('drop', handleFileDrop);
+
+            // Prevent default drag behavior on document
+            document.addEventListener('dragover', (e) => e.preventDefault());
+            document.addEventListener('drop', (e) => e.preventDefault());
         }
 
         // Settings Toggle
@@ -978,13 +1223,123 @@
             }
         }
 
+        // File handling functions
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                displaySelectedFile(file);
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            elements.fileUploadZone.classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            elements.fileUploadZone.classList.remove('drag-over');
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            elements.fileUploadZone.classList.remove('drag-over');
+
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                displaySelectedFile(file);
+            }
+        }
+
+        function displaySelectedFile(file) {
+            state.selectedFile = file;
+
+            // Update file info display
+            elements.fileName.textContent = file.name;
+            elements.fileMeta.textContent = formatFileSize(file.size) + ' • ' + file.type.split('/')[0];
+
+            // Set appropriate icon based on file type
+            const fileType = file.type.split('/')[0];
+            const iconMap = {
+                'image': '🖼️',
+                'video': '🎥',
+                'audio': '🎵',
+                'text': '📝',
+                'application': '📄'
+            };
+            elements.fileIcon.textContent = iconMap[fileType] || '📄';
+
+            // Show file selected, hide upload zone
+            elements.fileSelected.classList.remove('hidden');
+            elements.fileUploadZone.style.display = 'none';
+
+            // Clear URL input
+            elements.urlInput.value = '';
+
+            // Update button text
+            updateSubmitButton();
+        }
+
+        function clearFile() {
+            state.selectedFile = null;
+            elements.fileInput.value = '';
+            elements.fileSelected.classList.add('hidden');
+            elements.fileUploadZone.style.display = 'block';
+
+            // Update button text
+            updateSubmitButton();
+        }
+
+        function updateSubmitButton() {
+            const queueBadge = document.getElementById('queueBadge');
+            const badgeHtml = queueBadge ? queueBadge.outerHTML : '';
+
+            if (state.selectedFile) {
+                elements.submitBtn.innerHTML = 'Upload File' + badgeHtml;
+            } else {
+                elements.submitBtn.innerHTML = 'Add to Raindrop' + badgeHtml;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
         // Form Submission
         async function handleSubmit(event) {
             event.preventDefault();
 
             if (state.isSubmitting) return;
 
+            if (!state.accessToken) {
+                showToast('Please configure your access token first', 'error');
+                toggleSettings();
+                return;
+            }
+
+            // Check if file is selected
+            if (state.selectedFile) {
+                await uploadFile(state.selectedFile);
+                clearFile();
+                return;
+            }
+
+            // Otherwise, handle URL
             const url = elements.urlInput.value.trim();
+
+            // Check if URL is provided
+            if (!url) {
+                showToast('Please enter a URL or select a file to upload', 'error');
+                elements.urlInput.focus();
+                return;
+            }
 
             // Validate URL
             try {
@@ -992,12 +1347,6 @@
             } catch (error) {
                 showToast('Please enter a valid URL', 'error');
                 elements.urlInput.focus();
-                return;
-            }
-
-            if (!state.accessToken) {
-                showToast('Please configure your access token first', 'error');
-                toggleSettings();
                 return;
             }
 
@@ -1062,9 +1411,104 @@
                 }
             } finally {
                 state.isSubmitting = false;
-                elements.submitBtn.innerHTML = originalText;
+                updateSubmitButton();
                 elements.submitBtn.disabled = !state.accessToken;
             }
+        }
+
+        // File Upload to Raindrop
+        async function uploadFile(file) {
+            state.isSubmitting = true;
+
+            // Show loading state
+            const originalText = elements.submitBtn.innerHTML;
+            elements.submitBtn.innerHTML = '<span class="spinner"></span>Uploading...';
+            elements.submitBtn.disabled = true;
+
+            try {
+                // Prepare multipart form data
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('collectionId', UNSORTED_COLLECTION_ID.toString());
+
+                const response = await fetch(`${RAINDROP_API_BASE}/raindrop/file`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    await handleFileUploadError(response);
+                    return;
+                }
+
+                const data = await response.json();
+                const title = data.item?.title || file.name;
+
+                showToast(`File uploaded: ${title}`, 'success');
+                announce(`File uploaded successfully: ${title}`);
+
+                // Reload recent bookmarks to show the new file
+                loadRecentBookmarks();
+
+            } catch (error) {
+                console.error('Failed to upload file:', error);
+
+                // Network error - queue for background sync
+                if (error.message.includes('Failed to fetch') || !navigator.onLine) {
+                    showToast('File upload failed - offline queueing not yet supported for files', 'error');
+                } else {
+                    showToast('Failed to upload file: ' + error.message, 'error');
+                }
+            } finally {
+                state.isSubmitting = false;
+                updateSubmitButton();
+                elements.submitBtn.disabled = !state.accessToken;
+            }
+        }
+
+        // File Upload Error Handling
+        async function handleFileUploadError(response) {
+            let errorMessage = 'Failed to upload file';
+
+            try {
+                const errorData = await response.json();
+
+                // Handle specific error codes from Raindrop API
+                if (errorData.error === -1 || errorData.errorMessage === 'no file') {
+                    errorMessage = 'No file provided';
+                } else if (errorData.error === 'file_invalid') {
+                    errorMessage = 'File format not supported';
+                } else if (errorData.error === 'file_size_limit') {
+                    errorMessage = 'File size exceeds limit';
+                } else {
+                    errorMessage = errorData.errorMessage || errorData.message || errorMessage;
+                }
+            } catch (e) {
+                // Use status-based messages if JSON parsing fails
+            }
+
+            switch (response.status) {
+                case 401:
+                    errorMessage = 'Invalid token. Please check your access token.';
+                    if (!elements.settingsContent.classList.contains('expanded')) {
+                        toggleSettings();
+                    }
+                    break;
+                case 429:
+                    errorMessage = 'Rate limit exceeded. Wait a moment and try again.';
+                    break;
+                case 500:
+                case 502:
+                case 503:
+                    errorMessage = 'Raindrop service error. Please try again later.';
+                    break;
+            }
+
+            showToast(errorMessage, 'error');
+            announce(errorMessage);
         }
 
         // API Error Handling

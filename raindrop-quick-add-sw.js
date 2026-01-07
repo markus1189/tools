@@ -1,7 +1,7 @@
 // Raindrop Quick Add - Service Worker
-// Version: 2.0.0
+// Version: 3.0.0 - Added file upload support
 
-const CACHE_NAME = 'raindrop-quick-add-v5';
+const CACHE_NAME = 'raindrop-quick-add-v6';
 const urlsToCache = [
   './raindrop-quick-add.html',
   './raindrop-quick-add.manifest.json',
@@ -39,8 +39,70 @@ self.addEventListener('activate', event => {
   );
 });
 
+// ============================================================================
+// Web Share Target API - Handle POST requests with files
+// ============================================================================
+
+const SHARE_CACHE_NAME = 'raindrop-share-data';
+
+// Handle share target POST requests
+async function handleShareTarget(event) {
+  const url = new URL(event.request.url);
+
+  // Only handle share target POSTs to our app
+  if (event.request.method !== 'POST' || !url.pathname.includes('raindrop-quick-add.html')) {
+    return null;
+  }
+
+  try {
+    const formData = await event.request.formData();
+    const sharedData = {
+      title: formData.get('title') || '',
+      text: formData.get('text') || '',
+      url: formData.get('url') || '',
+      timestamp: Date.now()
+    };
+
+    // Handle shared files
+    const file = formData.get('file');
+    if (file && file instanceof File) {
+      // Store file as blob
+      sharedData.file = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        blob: await file.arrayBuffer()
+      };
+    }
+
+    // Cache the shared data
+    const cache = await caches.open(SHARE_CACHE_NAME);
+    const response = new Response(JSON.stringify(sharedData), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    await cache.put('share-data', response);
+
+    // Redirect to the app (GET request)
+    return Response.redirect(url.pathname + '?shared=true', 303);
+
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to handle share target:', error);
+    return Response.redirect(url.pathname, 303);
+  }
+}
+
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
+  // Handle share target POST requests
+  if (event.request.method === 'POST') {
+    const shareResponse = handleShareTarget(event);
+    if (shareResponse) {
+      event.respondWith(shareResponse);
+      return;
+    }
+    return;
+  }
+
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
