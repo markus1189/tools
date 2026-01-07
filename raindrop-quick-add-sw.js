@@ -1,7 +1,7 @@
 // Raindrop Quick Add - Service Worker
-// Version: 3.0.1 - Fixed PWA icons
+// Version: 3.1.0 - Fixed: Only intercept raindrop-related requests
 
-const CACHE_NAME = 'raindrop-quick-add-v7';
+const CACHE_NAME = 'raindrop-quick-add-v8';
 const urlsToCache = [
   './raindrop-quick-add.html',
   './raindrop-quick-add.manifest.json',
@@ -115,6 +115,16 @@ self.addEventListener('fetch', event => {
 
   // Don't cache API requests to Raindrop.io
   if (event.request.url.includes('api.raindrop.io')) {
+    return;
+  }
+
+  // Only handle requests for raindrop-related resources
+  const url = new URL(event.request.url);
+  const isRaindropResource = url.pathname.includes('raindrop') ||
+                             urlsToCache.some(cached => url.pathname.includes(cached.replace('./', '')));
+
+  if (!isRaindropResource) {
+    // Let other tools' resources pass through without caching
     return;
   }
 
