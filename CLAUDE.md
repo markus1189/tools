@@ -34,6 +34,56 @@ Minimal required structure for each tool:
 </html>
 ```
 
+## UX Design
+
+**Consistent Design Across Tools:**
+- Dark theme with `#f97316` (orange) accent color
+- "← Tools" back link: top-left, color: `#888`, hover to `#f97316`
+- Buttons: 8-12px border-radius, scale(0.95) on active
+- Mobile breakpoints: 640px, 768px
+- Success: `#22c55e` (green), Error: `#ef4444` (red)
+
+Reference any tool for examples of these patterns in action.
+
+## Debug Pattern
+
+For tools that benefit from debugging (especially those using complex APIs like Bluetooth, Media, etc.), implement a collapsible debug section:
+
+**Features:**
+- Collapsible section (collapsed by default) with 🐛 icon
+- Toggle checkbox to enable/disable debug logging (persists to localStorage)
+- Optional: Secondary checkbox for verbose/status logging
+- Three action buttons:
+  - 📋 Copy - copies log to clipboard (with mobile fallback)
+  - 🗑️ Clear - clears the log
+  - 💾 Download - downloads as timestamped .txt file
+- Monospace log display with:
+  - High-precision timestamps (HH:mm:ss.SSS)
+  - Color-coded log levels (info, success, warn, error)
+  - Auto-scroll to bottom
+  - Empty state message
+
+**Implementation:**
+- `logDebug(message, level)` function that:
+  - ALWAYS logs to console (for browser devtools)
+  - Only adds to UI log if debug logging is enabled
+  - Supports emoji indicators: ✓ (success), ❌ (error), ⚠ (warn), ► (send), ◄ (receive)
+- localStorage key pattern: `{tool-name}_debug_logging_enabled`
+
+**When to add:**
+- Complex API interactions (Bluetooth, WebRTC, etc.)
+- Asynchronous operations with multiple steps
+- State machines or connection management
+- When users may need to report issues to you
+
+**Benefits:**
+- Works perfectly on mobile (touch-friendly, collapsible)
+- Users can copy/download logs to help debug issues
+- No performance impact when disabled (default state)
+- Professional debugging experience
+
+See `bedjet-bluetooth-control.html:904-1023` (CSS) and `:1714-1804` (JavaScript) for reference implementation.
+
 ## Adding a New Tool
 
 1. Create `tool-name.html` following the structure above
