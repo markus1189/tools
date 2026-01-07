@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Store and display loyalty cards, tickets, and membership barcodes offline as a PWA">
     <meta name="theme-color" content="#f97316">
     <title>Barcode Wallet</title>
 
@@ -51,6 +52,22 @@
             align-items: center;
             margin-bottom: 2rem;
             padding: 1rem 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
         }
 
         h1 {
@@ -690,7 +707,10 @@
     <div class="app-container">
         <!-- Header -->
         <header>
-            <h1>Barcode Wallet</h1>
+            <div class="header-left">
+                <a href="index.html" class="back-link">&larr; Tools</a>
+                <h1>Barcode Wallet</h1>
+            </div>
             <div class="header-actions">
                 <button id="install-btn" class="hidden" aria-label="Install app">Install</button>
                 <button id="import-btn" class="btn-icon" aria-label="Import barcodes" title="Import">
@@ -893,9 +913,9 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
 
     <script>
         // ===========================

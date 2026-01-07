@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Control stopwatch using media controls on smartwatch or device (POC)">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -137,9 +138,24 @@
         .debug-log .action-other { color: #0a84ff; }
         .debug-log .event-audio { color: #ff453a; }
 
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            color: #888;
+            text-decoration: none;
+            font-size: 0.9rem;
+            z-index: 10;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
     </style>
 </head>
 <body>
+    <a href="index.html" class="back-link">&larr; Tools</a>
 
     <div class="time-wrapper">
         <div id="timer">00:00</div>

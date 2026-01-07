@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Interval timer for work/rest workouts with customizable blocks and ramp generator">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#121212">
     <title>Interval Timer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js" crossorigin="anonymous"></script>
     <style>
         :root {
             --bg: #121212;
@@ -81,12 +82,23 @@
         .pause-controls { display: flex; gap: 20px; }
         .control-btn { width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; background: transparent; color: white; font-size: 1.5rem; }
 
+        .back-link {
+            color: var(--text-sec);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            color: var(--primary);
+        }
+
     </style>
 </head>
 <body>
 
     <div id="editor">
         <header>
+            <a href="index.html" class="back-link">&larr; Tools</a>
             <div class="stats" id="total-stats">Total: 00:00</div>
             <button class="icon-btn" onclick="shareWorkout()">🔗</button>
         </header>

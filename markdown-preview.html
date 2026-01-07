@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Live markdown editor with split-screen preview and HTML export">
     <title>Markdown Preview</title>
     <style>
         * {
@@ -44,12 +45,23 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
         }
 
         .pane-title {
             font-weight: 600;
             font-size: 14px;
             color: #cccccc;
+        }
+
+        .back-link {
+            color: #888;
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        .back-link:hover {
+            color: #0e639c;
         }
 
         .copy-button {
@@ -204,6 +216,7 @@
     <div class="container">
         <div class="editor-pane">
             <div class="pane-header">
+                <a href="index.html" class="back-link">&larr; Tools</a>
                 <span class="pane-title">Markdown Input</span>
             </div>
             <textarea id="markdown-input" placeholder="# Start typing markdown here...
@@ -226,7 +239,7 @@ Try some **bold**, *italic*, or `code`.
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js" crossorigin="anonymous"></script>
     <script>
         const input = document.getElementById('markdown-input');
         const preview = document.getElementById('preview');
