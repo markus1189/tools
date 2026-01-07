@@ -1,7 +1,7 @@
 // Raindrop Quick Add - Service Worker
-// Version: 3.0.0 - Added file upload support
+// Version: 3.0.1 - Fixed PWA icons
 
-const CACHE_NAME = 'raindrop-quick-add-v6';
+const CACHE_NAME = 'raindrop-quick-add-v7';
 const urlsToCache = [
   './raindrop-quick-add.html',
   './raindrop-quick-add.manifest.json',
