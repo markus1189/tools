@@ -53,6 +53,22 @@
             padding: 1rem 0;
         }
 
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
         h1 {
             font-size: 1.75rem;
             font-weight: 700;
@@ -690,7 +706,10 @@
     <div class="app-container">
         <!-- Header -->
         <header>
-            <h1>Barcode Wallet</h1>
+            <div class="header-left">
+                <a href="index.html" class="back-link">&larr; Tools</a>
+                <h1>Barcode Wallet</h1>
+            </div>
             <div class="header-actions">
                 <button id="install-btn" class="hidden" aria-label="Install app">Install</button>
                 <button id="import-btn" class="btn-icon" aria-label="Import barcodes" title="Import">

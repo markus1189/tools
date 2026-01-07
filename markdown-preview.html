@@ -44,12 +44,23 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
         }
 
         .pane-title {
             font-weight: 600;
             font-size: 14px;
             color: #cccccc;
+        }
+
+        .back-link {
+            color: #888;
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        .back-link:hover {
+            color: #0e639c;
         }
 
         .copy-button {
@@ -204,6 +215,7 @@
     <div class="container">
         <div class="editor-pane">
             <div class="pane-header">
+                <a href="index.html" class="back-link">&larr; Tools</a>
                 <span class="pane-title">Markdown Input</span>
             </div>
             <textarea id="markdown-input" placeholder="# Start typing markdown here...

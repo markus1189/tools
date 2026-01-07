@@ -137,9 +137,24 @@
         .debug-log .action-other { color: #0a84ff; }
         .debug-log .event-audio { color: #ff453a; }
 
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            color: #888;
+            text-decoration: none;
+            font-size: 0.9rem;
+            z-index: 10;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
     </style>
 </head>
 <body>
+    <a href="index.html" class="back-link">&larr; Tools</a>
 
     <div class="time-wrapper">
         <div id="timer">00:00</div>

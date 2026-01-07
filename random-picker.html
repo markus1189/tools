@@ -61,6 +61,20 @@
         header {
             text-align: center;
             margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .back-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
         }
 
         h1 {
@@ -496,6 +510,7 @@
     <div class="container">
         <!-- Header -->
         <header>
+            <a href="index.html" class="back-link">&larr; Tools</a>
             <h1>Random Picker</h1>
             <p class="subtitle">Cryptographically Secure</p>
         </header>
