@@ -1,7 +1,7 @@
 // Raindrop Quick Add - Service Worker
-// Version: 3.1.0 - Fixed: Only intercept raindrop-related requests
+// Version: 3.2.0 - Fixed: Async handling of share target POST requests
 
-const CACHE_NAME = 'raindrop-quick-add-v8';
+const CACHE_NAME = 'raindrop-quick-add-v9';
 const urlsToCache = [
   './raindrop-quick-add.html',
   './raindrop-quick-add.manifest.json',
@@ -95,11 +95,14 @@ async function handleShareTarget(event) {
 self.addEventListener('fetch', event => {
   // Handle share target POST requests
   if (event.request.method === 'POST') {
-    const shareResponse = handleShareTarget(event);
-    if (shareResponse) {
-      event.respondWith(shareResponse);
-      return;
-    }
+    event.respondWith((async () => {
+      const shareResponse = await handleShareTarget(event);
+      if (shareResponse) {
+        return shareResponse;
+      }
+      // If not a share target, let it through normally
+      return fetch(event.request);
+    })());
     return;
   }
 
