@@ -986,7 +986,7 @@
         };
 
         // Initialize on page load
-        function init() {
+        async function init() {
             // Check Background Sync support
             if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
                 state.supportsBackgroundSync = true;
@@ -995,10 +995,10 @@
                 console.warn('Background Sync API not supported');
             }
 
-            loadToken();
+            await loadToken();
             updateUI();
             setupEventListeners();
-            handleSharedContent();
+            await handleSharedContent();
             loadRecentBookmarks();
 
             // Update queue badge on load
@@ -1187,12 +1187,41 @@
         }
 
         // LocalStorage Functions
-        function loadToken() {
+        async function loadToken() {
             try {
                 const token = localStorage.getItem(STORAGE_KEY_TOKEN);
                 if (token && token.trim().length > 0) {
-                    state.accessToken = token.trim();
-                    elements.accessTokenInput.value = token.trim();
+                    const trimmedToken = token.trim();
+
+                    // Load token into state and UI first
+                    state.accessToken = trimmedToken;
+                    elements.accessTokenInput.value = trimmedToken;
+
+                    // Silently verify token on page load
+                    const verification = await verifyToken(trimmedToken);
+
+                    if (!verification.valid) {
+                        // Token is invalid, clear it
+                        console.warn('Stored token is invalid, clearing...');
+
+                        // Clear invalid token
+                        localStorage.removeItem(STORAGE_KEY_TOKEN);
+                        state.accessToken = null;
+                        elements.accessTokenInput.value = '';
+
+                        // Show error message
+                        showToast('Your stored token is invalid or expired. Please configure a new one.', 'error');
+
+                        // Optionally expand settings
+                        if (!elements.settingsContent.classList.contains('expanded')) {
+                            toggleSettings();
+                        }
+
+                        return false;
+                    }
+
+                    // Token is valid
+                    console.log('Token verified successfully');
                     return true;
                 }
             } catch (error) {
@@ -1201,7 +1230,76 @@
             return false;
         }
 
-        function saveToken() {
+        // Verify token with Raindrop API
+        async function verifyToken(token) {
+            try {
+                const response = await fetch(`${RAINDROP_API_BASE}/user`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    return {
+                        valid: false,
+                        user: null,
+                        error: response.status,
+                        message: await getVerificationErrorMessage(response)
+                    };
+                }
+
+                const data = await response.json();
+
+                return {
+                    valid: true,
+                    user: data.user || null,
+                    error: null,
+                    message: null
+                };
+
+            } catch (error) {
+                return {
+                    valid: false,
+                    user: null,
+                    error: 'network',
+                    message: error.message
+                };
+            }
+        }
+
+        // Get error message for verification failures
+        async function getVerificationErrorMessage(response) {
+            let errorMessage = 'Token verification failed';
+
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.errorMessage || errorData.message || errorMessage;
+            } catch (e) {
+                // Use status-based messages if JSON parsing fails
+            }
+
+            switch (response.status) {
+                case 401:
+                    errorMessage = 'Invalid or expired token. Please check your access token.';
+                    break;
+                case 400:
+                    errorMessage = 'Malformed token. Please check the token format.';
+                    break;
+                case 429:
+                    errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+                    break;
+                case 500:
+                case 502:
+                case 503:
+                    errorMessage = 'Raindrop service error. Please try again later.';
+                    break;
+            }
+
+            return errorMessage;
+        }
+
+        async function saveToken() {
             try {
                 const token = elements.accessTokenInput.value.trim();
 
@@ -1210,10 +1308,48 @@
                     return false;
                 }
 
+                // Get button elements
+                const saveButton = document.querySelector('button[onclick="saveToken()"]');
+                const clearButton = document.querySelector('button[onclick="clearToken()"]');
+                const originalSaveText = saveButton.innerHTML;
+
+                // Show loading state
+                saveButton.innerHTML = '<span class="spinner"></span>Verifying...';
+                saveButton.disabled = true;
+                clearButton.disabled = true;
+
+                // Verify token before saving
+                const verification = await verifyToken(token);
+
+                // Restore UI state
+                saveButton.innerHTML = originalSaveText;
+                saveButton.disabled = false;
+                clearButton.disabled = false;
+
+                if (!verification.valid) {
+                    // Show specific error message
+                    let errorMessage = 'Token verification failed';
+
+                    if (verification.error === 'network') {
+                        errorMessage = 'Network error. Cannot verify token. Please check connection.';
+                    } else if (verification.message) {
+                        errorMessage = verification.message;
+                    }
+
+                    showToast(errorMessage, 'error');
+                    return false;
+                }
+
+                // Token is valid, save it
                 localStorage.setItem(STORAGE_KEY_TOKEN, token);
                 state.accessToken = token;
 
-                showToast('Access token saved successfully', 'success');
+                // Show success message with optional username
+                const userName = verification.user?.fullName || '';
+                const successMessage = userName
+                    ? `Access token saved successfully (${userName})`
+                    : 'Access token saved successfully';
+                showToast(successMessage, 'success');
                 updateUI();
 
                 // Collapse settings after saving
@@ -2036,7 +2172,9 @@
         }
 
         // Initialize app
-        init();
+        init().catch(error => {
+            console.error('Failed to initialize app:', error);
+        });
     </script>
 </body>
 </html>
