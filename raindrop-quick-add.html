@@ -1075,16 +1075,16 @@
                 new URL(url);
                 elements.urlInput.value = url;
 
-                // Auto-submit if token is configured, otherwise prompt for token
+                // Show notification that URL is ready
                 if (state.accessToken) {
                     // Show notification
                     const message = title
-                        ? `Adding: ${title}`
-                        : 'Adding bookmark...';
-                    showToast(message, 'success', 2000);
+                        ? `Ready to add: ${title}`
+                        : 'URL received from share';
+                    showToast(message, 'success', 3000);
 
-                    // Automatically add the bookmark
-                    await addBookmark(url);
+                    // Focus on note field so user can add notes before submitting
+                    elements.noteInput.focus();
                 } else {
                     // Show notification
                     const message = title
