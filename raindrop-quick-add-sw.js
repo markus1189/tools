@@ -1,7 +1,7 @@
 // Raindrop Quick Add - Service Worker
-// Version: 3.2.0 - Fixed: Async handling of share target POST requests
+// Version: 3.3.0 - Fixed: Handle all POST requests to prevent 405 errors
 
-const CACHE_NAME = 'raindrop-quick-add-v9';
+const CACHE_NAME = 'raindrop-quick-add-v10';
 const urlsToCache = [
   './raindrop-quick-add.html',
   './raindrop-quick-add.manifest.json',
@@ -96,11 +96,24 @@ self.addEventListener('fetch', event => {
   // Handle share target POST requests
   if (event.request.method === 'POST') {
     event.respondWith((async () => {
-      const shareResponse = await handleShareTarget(event);
-      if (shareResponse) {
-        return shareResponse;
+      const url = new URL(event.request.url);
+
+      // Check if this is a POST to our HTML file
+      const isRaindropPost = url.pathname.includes('raindrop-quick-add.html');
+
+      if (isRaindropPost) {
+        // Try to handle as share target
+        const shareResponse = await handleShareTarget(event);
+        if (shareResponse) {
+          return shareResponse;
+        }
+
+        // Fallback: redirect POST to GET to prevent 405 errors on static servers
+        console.warn('[ServiceWorker] POST request not handled by share target, redirecting to GET:', url.pathname);
+        return Response.redirect(url.pathname, 303);
       }
-      // If not a share target, let it through normally
+
+      // Not a raindrop POST, let it through normally
       return fetch(event.request);
     })());
     return;
