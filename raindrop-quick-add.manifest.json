@@ -2,8 +2,8 @@
   "name": "Raindrop Quick Add",
   "short_name": "Raindrop+",
   "description": "Quickly add bookmarks to Raindrop.io with automatic metadata parsing",
-  "start_url": "/tools/raindrop-quick-add.html",
-  "scope": "/tools/",
+  "start_url": "./raindrop-quick-add.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#f97316",
@@ -12,18 +12,20 @@
     {
       "src": "raindrop-icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "raindrop-icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "categories": ["utilities", "productivity"],
   "screenshots": [],
   "share_target": {
-    "action": "/tools/raindrop-quick-add.html",
+    "action": "./raindrop-quick-add.html",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {

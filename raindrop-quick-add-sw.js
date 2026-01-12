@@ -1,7 +1,7 @@
 // Raindrop Quick Add - Service Worker
-// Version: 3.3.0 - Fixed: Handle all POST requests to prevent 405 errors
+// Version: 3.4.0 - Fixed: Use relative paths in manifest for PWA share target
 
-const CACHE_NAME = 'raindrop-quick-add-v10';
+const CACHE_NAME = 'raindrop-quick-add-v11';
 const urlsToCache = [
   './raindrop-quick-add.html',
   './raindrop-quick-add.manifest.json',
