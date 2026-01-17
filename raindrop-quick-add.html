@@ -1068,12 +1068,42 @@
             }
         }
 
+        // Extract URL from text that may contain both title and URL
+        function extractUrlFromText(text) {
+            if (!text) return null;
+
+            // First, try to parse the text directly as a URL
+            try {
+                new URL(text);
+                return text;
+            } catch (e) {
+                // Not a direct URL, continue to extraction
+            }
+
+            // Regex pattern to match URLs (http/https)
+            const urlPattern = /(https?:\/\/[^\s]+)/gi;
+            const matches = text.match(urlPattern);
+
+            if (matches && matches.length > 0) {
+                // Return the first URL found
+                // Clean up any trailing punctuation that might have been included
+                let url = matches[0];
+                url = url.replace(/[,;:.)]+$/, '');
+                return url;
+            }
+
+            return null;
+        }
+
         // Handle shared URL
         async function handleSharedUrl(url, title) {
+            // Try to extract URL from the text (handles cases where title and URL are combined)
+            const extractedUrl = extractUrlFromText(url);
+
             // Validate that it's a URL
             try {
-                new URL(url);
-                elements.urlInput.value = url;
+                new URL(extractedUrl || url);
+                elements.urlInput.value = extractedUrl || url;
 
                 // Show notification that URL is ready
                 if (state.accessToken) {
@@ -1098,7 +1128,7 @@
             } catch (error) {
                 console.log('Shared content is not a valid URL:', url);
                 // If not a valid URL, still put it in the field - user might want to edit it
-                elements.urlInput.value = url;
+                elements.urlInput.value = extractedUrl || url;
                 elements.urlInput.focus();
             }
         }
