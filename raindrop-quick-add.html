@@ -995,6 +995,24 @@
                 console.warn('Background Sync API not supported');
             }
 
+            // Clean up any stale share cache on initialization
+            try {
+                const cache = await caches.open('raindrop-share-data');
+                const keys = await cache.keys();
+                console.log('Found', keys.length, 'cached share items on init');
+
+                // Clear all cached share data on app start (not from a share)
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('shared') !== 'true') {
+                    for (const request of keys) {
+                        await cache.delete(request);
+                    }
+                    console.log('Cleared stale share cache on init');
+                }
+            } catch (error) {
+                console.error('Failed to clean share cache on init:', error);
+            }
+
             await loadToken();
             updateUI();
             setupEventListeners();
@@ -1026,7 +1044,24 @@
                     if (response) {
                         const sharedData = await response.json();
 
-                        // Clear the cached data
+                        // Validate timestamp - reject stale cached data (older than 10 seconds)
+                        const now = Date.now();
+                        const age = now - (sharedData.timestamp || 0);
+                        const MAX_CACHE_AGE = 10000; // 10 seconds
+
+                        if (age > MAX_CACHE_AGE) {
+                            console.warn('Rejecting stale cached share data, age:', age, 'ms');
+                            await cache.delete('share-data');
+                            showToast('Share data expired. Please try sharing again.', 'error');
+
+                            // Clear URL parameters from address bar
+                            if (window.history && window.history.replaceState) {
+                                window.history.replaceState({}, document.title, window.location.pathname);
+                            }
+                            return;
+                        }
+
+                        // Clear the cached data immediately after validation
                         await cache.delete('share-data');
 
                         // Clear URL parameters from address bar
@@ -1046,10 +1081,25 @@
                             await handleSharedUrl(sharedUrl, sharedData.title);
                             return;
                         }
+                    } else {
+                        console.log('No cached share data found');
                     }
                 } catch (error) {
                     console.error('Failed to retrieve shared data:', error);
                     showToast('Failed to process shared content', 'error');
+
+                    // Clear the cache on error to prevent stale data
+                    try {
+                        const cache = await caches.open('raindrop-share-data');
+                        await cache.delete('share-data');
+                    } catch (cacheError) {
+                        console.error('Failed to clear share cache:', cacheError);
+                    }
+                }
+
+                // Clear URL parameters from address bar
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
                 }
                 return;
             }
