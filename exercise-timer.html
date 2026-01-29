@@ -1248,10 +1248,10 @@
                 displayTime = remaining;
                 progress = phaseTotal > 0 ? (state.elapsed / phaseTotal) : 0;
 
-                // Countdown beeps in last 3 seconds
-                const remainingSec = Math.ceil(remaining / 1000);
-                if (remainingSec <= 3 && remainingSec > 0 && remainingSec !== lastCountdownBeep && state.running) {
-                    lastCountdownBeep = remainingSec;
+                // Countdown beeps in last 3 seconds (beep when display changes to 2, 1, 0)
+                const displaySec = Math.floor(remaining / 1000);
+                if (displaySec <= 2 && displaySec >= 0 && displaySec !== lastCountdownBeep && state.running) {
+                    lastCountdownBeep = displaySec;
                     playCountdownBeep();
                 }
             }
