@@ -88,4 +88,5 @@ When reviewing or making changes, verify:
 2. **Design consistency**: Dark theme, orange accent (#f97316), proper button styles, mobile responsiveness
 3. **Code quality**: Clean, readable code; proper error handling; no console errors
 4. **Changelog**: CHANGELOG.md is updated for user-facing changes
-5. **tools.json**: For new tools or updates, entry is correct and complete
+5. **tools.json**: For new tools, entry is added with correct `dateAdded`. For updates, verify `dateUpdated` is set to current date
+6. **README.md**: Tool descriptions match current functionality and stay in sync with tools.json metadata
