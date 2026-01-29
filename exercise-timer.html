@@ -1639,10 +1639,106 @@
             
             // Update button states
             updateButtonStates();
+            
+            // Update URL to reflect current mode and settings
+            updateURLWithSettings();
+        }
+
+        // ===== URL Query Parameters =====
+        function loadSettingsFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            let hasIntervalParams = false;
+            
+            // Interval timer settings
+            if (params.has('work')) {
+                const work = parseInt(params.get('work'));
+                if (!isNaN(work) && work >= 5 && work <= 300) {
+                    state.settings.workDuration = work;
+                    hasIntervalParams = true;
+                }
+            }
+            if (params.has('rest')) {
+                const rest = parseInt(params.get('rest'));
+                if (!isNaN(rest) && rest >= 0 && rest <= 300) {
+                    state.settings.restDuration = rest;
+                    hasIntervalParams = true;
+                }
+            }
+            if (params.has('sets')) {
+                const sets = parseInt(params.get('sets'));
+                if (!isNaN(sets) && sets >= 1 && sets <= 99) {
+                    state.settings.numSets = sets;
+                    hasIntervalParams = true;
+                }
+            }
+            if (params.has('pause')) {
+                state.settings.pauseBetweenSets = params.get('pause') === '1';
+                hasIntervalParams = true;
+            }
+            
+            // Countdown settings
+            if (params.has('min')) {
+                const min = parseInt(params.get('min'));
+                if (!isNaN(min) && min >= 0 && min <= 99) {
+                    state.settings.countdownMin = min;
+                }
+            }
+            if (params.has('sec')) {
+                const sec = parseInt(params.get('sec'));
+                if (!isNaN(sec) && sec >= 0 && sec <= 59) {
+                    state.settings.countdownSec = sec;
+                }
+            }
+            if (params.has('autoRestart')) {
+                state.settings.autoRestart = params.get('autoRestart') === '1';
+            }
+            
+            // Mode from URL
+            if (params.has('mode')) {
+                const mode = params.get('mode');
+                if (['stopwatch', 'countdown', 'intervals'].includes(mode)) {
+                    return mode;
+                }
+            }
+            
+            // Auto-switch to intervals if interval params provided
+            if (hasIntervalParams) {
+                return 'intervals';
+            }
+            
+            return null;
+        }
+        
+        function updateURLWithSettings() {
+            const params = new URLSearchParams();
+            
+            // Always include mode for clarity
+            params.set('mode', state.mode);
+            
+            if (state.mode === 'intervals') {
+                // Only include if different from defaults
+                if (state.settings.workDuration !== 30) params.set('work', state.settings.workDuration);
+                if (state.settings.restDuration !== 10) params.set('rest', state.settings.restDuration);
+                if (state.settings.numSets !== 5) params.set('sets', state.settings.numSets);
+                if (state.settings.pauseBetweenSets) params.set('pause', '1');
+            } else if (state.mode === 'countdown') {
+                if (state.settings.countdownMin !== 5) params.set('min', state.settings.countdownMin);
+                if (state.settings.countdownSec !== 0) params.set('sec', state.settings.countdownSec);
+                if (state.settings.autoRestart) params.set('autoRestart', '1');
+            }
+            
+            // Build URL
+            const newURL = params.toString() 
+                ? `${window.location.pathname}?${params.toString()}`
+                : window.location.pathname;
+            
+            // Update without reload
+            history.replaceState(null, '', newURL);
         }
 
         // ===== Settings =====
         function loadSettings() {
+            // First load from localStorage
             const saved = localStorage.getItem('exerciseTimerSettings');
             if (saved) {
                 try {
@@ -1651,6 +1747,9 @@
                     console.warn('Failed to load settings from localStorage:', e);
                 }
             }
+            
+            // Then override with URL params (they take priority)
+            const modeFromURL = loadSettingsFromURL();
 
             // Apply to inputs
             elements.workDuration.value = state.settings.workDuration;
@@ -1665,10 +1764,14 @@
             elements.countdownSecDisplay.textContent = state.settings.countdownSec.toString().padStart(2, '0');
             
             updateNotificationStatus();
+            
+            // Return the mode to use (from URL or default)
+            return modeFromURL;
         }
 
         function saveSettings() {
             localStorage.setItem('exerciseTimerSettings', JSON.stringify(state.settings));
+            updateURLWithSettings();
         }
 
         function applyPreset(preset) {
@@ -1731,7 +1834,7 @@
 
         // ===== Event Listeners =====
         function init() {
-            loadSettings();
+            const modeFromURL = loadSettings();
             
             // Check notification support and request permission early
             checkNotificationSupport();
@@ -1879,8 +1982,8 @@
                 }
             });
 
-            // Initial display
-            setMode('stopwatch'); // Properly initialize the default mode
+            // Initial display - use mode from URL if provided, otherwise default to stopwatch
+            setMode(modeFromURL || 'stopwatch');
             updateDisplay();
             updateButtonStates();
         }
