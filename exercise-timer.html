@@ -1746,21 +1746,25 @@
             let displayTime = state.elapsed;
             let progress = 0;
             const phaseTotal = getPhaseTotal();
+            let roundUp = false;
 
             if (isCountdown || isIntervals) {
                 const remaining = Math.max(0, phaseTotal - state.elapsed);
                 displayTime = remaining;
                 progress = phaseTotal > 0 ? (state.elapsed / phaseTotal) : 0;
 
-                // Countdown beeps in last 3 seconds (beep when display changes to 2, 1, 0)
-                const displaySec = Math.floor(remaining / 1000);
-                if (displaySec <= 2 && displaySec >= 0 && displaySec !== lastCountdownBeep && state.running) {
-                    lastCountdownBeep = displaySec;
+                // Countdown beeps: use floor to detect second boundaries
+                // Beep when remaining crosses from 3000→2999, 2000→1999, 1000→999
+                const beepSec = Math.floor(remaining / 1000);
+                if (beepSec <= 2 && beepSec >= 0 && beepSec !== lastCountdownBeep && state.running) {
+                    lastCountdownBeep = beepSec;
                     playCountdownBeep();
                 }
             }
 
-            const formatted = formatTime(displayTime, isStopwatch);
+            // For countdown/intervals, use ceil so display shows "01" until hitting 0
+            const displayMs = (isCountdown || isIntervals) ? Math.ceil(displayTime / 1000) * 1000 : displayTime;
+            const formatted = formatTime(displayMs, isStopwatch);
             elements.timeDisplay.textContent = formatted.time;
             elements.timeMsDisplay.textContent = isStopwatch ? formatted.ms : '';
 
@@ -1896,6 +1900,10 @@
             state.running = false;
             state.phase = 'finished';
             cancelAnimationFrame(animationFrameId);
+            
+            // Show 00:00 on finish
+            elements.timeDisplay.textContent = '00:00';
+            
             playFinishSound();
             
             // Show notification for countdown completion
