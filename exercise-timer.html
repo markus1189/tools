@@ -537,6 +537,212 @@
             color: var(--text-muted);
         }
 
+        /* Templates */
+        .templates-section {
+            margin-top: 1rem;
+        }
+
+        .templates-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .templates-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .template-action-btn {
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+        }
+
+        .template-action-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-dim);
+            color: var(--text);
+        }
+
+        .templates-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .template-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .template-item:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-dim);
+        }
+
+        .template-info {
+            flex: 1;
+            cursor: pointer;
+            min-width: 0;
+        }
+
+        .template-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .template-detail {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 0.25rem;
+            margin-left: 0.5rem;
+        }
+
+        .template-btn {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+
+        .template-btn:hover {
+            background: var(--bg);
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .template-btn.delete:hover {
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .template-btn.share:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .template-empty {
+            padding: 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .save-template-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .save-template-row input {
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .save-template-row input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .save-template-row input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .save-template-btn {
+            padding: 0.5rem 1rem;
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+
+        .save-template-btn:hover {
+            background: var(--accent-dim);
+        }
+
+        .save-template-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            z-index: 200;
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: var(--work);
+            color: var(--work);
+        }
+
+        .toast.error {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* Hidden file input */
+        .hidden-input {
+            display: none;
+        }
+
         /* Duration Picker (touch-friendly) */
         .duration-picker {
             display: none;
@@ -886,6 +1092,9 @@
         </div>
     </div>
 
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
+
     <!-- Settings Panel -->
     <div class="settings-panel" id="settingsPanel">
         <div class="settings-header">
@@ -946,6 +1155,24 @@
                         <div class="preset-detail">45s / 15s &times; 8</div>
                     </button>
                 </div>
+
+                <div class="templates-section">
+                    <div class="templates-header">
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">My Templates</span>
+                        <div class="templates-actions">
+                            <button class="template-action-btn" id="importTemplates" title="Import templates">Import</button>
+                            <button class="template-action-btn" id="exportTemplates" title="Export all templates">Export</button>
+                        </div>
+                    </div>
+                    <div class="templates-list" id="templatesList">
+                        <!-- Templates will be rendered here -->
+                    </div>
+                    <div class="save-template-row">
+                        <input type="text" id="newTemplateName" placeholder="Template name..." maxlength="30">
+                        <button class="save-template-btn" id="saveTemplateBtn">Save Current</button>
+                    </div>
+                </div>
+                <input type="file" id="importTemplatesInput" class="hidden-input" accept=".json">
             </div>
 
             <div class="settings-section">
@@ -1013,7 +1240,10 @@
                 autoRestart: false
             },
             
-            notificationPermission: 'default' // 'default', 'granted', 'denied', 'unsupported'
+            notificationPermission: 'default', // 'default', 'granted', 'denied', 'unsupported'
+
+            // Custom templates (loaded from localStorage)
+            templates: []
         };
 
         // ===== DOM Elements =====
@@ -1052,7 +1282,16 @@
             notificationsEnabled: $('notificationsEnabled'),
             countdownMinDisplay: $('countdownMinDisplay'),
             countdownSecDisplay: $('countdownSecDisplay'),
-            autoRestartToggle: $('autoRestartToggle')
+            autoRestartToggle: $('autoRestartToggle'),
+
+            // Templates
+            templatesList: $('templatesList'),
+            newTemplateName: $('newTemplateName'),
+            saveTemplateBtn: $('saveTemplateBtn'),
+            importTemplates: $('importTemplates'),
+            exportTemplates: $('exportTemplates'),
+            importTemplatesInput: $('importTemplatesInput'),
+            toast: $('toast')
         };
 
         // ===== Audio & Vibration =====
@@ -1172,7 +1411,7 @@
         function updateNotificationStatus() {
             const statusEl = document.getElementById('notificationStatus');
             if (!statusEl) return;
-            
+
             if (!('Notification' in window)) {
                 statusEl.textContent = ' (not supported)';
                 statusEl.style.color = 'var(--text-muted)';
@@ -1182,9 +1421,9 @@
                 }
                 return;
             }
-            
+
             const permission = Notification.permission;
-            
+
             if (permission === 'granted' && state.settings.notificationsEnabled) {
                 statusEl.textContent = ' ✓';
                 statusEl.style.color = 'var(--work)';
@@ -1200,6 +1439,271 @@
                 statusEl.style.color = 'var(--text-muted)';
             } else {
                 statusEl.textContent = '';
+            }
+        }
+
+        // ===== Templates =====
+        function loadTemplates() {
+            const saved = localStorage.getItem('exerciseTimerTemplates');
+            if (saved) {
+                try {
+                    state.templates = JSON.parse(saved);
+                } catch (e) {
+                    console.warn('Failed to load templates:', e);
+                    state.templates = [];
+                }
+            }
+        }
+
+        function saveTemplates() {
+            localStorage.setItem('exerciseTimerTemplates', JSON.stringify(state.templates));
+        }
+
+        function formatTemplateDetail(template) {
+            const work = template.workDuration || 30;
+            const rest = template.restDuration || 10;
+            const sets = template.numSets || 5;
+            return `${work}s / ${rest}s × ${sets}`;
+        }
+
+        function renderTemplates() {
+            if (!elements.templatesList) return;
+
+            if (state.templates.length === 0) {
+                elements.templatesList.innerHTML = '<div class="template-empty">No saved templates. Save your current settings above.</div>';
+                return;
+            }
+
+            elements.templatesList.innerHTML = state.templates.map((template, index) => `
+                <div class="template-item" data-index="${index}">
+                    <div class="template-info">
+                        <div class="template-name">${escapeHtml(template.name)}</div>
+                        <div class="template-detail">${formatTemplateDetail(template)}</div>
+                    </div>
+                    <div class="template-actions">
+                        <button class="template-btn share" data-action="share" data-index="${index}" title="Copy share link">🔗</button>
+                        <button class="template-btn delete" data-action="delete" data-index="${index}" title="Delete template">×</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            elements.templatesList.querySelectorAll('.template-info').forEach(info => {
+                info.addEventListener('click', () => {
+                    const index = parseInt(info.parentElement.dataset.index);
+                    applyTemplate(index);
+                });
+            });
+
+            elements.templatesList.querySelectorAll('.template-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const action = btn.dataset.action;
+                    const index = parseInt(btn.dataset.index);
+                    if (action === 'delete') {
+                        deleteTemplate(index);
+                    } else if (action === 'share') {
+                        shareTemplate(index);
+                    }
+                });
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function applyTemplate(index) {
+            const template = state.templates[index];
+            if (!template) return;
+
+            state.settings.workDuration = template.workDuration || 30;
+            state.settings.restDuration = template.restDuration || 10;
+            state.settings.numSets = template.numSets || 5;
+            state.settings.pauseBetweenSets = template.pauseBetweenSets || false;
+
+            // Update inputs
+            elements.workDuration.value = state.settings.workDuration;
+            elements.restDuration.value = state.settings.restDuration;
+            elements.numSets.value = state.settings.numSets;
+            elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
+
+            saveSettings();
+            showToast(`Loaded "${template.name}"`, 'success');
+
+            // Close settings and switch to intervals mode
+            elements.settingsPanel.classList.remove('show');
+            setMode('intervals');
+        }
+
+        function saveCurrentAsTemplate() {
+            const name = elements.newTemplateName.value.trim();
+            if (!name) {
+                showToast('Please enter a template name', 'error');
+                return;
+            }
+
+            // Check for duplicate names
+            if (state.templates.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+                showToast('Template name already exists', 'error');
+                return;
+            }
+
+            const template = {
+                name: name,
+                workDuration: state.settings.workDuration,
+                restDuration: state.settings.restDuration,
+                numSets: state.settings.numSets,
+                pauseBetweenSets: state.settings.pauseBetweenSets
+            };
+
+            state.templates.push(template);
+            saveTemplates();
+            renderTemplates();
+            elements.newTemplateName.value = '';
+            showToast(`Saved "${name}"`, 'success');
+        }
+
+        function deleteTemplate(index) {
+            const template = state.templates[index];
+            if (!template) return;
+
+            state.templates.splice(index, 1);
+            saveTemplates();
+            renderTemplates();
+            showToast('Template deleted', 'success');
+        }
+
+        function shareTemplate(index) {
+            const template = state.templates[index];
+            if (!template) return;
+
+            const params = new URLSearchParams();
+            params.set('mode', 'intervals');
+            params.set('work', template.workDuration);
+            params.set('rest', template.restDuration);
+            params.set('sets', template.numSets);
+            if (template.pauseBetweenSets) params.set('pause', '1');
+            params.set('name', template.name);
+
+            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('Link copied to clipboard', 'success');
+            }).catch(() => {
+                // Fallback: show URL in prompt
+                prompt('Copy this link:', url);
+            });
+        }
+
+        function exportAllTemplates() {
+            if (state.templates.length === 0) {
+                showToast('No templates to export', 'error');
+                return;
+            }
+
+            const data = {
+                version: 1,
+                exportDate: new Date().toISOString(),
+                templates: state.templates
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `exercise-timer-templates-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Exported ${state.templates.length} template(s)`, 'success');
+        }
+
+        function importTemplates(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    let templates = [];
+
+                    // Support both formats: array of templates or wrapped object
+                    if (Array.isArray(data)) {
+                        templates = data;
+                    } else if (data.templates && Array.isArray(data.templates)) {
+                        templates = data.templates;
+                    } else {
+                        throw new Error('Invalid format');
+                    }
+
+                    // Validate templates
+                    const validTemplates = templates.filter(t =>
+                        t.name &&
+                        typeof t.workDuration === 'number' &&
+                        typeof t.restDuration === 'number' &&
+                        typeof t.numSets === 'number'
+                    );
+
+                    if (validTemplates.length === 0) {
+                        showToast('No valid templates found in file', 'error');
+                        return;
+                    }
+
+                    // Merge with existing (skip duplicates by name)
+                    const existingNames = new Set(state.templates.map(t => t.name.toLowerCase()));
+                    let imported = 0;
+                    let skipped = 0;
+
+                    validTemplates.forEach(template => {
+                        if (!existingNames.has(template.name.toLowerCase())) {
+                            state.templates.push({
+                                name: template.name,
+                                workDuration: template.workDuration,
+                                restDuration: template.restDuration,
+                                numSets: template.numSets,
+                                pauseBetweenSets: template.pauseBetweenSets || false
+                            });
+                            existingNames.add(template.name.toLowerCase());
+                            imported++;
+                        } else {
+                            skipped++;
+                        }
+                    });
+
+                    saveTemplates();
+                    renderTemplates();
+
+                    if (skipped > 0) {
+                        showToast(`Imported ${imported}, skipped ${skipped} duplicate(s)`, 'success');
+                    } else {
+                        showToast(`Imported ${imported} template(s)`, 'success');
+                    }
+                } catch (err) {
+                    console.error('Import error:', err);
+                    showToast('Invalid file format', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function showToast(message, type = 'success') {
+            elements.toast.textContent = message;
+            elements.toast.className = `toast ${type} show`;
+
+            setTimeout(() => {
+                elements.toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // Check URL for shared template name
+        function checkForSharedTemplate() {
+            const params = new URLSearchParams(window.location.search);
+            const name = params.get('name');
+            if (name && params.get('mode') === 'intervals') {
+                // Show a toast indicating this is a shared template
+                setTimeout(() => {
+                    showToast(`Loaded shared template: ${name}`, 'success');
+                }, 500);
             }
         }
 
@@ -1835,7 +2339,11 @@
         // ===== Event Listeners =====
         function init() {
             const modeFromURL = loadSettings();
-            
+
+            // Load and render templates
+            loadTemplates();
+            renderTemplates();
+
             // Check notification support and request permission early
             checkNotificationSupport();
 
@@ -1965,6 +2473,24 @@
                 btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
             });
 
+            // Templates
+            elements.saveTemplateBtn.addEventListener('click', saveCurrentAsTemplate);
+            elements.newTemplateName.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveCurrentAsTemplate();
+                }
+            });
+            elements.exportTemplates.addEventListener('click', exportAllTemplates);
+            elements.importTemplates.addEventListener('click', () => {
+                elements.importTemplatesInput.click();
+            });
+            elements.importTemplatesInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    importTemplates(e.target.files[0]);
+                    e.target.value = ''; // Reset for future imports
+                }
+            });
+
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 // Ignore if typing in an input
@@ -1986,6 +2512,9 @@
             setMode(modeFromURL || 'stopwatch');
             updateDisplay();
             updateButtonStates();
+
+            // Check for shared template
+            checkForSharedTemplate();
         }
 
         init();
