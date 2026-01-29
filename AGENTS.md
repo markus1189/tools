@@ -90,3 +90,7 @@ When reviewing or making changes, verify:
 4. **Changelog**: CHANGELOG.md is updated for user-facing changes
 5. **tools.json**: For new tools, entry is added with correct `dateAdded`. For updates, verify `dateUpdated` is set to current date
 6. **README.md**: Tool descriptions match current functionality and stay in sync with tools.json metadata
+7. When performing code review, you ALWAYS MUST include a summary comment:
+     - What files you reviewed
+     - What aspects you focused on
+     - Any files you couldn't fully analyze
