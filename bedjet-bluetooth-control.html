@@ -2705,7 +2705,7 @@
             statusIndicator.className = 'status-indicator reconnecting';
             statusText.textContent = `Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})...`;
 
-            const delayMs = reconnectBaseDelay * reconnectAttempts; // Linear backoff
+            const delayMs = reconnectBaseDelay * Math.pow(2, reconnectAttempts - 1); // Exponential backoff
             logDebug(`Reconnect attempt ${reconnectAttempts}/${maxReconnectAttempts} in ${delayMs/1000}s...`, 'warn');
 
             reconnectTimer = setTimeout(async () => {
