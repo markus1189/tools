@@ -1,0 +1,21 @@
+# Per-project Taskwarrior config
+data.location=.task
+
+# Disable confirmations for scripted use
+confirmation=off
+bulk=100
+
+# Custom attributes for agentic tracking
+uda.source.type=string
+uda.source.label=Source
+uda.notes.type=string
+uda.notes.label=Notes
+
+# Useful reports
+report.inbox.columns=id,project,description,tags
+report.inbox.labels=ID,Project,Description,Tags
+report.inbox.filter=status:pending -BLOCKED
+report.inbox.sort=urgency-
+
+# Human handoff tag
+color.tag.needs-human=bold red

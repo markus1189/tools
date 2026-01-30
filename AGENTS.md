@@ -1,5 +1,19 @@
 # Agent Instructions for Tools Repository
 
+## Task Tracking
+
+This project uses Taskwarrior for tracking work. Environment is set via `.envrc`.
+
+```bash
+task next          # See prioritized work queue
+task N start       # Begin working on task N
+task annotate N "findings..."  # Record progress/findings
+task N done        # Complete task
+task N modify +needs-human     # Flag for human input
+```
+
+Tasks are stored in `.task/` (committed to git).
+
 ## Project Overview
 
 Static HTML tools hosted on GitHub Pages. No build steps, no frameworks. Each tool is a self-contained `.html` file.
