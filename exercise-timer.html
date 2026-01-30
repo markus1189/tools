@@ -210,6 +210,44 @@
             text-align: center;
         }
 
+        /* Skip Navigation Buttons */
+        .skip-nav {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            padding: 0;
+            min-width: 3.5rem;
+            width: 3.5rem;
+            height: 3.5rem;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            user-select: none;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .skip-nav.show {
+            display: flex;
+        }
+
+        .skip-nav:hover:not(:disabled) {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+        }
+
+        .skip-nav:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .skip-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
         .time {
             font-size: min(4rem, 15vw);
             font-weight: 300;
@@ -1095,9 +1133,11 @@
         </div>
 
         <div class="controls" id="controls">
+            <button class="skip-nav skip-backward" id="skipBackward" title="Previous phase" aria-label="Previous phase">«</button>
             <button class="btn btn-secondary" id="resetBtn">Reset</button>
             <button class="btn btn-primary" id="startBtn">Start</button>
             <button class="btn btn-secondary" id="lapBtn" style="display: none;">Lap</button>
+            <button class="skip-nav skip-forward" id="skipForward" title="Next phase" aria-label="Next phase">»</button>
         </div>
 
         <div class="laps-container" id="lapsContainer" style="display: none;">
@@ -1246,6 +1286,7 @@
             laps: [],
             lastLapTime: 0,
             wakeLock: null,
+            phaseHistory: [], // Track phase transitions for backward navigation
 
             // Settings (loaded from localStorage)
             settings: {
@@ -1293,6 +1334,8 @@
             countdownSettings: $('countdownSettings'),
             intervalStructure: $('intervalStructure'),
             intervalSets: $('intervalSets'),
+            skipBackward: $('skipBackward'),
+            skipForward: $('skipForward'),
 
             // Settings inputs
             workDuration: $('workDuration'),
@@ -1859,6 +1902,9 @@
             if (isIntervals) {
                 renderIntervalStructure();
             }
+
+            // Update skip button states
+            updateSkipButtonStates();
         }
 
         function tick(timestamp) {
@@ -1890,6 +1936,7 @@
             if (state.elapsed >= phaseTotal) {
                 if (state.phase === 'prep') {
                     // Transition from prep to work
+                    savePhaseToHistory();
                     state.phase = 'work';
                     state.prepCompleted = true;
                     state.startTime = performance.now();
@@ -1899,6 +1946,7 @@
                 } else if (state.phase === 'work') {
                     // Transition to rest (or next set if rest is 0)
                     if (state.settings.restDuration > 0) {
+                        savePhaseToHistory();
                         state.phase = 'rest';
                         state.startTime = performance.now();
                         state.elapsed = 0;
@@ -1925,6 +1973,7 @@
             if (state.settings.pauseBetweenSets) {
                 pauseForNextSet();
             } else {
+                savePhaseToHistory();
                 state.phase = 'work';
                 state.startTime = performance.now();
                 state.elapsed = 0;
@@ -1981,6 +2030,102 @@
             elements.timerContainer.classList.remove('phase-work', 'phase-rest');
             releaseWakeLock();
             renderIntervalStructure();
+        }
+
+        // ===== Phase History & Skip Navigation =====
+        function savePhaseToHistory() {
+            state.phaseHistory.push({
+                phase: state.phase,
+                set: state.currentSet,
+                prepCompleted: state.prepCompleted
+            });
+        }
+
+        function skipForward() {
+            if (state.mode !== 'intervals') return;
+            if (!state.running) return;
+            if (state.phase === 'finished') return;
+
+            // Save current phase to history before skipping
+            savePhaseToHistory();
+
+            if (state.phase === 'prep') {
+                // Skip to work phase
+                state.phase = 'work';
+                state.prepCompleted = true;
+            } else if (state.phase === 'work') {
+                // Skip to rest (or next set if no rest)
+                if (state.settings.restDuration > 0) {
+                    state.phase = 'rest';
+                } else {
+                    // No rest, advance to next set
+                    if (state.currentSet >= state.settings.numSets) {
+                        finishTimer();
+                        return;
+                    }
+                    state.currentSet++;
+                    state.phase = 'work';
+                }
+            } else if (state.phase === 'rest') {
+                // Skip to next work phase
+                if (state.currentSet >= state.settings.numSets) {
+                    finishTimer();
+                    return;
+                }
+                state.currentSet++;
+                state.phase = 'work';
+            }
+
+            // Reset timing for new phase
+            state.startTime = performance.now();
+            state.elapsed = 0;
+            lastCountdownBeep = -1;
+            playTransitionBeep();
+            updateDisplay();
+        }
+
+        function skipBackward() {
+            if (state.mode !== 'intervals') return;
+            if (!state.running) return;
+            if (state.phaseHistory.length === 0) return;
+
+            // Pop the last phase from history
+            const previousPhase = state.phaseHistory.pop();
+            
+            // Restore previous phase state
+            state.phase = previousPhase.phase;
+            state.currentSet = previousPhase.set;
+            state.prepCompleted = previousPhase.prepCompleted;
+
+            // Reset timing for restored phase
+            state.startTime = performance.now();
+            state.elapsed = 0;
+            lastCountdownBeep = -1;
+            playTransitionBeep();
+            updateDisplay();
+        }
+
+        function updateSkipButtonStates() {
+            if (state.mode !== 'intervals') {
+                elements.skipBackward.classList.remove('show');
+                elements.skipForward.classList.remove('show');
+                return;
+            }
+
+            // Show skip buttons during interval mode when running
+            const shouldShow = state.running && state.phase !== 'finished';
+            elements.skipBackward.classList.toggle('show', shouldShow);
+            elements.skipForward.classList.toggle('show', shouldShow);
+
+            if (!shouldShow) return;
+
+            // Backward disabled if no history
+            elements.skipBackward.disabled = state.phaseHistory.length === 0;
+
+            // Forward disabled if on last phase of last set
+            const isLastSet = state.currentSet >= state.settings.numSets;
+            const isLastPhaseOfSet = state.phase === 'rest' || (state.phase === 'work' && state.settings.restDuration === 0);
+            elements.skipForward.disabled = isLastSet && isLastPhaseOfSet;
         }
 
         function startTimer() {
@@ -2054,6 +2199,7 @@
             state.prepCompleted = false;
             state.laps = [];
             state.lastLapTime = 0;
+            state.phaseHistory = [];
             lastCountdownBeep = -1;
 
             cancelAnimationFrame(animationFrameId);
@@ -2452,6 +2598,10 @@
             elements.startBtn.addEventListener('click', startTimer);
             elements.resetBtn.addEventListener('click', () => resetTimer());
             elements.lapBtn.addEventListener('click', recordLap);
+
+            // Skip navigation buttons
+            elements.skipBackward.addEventListener('click', skipBackward);
+            elements.skipForward.addEventListener('click', skipForward);
 
             // Tap to continue
             elements.tapContinue.addEventListener('click', continueFromPause);
