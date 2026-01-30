@@ -143,6 +143,14 @@
             background: rgba(249, 115, 22, 0.1);
         }
 
+        .timer-container.phase-prep {
+            background: rgba(249, 115, 22, 0.05);
+        }
+
+        .phase-prep .phase-label {
+            color: var(--accent);
+        }
+
         .phase-label {
             font-size: 1.2rem;
             font-weight: 600;
@@ -945,6 +953,11 @@
             color: var(--rest);
         }
 
+        .interval-segment.prep {
+            background: rgba(249, 115, 22, 0.2);
+            color: var(--accent);
+        }
+
         .interval-segment.completed {
             opacity: 0.4;
         }
@@ -1133,6 +1146,13 @@
                         </label>
                     </div>
                 </div>
+                <div class="setting-row">
+                    <span class="setting-label">Prep Countdown</span>
+                    <div class="setting-input">
+                        <input type="number" id="prepCountdown" value="3" min="0" max="10">
+                        <span class="setting-unit">sec</span>
+                    </div>
+                </div>
             </div>
 
             <div class="settings-section">
@@ -1219,9 +1239,10 @@
             startTime: 0,
             elapsed: 0,
             totalElapsed: 0,
-            phase: 'ready', // ready, work, rest, paused, countdown, finished
+            phase: 'ready', // ready, prep, work, rest, paused, countdown, finished
             pausedPhase: null, // for intervals mode: which phase we were in when paused
             currentSet: 1,
+            prepCompleted: false, // Track if prep countdown has been completed
             laps: [],
             lastLapTime: 0,
             wakeLock: null,
@@ -1232,6 +1253,7 @@
                 restDuration: 10,
                 numSets: 5,
                 pauseBetweenSets: false,
+                prepCountdown: 3,
                 soundEnabled: true,
                 vibrationEnabled: true,
                 notificationsEnabled: true,
@@ -1277,6 +1299,7 @@
             restDuration: $('restDuration'),
             numSets: $('numSets'),
             pauseBetweenSets: $('pauseBetweenSets'),
+            prepCountdown: $('prepCountdown'),
             soundEnabled: $('soundEnabled'),
             vibrationEnabled: $('vibrationEnabled'),
             notificationsEnabled: $('notificationsEnabled'),
@@ -1463,7 +1486,9 @@
             const work = template.workDuration || 30;
             const rest = template.restDuration || 10;
             const sets = template.numSets || 5;
-            return `${work}s / ${rest}s × ${sets}`;
+            const prep = template.prepCountdown || 0;
+            const prepStr = prep > 0 ? ` (${prep}s prep)` : '';
+            return `${work}s / ${rest}s × ${sets}${prepStr}`;
         }
 
         function renderTemplates() {
@@ -1523,12 +1548,14 @@
             state.settings.restDuration = template.restDuration || 10;
             state.settings.numSets = template.numSets || 5;
             state.settings.pauseBetweenSets = template.pauseBetweenSets || false;
+            state.settings.prepCountdown = template.prepCountdown !== undefined ? template.prepCountdown : 3;
 
             // Update inputs
             elements.workDuration.value = state.settings.workDuration;
             elements.restDuration.value = state.settings.restDuration;
             elements.numSets.value = state.settings.numSets;
             elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
+            elements.prepCountdown.value = state.settings.prepCountdown;
 
             saveSettings();
             showToast(`Loaded "${template.name}"`, 'success');
@@ -1556,7 +1583,8 @@
                 workDuration: state.settings.workDuration,
                 restDuration: state.settings.restDuration,
                 numSets: state.settings.numSets,
-                pauseBetweenSets: state.settings.pauseBetweenSets
+                pauseBetweenSets: state.settings.pauseBetweenSets,
+                prepCountdown: state.settings.prepCountdown
             };
 
             state.templates.push(template);
@@ -1586,6 +1614,9 @@
             params.set('rest', template.restDuration);
             params.set('sets', template.numSets);
             if (template.pauseBetweenSets) params.set('pause', '1');
+            if (template.prepCountdown !== undefined && template.prepCountdown !== 3) {
+                params.set('prep', template.prepCountdown);
+            }
             params.set('name', template.name);
 
             const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
@@ -1661,7 +1692,8 @@
                                 workDuration: template.workDuration,
                                 restDuration: template.restDuration,
                                 numSets: template.numSets,
-                                pauseBetweenSets: template.pauseBetweenSets || false
+                                pauseBetweenSets: template.pauseBetweenSets || false,
+                                prepCountdown: template.prepCountdown !== undefined ? template.prepCountdown : 3
                             });
                             existingNames.add(template.name.toLowerCase());
                             imported++;
@@ -1731,6 +1763,9 @@
                 return Math.max(1000, total); // At least 1 second
             }
             if (state.mode === 'intervals') {
+                if (state.phase === 'prep') {
+                    return state.settings.prepCountdown * 1000;
+                }
                 return (state.phase === 'work' || state.phase === 'ready')
                     ? state.settings.workDuration * 1000
                     : state.settings.restDuration * 1000;
@@ -1774,8 +1809,21 @@
 
             // Phase label
             if (isIntervals) {
-                elements.phaseLabel.textContent = state.phase === 'work' ? 'WORK' : (state.phase === 'rest' ? 'REST' : '');
-                elements.setInfo.textContent = `Set ${state.currentSet} of ${state.settings.numSets}`;
+                if (state.phase === 'prep') {
+                    elements.phaseLabel.textContent = 'GET READY';
+                } else if (state.phase === 'work') {
+                    elements.phaseLabel.textContent = 'WORK';
+                } else if (state.phase === 'rest') {
+                    elements.phaseLabel.textContent = 'REST';
+                } else {
+                    elements.phaseLabel.textContent = '';
+                }
+                
+                if (state.phase === 'prep') {
+                    elements.setInfo.textContent = `Starting in...`;
+                } else {
+                    elements.setInfo.textContent = `Set ${state.currentSet} of ${state.settings.numSets}`;
+                }
             } else {
                 elements.phaseLabel.textContent = '';
                 elements.setInfo.textContent = '';
@@ -1840,7 +1888,15 @@
         function checkIntervalTransition() {
             const phaseTotal = getPhaseTotal();
             if (state.elapsed >= phaseTotal) {
-                if (state.phase === 'work') {
+                if (state.phase === 'prep') {
+                    // Transition from prep to work
+                    state.phase = 'work';
+                    state.prepCompleted = true;
+                    state.startTime = performance.now();
+                    state.elapsed = 0;
+                    lastCountdownBeep = -1;
+                    playTransitionBeep();
+                } else if (state.phase === 'work') {
                     // Transition to rest (or next set if rest is 0)
                     if (state.settings.restDuration > 0) {
                         state.phase = 'rest';
@@ -1952,7 +2008,13 @@
                     // Fresh start - reset everything
                     resetTimer(false);
                     if (state.mode === 'intervals') {
-                        state.phase = 'work';
+                        // Start with prep countdown if configured and > 0
+                        if (state.settings.prepCountdown > 0) {
+                            state.phase = 'prep';
+                        } else {
+                            state.phase = 'work';
+                            state.prepCompleted = true;
+                        }
                     } else if (state.mode === 'countdown') {
                         state.phase = 'countdown';
                     }
@@ -1989,6 +2051,7 @@
             state.phase = 'ready';
             state.pausedPhase = null;
             state.currentSet = 1;
+            state.prepCompleted = false;
             state.laps = [];
             state.lastLapTime = 0;
             lastCountdownBeep = -1;
@@ -2076,6 +2139,22 @@
             elements.intervalStructure.classList.add('show');
 
             const sets = [];
+            
+            // Add prep countdown if configured
+            if (state.settings.prepCountdown > 0) {
+                const prepCompleted = state.prepCompleted;
+                const prepActive = state.phase === 'prep';
+                sets.push({
+                    number: 'P',
+                    segments: [{
+                        type: 'prep',
+                        duration: state.settings.prepCountdown,
+                        completed: prepCompleted,
+                        active: prepActive
+                    }]
+                });
+            }
+            
             for (let i = 1; i <= state.settings.numSets; i++) {
                 const segments = [];
                 
@@ -2187,6 +2266,13 @@
                 state.settings.pauseBetweenSets = params.get('pause') === '1';
                 hasIntervalParams = true;
             }
+            if (params.has('prep')) {
+                const prep = parseInt(params.get('prep'));
+                if (!isNaN(prep) && prep >= 0 && prep <= 10) {
+                    state.settings.prepCountdown = prep;
+                    hasIntervalParams = true;
+                }
+            }
             
             // Countdown settings
             if (params.has('min')) {
@@ -2233,6 +2319,7 @@
                 if (state.settings.restDuration !== 10) params.set('rest', state.settings.restDuration);
                 if (state.settings.numSets !== 5) params.set('sets', state.settings.numSets);
                 if (state.settings.pauseBetweenSets) params.set('pause', '1');
+                if (state.settings.prepCountdown !== 3) params.set('prep', state.settings.prepCountdown);
             } else if (state.mode === 'countdown') {
                 if (state.settings.countdownMin !== 5) params.set('min', state.settings.countdownMin);
                 if (state.settings.countdownSec !== 0) params.set('sec', state.settings.countdownSec);
@@ -2268,6 +2355,7 @@
             elements.restDuration.value = state.settings.restDuration;
             elements.numSets.value = state.settings.numSets;
             elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
+            elements.prepCountdown.value = state.settings.prepCountdown;
             elements.soundEnabled.checked = state.settings.soundEnabled;
             elements.vibrationEnabled.checked = state.settings.vibrationEnabled;
             elements.notificationsEnabled.checked = state.settings.notificationsEnabled;
@@ -2406,6 +2494,11 @@
             });
             elements.pauseBetweenSets.addEventListener('change', (e) => {
                 state.settings.pauseBetweenSets = e.target.checked;
+                saveSettings();
+            });
+            elements.prepCountdown.addEventListener('change', (e) => {
+                state.settings.prepCountdown = Math.max(0, Math.min(10, parseInt(e.target.value) || 3));
+                e.target.value = state.settings.prepCountdown;
                 saveSettings();
             });
             elements.soundEnabled.addEventListener('change', (e) => {
