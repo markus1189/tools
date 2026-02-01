@@ -270,6 +270,19 @@
             margin-top: 0.5rem;
         }
 
+        .exercise-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-top: 0.5rem;
+        }
+
+        .rep-info {
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-top: 0.25rem;
+        }
+
         .total-time {
             font-size: 0.85rem;
             color: var(--text-muted);
@@ -495,6 +508,21 @@
         }
 
         .setting-input input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .setting-input input[type="text"] {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .setting-input input[type="text"]:focus {
             outline: none;
             border-color: var(--accent);
         }
@@ -1012,6 +1040,61 @@
             margin-top: 0.25rem;
         }
 
+        /* Pyramid Exercise List */
+        .pyramid-exercises {
+            display: none;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .pyramid-exercises.show {
+            display: block;
+        }
+
+        .pyramid-exercise-list {
+            display: flex;
+            gap: 0.5rem;
+            min-width: min-content;
+        }
+
+        .pyramid-exercise-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            min-width: 80px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .pyramid-exercise-item.active {
+            border-color: var(--accent);
+            background: rgba(249, 115, 22, 0.1);
+        }
+
+        .pyramid-exercise-item.completed {
+            opacity: 0.5;
+        }
+
+        .pyramid-exercise-name {
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80px;
+        }
+
+        .pyramid-exercise-sets {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
         /* Responsive */
         @media (min-height: 700px) {
             .timer-ring {
@@ -1070,6 +1153,7 @@
             <button class="mode-tab active" data-mode="stopwatch">Stopwatch</button>
             <button class="mode-tab" data-mode="countdown">Countdown</button>
             <button class="mode-tab" data-mode="intervals">Intervals</button>
+            <button class="mode-tab" data-mode="pyramid">Pyramid</button>
         </div>
 
         <div class="duration-picker" id="countdownSettings">
@@ -1107,6 +1191,10 @@
             <div class="interval-sets" id="intervalSets"></div>
         </div>
 
+        <div class="pyramid-exercises" id="pyramidExercises">
+            <div class="pyramid-exercise-list" id="pyramidExerciseList"></div>
+        </div>
+
         <div class="timer-container" id="timerContainer">
             <div class="phase-label" id="phaseLabel"></div>
             <div class="timer-ring">
@@ -1123,11 +1211,13 @@
                     <div class="lap-time" id="lapTime"></div>
                 </div>
             </div>
+            <div class="exercise-name" id="exerciseName"></div>
+            <div class="rep-info" id="repInfo"></div>
             <div class="set-info" id="setInfo"></div>
             <div class="total-time" id="totalTime"></div>
 
             <div class="tap-continue" id="tapContinue">
-                <div class="tap-continue-text">Tap to continue</div>
+                <div class="tap-continue-text" id="tapContinueText">Tap to continue</div>
                 <div class="tap-continue-sub" id="nextSetInfo">Next: Set 2</div>
             </div>
         </div>
@@ -1195,24 +1285,80 @@
                 </div>
             </div>
 
+            <div class="settings-section" id="pyramidSettingsSection">
+                <h3>Pyramid Timer (McGill Big 3)</h3>
+                <div class="setting-row">
+                    <span class="setting-label">Hold Duration</span>
+                    <div class="setting-input">
+                        <input type="number" id="pyramidHoldDuration" value="10" min="5" max="60">
+                        <span class="setting-unit">sec</span>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Rest Between Reps</span>
+                    <div class="setting-input">
+                        <input type="number" id="pyramidRestBetweenReps" value="3" min="0" max="30">
+                        <span class="setting-unit">sec</span>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Rest Between Sets</span>
+                    <div class="setting-input">
+                        <input type="number" id="pyramidRestBetweenSets" value="20" min="5" max="120">
+                        <span class="setting-unit">sec</span>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Pyramid Pattern</span>
+                    <div class="setting-input">
+                        <input type="text" id="pyramidPattern" value="6,4,2" placeholder="e.g., 6,4,2" style="width: 6rem;">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Pause Between Exercises</span>
+                    <div class="setting-input">
+                        <label class="toggle">
+                            <input type="checkbox" id="pyramidPauseBetweenExercises" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                    <span class="setting-label">Exercises (one per line)</span>
+                    <textarea id="pyramidExercisesInput" rows="6" style="width: 100%; padding: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.9rem; resize: vertical;">McGill Curl-Up
+Side Bridge L
+Side Bridge R
+Bird-Dog L
+Bird-Dog R</textarea>
+                </div>
+            </div>
+
             <div class="settings-section">
                 <h3>Presets</h3>
                 <div class="presets-grid">
                     <button class="preset-btn" data-preset="tabata">
                         <div class="preset-name">Tabata</div>
-                        <div class="preset-detail">20s / 10s &times; 8</div>
+                        <div class="preset-detail">20s / 10s × 8</div>
                     </button>
                     <button class="preset-btn" data-preset="3030">
                         <div class="preset-name">30/30</div>
-                        <div class="preset-detail">30s / 30s &times; 10</div>
+                        <div class="preset-detail">30s / 30s × 10</div>
                     </button>
                     <button class="preset-btn" data-preset="emom">
                         <div class="preset-name">EMOM</div>
-                        <div class="preset-detail">60s / 0s &times; 10</div>
+                        <div class="preset-detail">60s / 0s × 10</div>
                     </button>
                     <button class="preset-btn" data-preset="hiit">
                         <div class="preset-name">HIIT</div>
-                        <div class="preset-detail">45s / 15s &times; 8</div>
+                        <div class="preset-detail">45s / 15s × 8</div>
+                    </button>
+                    <button class="preset-btn" data-preset="mcgill">
+                        <div class="preset-name">McGill Big 3</div>
+                        <div class="preset-detail">6-4-2 × 10s holds</div>
+                    </button>
+                    <button class="preset-btn" data-preset="mcgill-advanced">
+                        <div class="preset-name">McGill Advanced</div>
+                        <div class="preset-detail">8-6-4 × 10s holds</div>
                     </button>
                 </div>
 
@@ -1274,21 +1420,30 @@
     <script>
         // ===== State =====
         const state = {
-            mode: 'stopwatch', // stopwatch, countdown, intervals
+            mode: 'stopwatch', // stopwatch, countdown, intervals, pyramid
             running: false,
             startTime: 0,
             elapsed: 0,
             totalElapsed: 0,
             phase: 'ready', // ready, prep, work, rest, paused, countdown, finished
-            pausedPhase: null, // for intervals mode: which phase we were in when paused
+            pausedPhase: null,
             currentSet: 1,
-            prepCompleted: false, // Track if prep countdown has been completed
+            prepCompleted: false,
             laps: [],
             lastLapTime: 0,
             wakeLock: null,
-            phaseHistory: [], // Track phase transitions for backward navigation
+            phaseHistory: [],
 
-            // Settings (loaded from localStorage)
+            // Pyramid mode state
+            pyramid: {
+                currentExercise: 0,
+                currentSetIndex: 0,  // index in pyramid pattern (0=first set, 1=second, etc.)
+                currentRep: 1,
+                exercises: [],
+                pattern: [6, 4, 2],
+            },
+
+            // Settings
             settings: {
                 workDuration: 30,
                 restDuration: 10,
@@ -1300,12 +1455,17 @@
                 notificationsEnabled: true,
                 countdownMin: 5,
                 countdownSec: 0,
-                autoRestart: false
+                autoRestart: false,
+                // Pyramid settings
+                pyramidHoldDuration: 10,
+                pyramidRestBetweenReps: 3,
+                pyramidRestBetweenSets: 20,
+                pyramidPattern: '6,4,2',
+                pyramidPauseBetweenExercises: true,
+                pyramidExercises: 'McGill Curl-Up\nSide Bridge L\nSide Bridge R\nBird-Dog L\nBird-Dog R'
             },
             
-            notificationPermission: 'default', // 'default', 'granted', 'denied', 'unsupported'
-
-            // Custom templates (loaded from localStorage)
+            notificationPermission: 'default',
             templates: []
         };
 
@@ -1320,6 +1480,8 @@
             timeMsDisplay: $('timeMsDisplay'),
             timerProgress: $('timerProgress'),
             setInfo: $('setInfo'),
+            exerciseName: $('exerciseName'),
+            repInfo: $('repInfo'),
             totalTime: $('totalTime'),
             lapLabel: $('lapLabel'),
             lapTime: $('lapTime'),
@@ -1329,11 +1491,14 @@
             lapsContainer: $('lapsContainer'),
             lapsList: $('lapsList'),
             tapContinue: $('tapContinue'),
+            tapContinueText: $('tapContinueText'),
             nextSetInfo: $('nextSetInfo'),
             settingsPanel: $('settingsPanel'),
             countdownSettings: $('countdownSettings'),
             intervalStructure: $('intervalStructure'),
             intervalSets: $('intervalSets'),
+            pyramidExercises: $('pyramidExercises'),
+            pyramidExerciseList: $('pyramidExerciseList'),
             skipBackward: $('skipBackward'),
             skipForward: $('skipForward'),
 
@@ -1349,6 +1514,14 @@
             countdownMinDisplay: $('countdownMinDisplay'),
             countdownSecDisplay: $('countdownSecDisplay'),
             autoRestartToggle: $('autoRestartToggle'),
+
+            // Pyramid settings
+            pyramidHoldDuration: $('pyramidHoldDuration'),
+            pyramidRestBetweenReps: $('pyramidRestBetweenReps'),
+            pyramidRestBetweenSets: $('pyramidRestBetweenSets'),
+            pyramidPattern: $('pyramidPattern'),
+            pyramidPauseBetweenExercises: $('pyramidPauseBetweenExercises'),
+            pyramidExercisesInput: $('pyramidExercisesInput'),
 
             // Templates
             templatesList: $('templatesList'),
@@ -1381,8 +1554,6 @@
             if (!state.settings.soundEnabled) return;
 
             const ctx = getAudioContext();
-
-            // Resume audio context if suspended (mobile browsers)
             if (ctx.state === 'suspended') {
                 ctx.resume();
             }
@@ -1404,20 +1575,20 @@
 
         function playCountdownBeep() {
             playBeep(600, 0.08);
-            vibrate(50); // Short vibration
+            vibrate(50);
         }
 
         function playTransitionBeep() {
             playBeep(880, 0.15);
             setTimeout(() => playBeep(1100, 0.2), 150);
-            vibrate([100, 50, 100]); // Double pulse
+            vibrate([100, 50, 100]);
         }
 
         function playFinishSound() {
             playBeep(880, 0.15);
             setTimeout(() => playBeep(1100, 0.15), 150);
             setTimeout(() => playBeep(1320, 0.3), 300);
-            vibrate([200, 100, 200, 100, 200]); // Triple pulse
+            vibrate([200, 100, 200, 100, 200]);
         }
 
         // ===== Notifications =====
@@ -1429,7 +1600,6 @@
             
             state.notificationPermission = Notification.permission;
             
-            // Request permission early if not yet determined
             if (Notification.permission === 'default') {
                 try {
                     const permission = await Notification.requestPermission();
@@ -1438,40 +1608,6 @@
                     console.warn('Notification permission request failed:', e);
                 }
             }
-        }
-
-        function showCountdownCompleteNotification() {
-            // Only notify if permission granted and notifications enabled
-            if (!('Notification' in window) || Notification.permission !== 'granted') {
-                return;
-            }
-            
-            if (!state.settings.notificationsEnabled) return;
-            
-            const totalSeconds = state.settings.countdownMin * 60 + state.settings.countdownSec;
-            let duration;
-            if (state.settings.countdownMin > 0 && state.settings.countdownSec > 0) {
-                duration = `${state.settings.countdownMin}:${state.settings.countdownSec.toString().padStart(2, '0')} minute`;
-            } else if (state.settings.countdownMin > 0) {
-                duration = `${state.settings.countdownMin} minute`;
-            } else {
-                duration = `${state.settings.countdownSec} second`;
-            }
-            
-            const notification = new Notification('Timer Complete! ⏰', {
-                body: `Your ${duration} countdown has finished`,
-                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle fill="%23f97316" cx="50" cy="50" r="45"/><text x="50" y="70" font-size="60" text-anchor="middle" fill="white">⏰</text></svg>',
-                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle fill="%23f97316" cx="50" cy="50" r="45"/></svg>',
-                tag: 'countdown-complete',
-                requireInteraction: false,
-                silent: !state.settings.soundEnabled
-            });
-            
-            // Bring app to foreground when notification clicked
-            notification.onclick = () => {
-                window.focus();
-                notification.close();
-            };
         }
 
         function updateNotificationStatus() {
@@ -1515,7 +1651,6 @@
                 try {
                     state.templates = JSON.parse(saved);
                 } catch (e) {
-                    console.warn('Failed to load templates:', e);
                     state.templates = [];
                 }
             }
@@ -1526,19 +1661,20 @@
         }
 
         function formatTemplateDetail(template) {
+            if (template.mode === 'pyramid') {
+                return `${template.pyramidPattern || '6,4,2'} × ${template.pyramidHoldDuration || 10}s`;
+            }
             const work = template.workDuration || 30;
             const rest = template.restDuration || 10;
             const sets = template.numSets || 5;
-            const prep = template.prepCountdown || 0;
-            const prepStr = prep > 0 ? ` (${prep}s prep)` : '';
-            return `${work}s / ${rest}s × ${sets}${prepStr}`;
+            return `${work}s / ${rest}s × ${sets}`;
         }
 
         function renderTemplates() {
             if (!elements.templatesList) return;
 
             if (state.templates.length === 0) {
-                elements.templatesList.innerHTML = '<div class="template-empty">No saved templates. Save your current settings above.</div>';
+                elements.templatesList.innerHTML = '<div class="template-empty">No saved templates.</div>';
                 return;
             }
 
@@ -1549,13 +1685,11 @@
                         <div class="template-detail">${formatTemplateDetail(template)}</div>
                     </div>
                     <div class="template-actions">
-                        <button class="template-btn share" data-action="share" data-index="${index}" title="Copy share link">🔗</button>
-                        <button class="template-btn delete" data-action="delete" data-index="${index}" title="Delete template">×</button>
+                        <button class="template-btn delete" data-action="delete" data-index="${index}" title="Delete">×</button>
                     </div>
                 </div>
             `).join('');
 
-            // Add click handlers
             elements.templatesList.querySelectorAll('.template-info').forEach(info => {
                 info.addEventListener('click', () => {
                     const index = parseInt(info.parentElement.dataset.index);
@@ -1570,8 +1704,6 @@
                     const index = parseInt(btn.dataset.index);
                     if (action === 'delete') {
                         deleteTemplate(index);
-                    } else if (action === 'share') {
-                        shareTemplate(index);
                     }
                 });
             });
@@ -1587,11 +1719,8 @@
             const template = state.templates[index];
             if (!template) return;
 
-            state.settings.workDuration = template.workDuration || 30;
-            state.settings.restDuration = template.restDuration || 10;
-            state.settings.numSets = template.numSets || 5;
-            state.settings.pauseBetweenSets = template.pauseBetweenSets || false;
-            state.settings.prepCountdown = template.prepCountdown !== undefined ? template.prepCountdown : 3;
+            // Apply all settings from template
+            Object.assign(state.settings, template);
 
             // Update inputs
             elements.workDuration.value = state.settings.workDuration;
@@ -1599,13 +1728,18 @@
             elements.numSets.value = state.settings.numSets;
             elements.pauseBetweenSets.checked = state.settings.pauseBetweenSets;
             elements.prepCountdown.value = state.settings.prepCountdown;
+            elements.pyramidHoldDuration.value = state.settings.pyramidHoldDuration;
+            elements.pyramidRestBetweenReps.value = state.settings.pyramidRestBetweenReps;
+            elements.pyramidRestBetweenSets.value = state.settings.pyramidRestBetweenSets;
+            elements.pyramidPattern.value = state.settings.pyramidPattern;
+            elements.pyramidPauseBetweenExercises.checked = state.settings.pyramidPauseBetweenExercises;
+            elements.pyramidExercisesInput.value = state.settings.pyramidExercises;
 
             saveSettings();
             showToast(`Loaded "${template.name}"`, 'success');
 
-            // Close settings and switch to intervals mode
             elements.settingsPanel.classList.remove('show');
-            setMode('intervals');
+            setMode(template.mode || 'intervals');
         }
 
         function saveCurrentAsTemplate() {
@@ -1615,7 +1749,6 @@
                 return;
             }
 
-            // Check for duplicate names
             if (state.templates.some(t => t.name.toLowerCase() === name.toLowerCase())) {
                 showToast('Template name already exists', 'error');
                 return;
@@ -1623,11 +1756,18 @@
 
             const template = {
                 name: name,
+                mode: state.mode,
                 workDuration: state.settings.workDuration,
                 restDuration: state.settings.restDuration,
                 numSets: state.settings.numSets,
                 pauseBetweenSets: state.settings.pauseBetweenSets,
-                prepCountdown: state.settings.prepCountdown
+                prepCountdown: state.settings.prepCountdown,
+                pyramidHoldDuration: state.settings.pyramidHoldDuration,
+                pyramidRestBetweenReps: state.settings.pyramidRestBetweenReps,
+                pyramidRestBetweenSets: state.settings.pyramidRestBetweenSets,
+                pyramidPattern: state.settings.pyramidPattern,
+                pyramidPauseBetweenExercises: state.settings.pyramidPauseBetweenExercises,
+                pyramidExercises: state.settings.pyramidExercises
             };
 
             state.templates.push(template);
@@ -1638,148 +1778,18 @@
         }
 
         function deleteTemplate(index) {
-            const template = state.templates[index];
-            if (!template) return;
-
             state.templates.splice(index, 1);
             saveTemplates();
             renderTemplates();
             showToast('Template deleted', 'success');
         }
 
-        function shareTemplate(index) {
-            const template = state.templates[index];
-            if (!template) return;
-
-            const params = new URLSearchParams();
-            params.set('mode', 'intervals');
-            params.set('work', template.workDuration);
-            params.set('rest', template.restDuration);
-            params.set('sets', template.numSets);
-            if (template.pauseBetweenSets) params.set('pause', '1');
-            if (template.prepCountdown !== undefined && template.prepCountdown !== 3) {
-                params.set('prep', template.prepCountdown);
-            }
-            params.set('name', template.name);
-
-            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-
-            navigator.clipboard.writeText(url).then(() => {
-                showToast('Link copied to clipboard', 'success');
-            }).catch(() => {
-                // Fallback: show URL in prompt
-                prompt('Copy this link:', url);
-            });
-        }
-
-        function exportAllTemplates() {
-            if (state.templates.length === 0) {
-                showToast('No templates to export', 'error');
-                return;
-            }
-
-            const data = {
-                version: 1,
-                exportDate: new Date().toISOString(),
-                templates: state.templates
-            };
-
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `exercise-timer-templates-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast(`Exported ${state.templates.length} template(s)`, 'success');
-        }
-
-        function importTemplates(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    let templates = [];
-
-                    // Support both formats: array of templates or wrapped object
-                    if (Array.isArray(data)) {
-                        templates = data;
-                    } else if (data.templates && Array.isArray(data.templates)) {
-                        templates = data.templates;
-                    } else {
-                        throw new Error('Invalid format');
-                    }
-
-                    // Validate templates
-                    const validTemplates = templates.filter(t =>
-                        t.name &&
-                        typeof t.workDuration === 'number' &&
-                        typeof t.restDuration === 'number' &&
-                        typeof t.numSets === 'number'
-                    );
-
-                    if (validTemplates.length === 0) {
-                        showToast('No valid templates found in file', 'error');
-                        return;
-                    }
-
-                    // Merge with existing (skip duplicates by name)
-                    const existingNames = new Set(state.templates.map(t => t.name.toLowerCase()));
-                    let imported = 0;
-                    let skipped = 0;
-
-                    validTemplates.forEach(template => {
-                        if (!existingNames.has(template.name.toLowerCase())) {
-                            state.templates.push({
-                                name: template.name,
-                                workDuration: template.workDuration,
-                                restDuration: template.restDuration,
-                                numSets: template.numSets,
-                                pauseBetweenSets: template.pauseBetweenSets || false,
-                                prepCountdown: template.prepCountdown !== undefined ? template.prepCountdown : 3
-                            });
-                            existingNames.add(template.name.toLowerCase());
-                            imported++;
-                        } else {
-                            skipped++;
-                        }
-                    });
-
-                    saveTemplates();
-                    renderTemplates();
-
-                    if (skipped > 0) {
-                        showToast(`Imported ${imported}, skipped ${skipped} duplicate(s)`, 'success');
-                    } else {
-                        showToast(`Imported ${imported} template(s)`, 'success');
-                    }
-                } catch (err) {
-                    console.error('Import error:', err);
-                    showToast('Invalid file format', 'error');
-                }
-            };
-            reader.readAsText(file);
-        }
-
         function showToast(message, type = 'success') {
             elements.toast.textContent = message;
             elements.toast.className = `toast ${type} show`;
-
             setTimeout(() => {
                 elements.toast.classList.remove('show');
             }, 2500);
-        }
-
-        // Check URL for shared template name
-        function checkForSharedTemplate() {
-            const params = new URLSearchParams(window.location.search);
-            const name = params.get('name');
-            if (name && params.get('mode') === 'intervals') {
-                // Show a toast indicating this is a shared template
-                setTimeout(() => {
-                    showToast(`Loaded shared template: ${name}`, 'success');
-                }, 500);
-            }
         }
 
         // ===== Timer Logic =====
@@ -1803,7 +1813,7 @@
         function getPhaseTotal() {
             if (state.mode === 'countdown') {
                 const total = (state.settings.countdownMin * 60 + state.settings.countdownSec) * 1000;
-                return Math.max(1000, total); // At least 1 second
+                return Math.max(1000, total);
             }
             if (state.mode === 'intervals') {
                 if (state.phase === 'prep') {
@@ -1813,26 +1823,58 @@
                     ? state.settings.workDuration * 1000
                     : state.settings.restDuration * 1000;
             }
+            if (state.mode === 'pyramid') {
+                if (state.phase === 'prep') {
+                    return state.settings.prepCountdown * 1000;
+                }
+                if (state.phase === 'work') {
+                    return state.settings.pyramidHoldDuration * 1000;
+                }
+                if (state.phase === 'rest') {
+                    // Check if this is rest between reps or rest between sets
+                    const currentReps = state.pyramid.pattern[state.pyramid.currentSetIndex];
+                    if (state.pyramid.currentRep >= currentReps) {
+                        // End of set - longer rest
+                        return state.settings.pyramidRestBetweenSets * 1000;
+                    }
+                    return state.settings.pyramidRestBetweenReps * 1000;
+                }
+            }
             return 0;
+        }
+
+        function parsePyramidPattern() {
+            const pattern = state.settings.pyramidPattern.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+            return pattern.length > 0 ? pattern : [6, 4, 2];
+        }
+
+        function parsePyramidExercises() {
+            return state.settings.pyramidExercises.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+        }
+
+        function initPyramid() {
+            state.pyramid.exercises = parsePyramidExercises();
+            state.pyramid.pattern = parsePyramidPattern();
+            state.pyramid.currentExercise = 0;
+            state.pyramid.currentSetIndex = 0;
+            state.pyramid.currentRep = 1;
         }
 
         function updateDisplay() {
             const isStopwatch = state.mode === 'stopwatch';
             const isCountdown = state.mode === 'countdown';
             const isIntervals = state.mode === 'intervals';
+            const isPyramid = state.mode === 'pyramid';
 
             let displayTime = state.elapsed;
             let progress = 0;
             const phaseTotal = getPhaseTotal();
-            let roundUp = false;
 
-            if (isCountdown || isIntervals) {
+            if (isCountdown || isIntervals || isPyramid) {
                 const remaining = Math.max(0, phaseTotal - state.elapsed);
                 displayTime = remaining;
                 progress = phaseTotal > 0 ? (state.elapsed / phaseTotal) : 0;
 
-                // Countdown beeps: use floor to detect second boundaries
-                // Beep when remaining crosses from 3000→2999, 2000→1999, 1000→999
                 const beepSec = Math.floor(remaining / 1000);
                 if (beepSec <= 2 && beepSec >= 0 && beepSec !== lastCountdownBeep && state.running) {
                     lastCountdownBeep = beepSec;
@@ -1840,52 +1882,85 @@
                 }
             }
 
-            // For countdown/intervals, use ceil so display shows "01" until hitting 0
-            const displayMs = (isCountdown || isIntervals) ? Math.ceil(displayTime / 1000) * 1000 : displayTime;
+            const displayMs = (isCountdown || isIntervals || isPyramid) ? Math.ceil(displayTime / 1000) * 1000 : displayTime;
             const formatted = formatTime(displayMs, isStopwatch);
             elements.timeDisplay.textContent = formatted.time;
             elements.timeMsDisplay.textContent = isStopwatch ? formatted.ms : '';
 
-            // Progress ring
             const offset = isStopwatch ? 0 : RING_CIRCUMFERENCE * (1 - progress);
             elements.timerProgress.style.strokeDashoffset = offset;
 
-            // Phase label
-            if (isIntervals) {
+            // Phase label and info
+            if (isPyramid) {
                 if (state.phase === 'prep') {
                     elements.phaseLabel.textContent = 'GET READY';
+                    elements.exerciseName.textContent = state.pyramid.exercises[state.pyramid.currentExercise] || '';
+                    elements.repInfo.textContent = '';
+                    elements.setInfo.textContent = '';
                 } else if (state.phase === 'work') {
-                    elements.phaseLabel.textContent = 'WORK';
+                    elements.phaseLabel.textContent = 'HOLD';
+                    const currentReps = state.pyramid.pattern[state.pyramid.currentSetIndex];
+                    elements.exerciseName.textContent = state.pyramid.exercises[state.pyramid.currentExercise] || '';
+                    elements.repInfo.textContent = `Rep ${state.pyramid.currentRep} of ${currentReps}`;
+                    elements.setInfo.textContent = `Set ${state.pyramid.currentSetIndex + 1} of ${state.pyramid.pattern.length}`;
                 } else if (state.phase === 'rest') {
-                    elements.phaseLabel.textContent = 'REST';
+                    const currentReps = state.pyramid.pattern[state.pyramid.currentSetIndex];
+                    if (state.pyramid.currentRep >= currentReps) {
+                        elements.phaseLabel.textContent = 'REST';
+                    } else {
+                        elements.phaseLabel.textContent = 'BREATHE';
+                    }
+                    elements.exerciseName.textContent = state.pyramid.exercises[state.pyramid.currentExercise] || '';
+                    elements.repInfo.textContent = '';
+                    elements.setInfo.textContent = '';
+                } else if (state.phase === 'finished') {
+                    elements.phaseLabel.textContent = 'DONE';
+                    elements.exerciseName.textContent = '';
+                    elements.repInfo.textContent = '';
+                    elements.setInfo.textContent = '';
                 } else {
                     elements.phaseLabel.textContent = '';
+                    elements.exerciseName.textContent = state.pyramid.exercises[0] || '';
+                    elements.repInfo.textContent = `${state.pyramid.pattern.join('-')} pyramid`;
+                    elements.setInfo.textContent = `${state.pyramid.exercises.length} exercises`;
                 }
-                
+                renderPyramidExercises();
+            } else if (isIntervals) {
+                elements.exerciseName.textContent = '';
+                elements.repInfo.textContent = '';
                 if (state.phase === 'prep') {
-                    elements.setInfo.textContent = `Starting in...`;
-                } else {
+                    elements.phaseLabel.textContent = 'GET READY';
+                    elements.setInfo.textContent = 'Starting in...';
+                } else if (state.phase === 'work') {
+                    elements.phaseLabel.textContent = 'WORK';
                     elements.setInfo.textContent = `Set ${state.currentSet} of ${state.settings.numSets}`;
+                } else if (state.phase === 'rest') {
+                    elements.phaseLabel.textContent = 'REST';
+                    elements.setInfo.textContent = `Set ${state.currentSet} of ${state.settings.numSets}`;
+                } else {
+                    elements.phaseLabel.textContent = '';
+                    elements.setInfo.textContent = '';
                 }
             } else {
                 elements.phaseLabel.textContent = '';
+                elements.exerciseName.textContent = '';
+                elements.repInfo.textContent = '';
                 elements.setInfo.textContent = '';
             }
 
-            // Total time - keep for intervals/countdown only
-            if ((isIntervals || isCountdown) && state.totalElapsed > 0) {
+            // Total time
+            if ((isIntervals || isPyramid || isCountdown) && state.totalElapsed > 0) {
                 const total = formatTime(state.totalElapsed);
                 elements.totalTime.textContent = `Total: ${total.time}`;
             } else {
                 elements.totalTime.textContent = '';
             }
 
-            // Lap time inside circle - stopwatch only
+            // Lap time for stopwatch
             if (isStopwatch && state.laps.length > 0 && (state.running || state.phase === 'paused')) {
                 const currentLapTime = state.elapsed - state.lastLapTime;
                 const lapFormatted = formatTime(currentLapTime);
-                const currentLapNumber = state.laps.length + 1;
-                elements.lapLabel.textContent = `LAP ${currentLapNumber}`;
+                elements.lapLabel.textContent = `LAP ${state.laps.length + 1}`;
                 elements.lapTime.textContent = lapFormatted.time;
             } else {
                 elements.lapLabel.textContent = '';
@@ -1893,17 +1968,15 @@
             }
 
             // Container phase class
-            elements.timerContainer.classList.remove('phase-work', 'phase-rest');
-            if (isIntervals && state.running) {
+            elements.timerContainer.classList.remove('phase-work', 'phase-rest', 'phase-prep');
+            if ((isIntervals || isPyramid) && state.running) {
                 elements.timerContainer.classList.add(`phase-${state.phase}`);
             }
 
-            // Update interval structure
             if (isIntervals) {
                 renderIntervalStructure();
             }
 
-            // Update skip button states
             updateSkipButtonStates();
         }
 
@@ -1916,7 +1989,6 @@
             state.totalElapsed += now - (state.lastTick || now);
             state.lastTick = now;
 
-            // Check phase transitions for countdown/intervals
             if (state.mode === 'countdown') {
                 const phaseTotal = getPhaseTotal();
                 if (state.elapsed >= phaseTotal) {
@@ -1925,6 +1997,8 @@
                 }
             } else if (state.mode === 'intervals') {
                 checkIntervalTransition();
+            } else if (state.mode === 'pyramid') {
+                checkPyramidTransition();
             }
 
             updateDisplay();
@@ -1935,8 +2009,6 @@
             const phaseTotal = getPhaseTotal();
             if (state.elapsed >= phaseTotal) {
                 if (state.phase === 'prep') {
-                    // Transition from prep to work
-                    savePhaseToHistory();
                     state.phase = 'work';
                     state.prepCompleted = true;
                     state.startTime = performance.now();
@@ -1944,9 +2016,7 @@
                     lastCountdownBeep = -1;
                     playTransitionBeep();
                 } else if (state.phase === 'work') {
-                    // Transition to rest (or next set if rest is 0)
                     if (state.settings.restDuration > 0) {
-                        savePhaseToHistory();
                         state.phase = 'rest';
                         state.startTime = performance.now();
                         state.elapsed = 0;
@@ -1961,6 +2031,82 @@
             }
         }
 
+        function checkPyramidTransition() {
+            const phaseTotal = getPhaseTotal();
+            if (state.elapsed >= phaseTotal) {
+                if (state.phase === 'prep') {
+                    state.phase = 'work';
+                    state.prepCompleted = true;
+                    state.startTime = performance.now();
+                    state.elapsed = 0;
+                    lastCountdownBeep = -1;
+                    playTransitionBeep();
+                } else if (state.phase === 'work') {
+                    // Finished a hold - go to rest
+                    state.phase = 'rest';
+                    state.startTime = performance.now();
+                    state.elapsed = 0;
+                    lastCountdownBeep = -1;
+                    playTransitionBeep();
+                } else if (state.phase === 'rest') {
+                    advancePyramid();
+                }
+            }
+        }
+
+        function advancePyramid() {
+            const currentReps = state.pyramid.pattern[state.pyramid.currentSetIndex];
+            
+            if (state.pyramid.currentRep < currentReps) {
+                // More reps in this set
+                state.pyramid.currentRep++;
+                state.phase = 'work';
+                state.startTime = performance.now();
+                state.elapsed = 0;
+                lastCountdownBeep = -1;
+                playTransitionBeep();
+            } else if (state.pyramid.currentSetIndex < state.pyramid.pattern.length - 1) {
+                // More sets for this exercise
+                state.pyramid.currentSetIndex++;
+                state.pyramid.currentRep = 1;
+                state.phase = 'work';
+                state.startTime = performance.now();
+                state.elapsed = 0;
+                lastCountdownBeep = -1;
+                playTransitionBeep();
+            } else if (state.pyramid.currentExercise < state.pyramid.exercises.length - 1) {
+                // More exercises
+                state.pyramid.currentExercise++;
+                state.pyramid.currentSetIndex = 0;
+                state.pyramid.currentRep = 1;
+                
+                if (state.settings.pyramidPauseBetweenExercises) {
+                    // Pause for next exercise
+                    pauseForNextExercise();
+                } else {
+                    state.phase = 'work';
+                    state.startTime = performance.now();
+                    state.elapsed = 0;
+                    lastCountdownBeep = -1;
+                    playTransitionBeep();
+                }
+            } else {
+                // All done!
+                finishTimer();
+            }
+        }
+
+        function pauseForNextExercise() {
+            state.running = false;
+            cancelAnimationFrame(animationFrameId);
+            const nextExercise = state.pyramid.exercises[state.pyramid.currentExercise];
+            elements.tapContinueText.textContent = 'Tap to start next exercise';
+            elements.nextSetInfo.textContent = nextExercise;
+            elements.tapContinue.classList.add('show');
+            elements.startBtn.textContent = 'Resume';
+            playFinishSound();
+        }
+
         function advanceSet() {
             if (state.currentSet >= state.settings.numSets) {
                 finishTimer();
@@ -1973,7 +2119,6 @@
             if (state.settings.pauseBetweenSets) {
                 pauseForNextSet();
             } else {
-                savePhaseToHistory();
                 state.phase = 'work';
                 state.startTime = performance.now();
                 state.elapsed = 0;
@@ -1984,6 +2129,7 @@
         function pauseForNextSet() {
             state.running = false;
             cancelAnimationFrame(animationFrameId);
+            elements.tapContinueText.textContent = 'Tap to continue';
             elements.nextSetInfo.textContent = `Next: Set ${state.currentSet}`;
             elements.tapContinue.classList.add('show');
             elements.startBtn.textContent = 'Resume';
@@ -2006,17 +2152,10 @@
             state.phase = 'finished';
             cancelAnimationFrame(animationFrameId);
             
-            // Show 00:00 on finish
             elements.timeDisplay.textContent = '00:00';
             
             playFinishSound();
             
-            // Show notification for countdown completion
-            if (state.mode === 'countdown') {
-                showCountdownCompleteNotification();
-            }
-            
-            // Auto-restart for countdown mode
             if (state.mode === 'countdown' && state.settings.autoRestart) {
                 setTimeout(() => {
                     resetTimer(false);
@@ -2029,36 +2168,53 @@
             elements.phaseLabel.textContent = 'DONE';
             elements.timerContainer.classList.remove('phase-work', 'phase-rest');
             releaseWakeLock();
-            renderIntervalStructure();
+            
+            if (state.mode === 'intervals') {
+                renderIntervalStructure();
+            }
+            if (state.mode === 'pyramid') {
+                renderPyramidExercises();
+            }
         }
 
-        // ===== Phase History & Skip Navigation =====
-        function savePhaseToHistory() {
-            state.phaseHistory.push({
-                phase: state.phase,
-                set: state.currentSet,
-                prepCompleted: state.prepCompleted
-            });
+        function updateSkipButtonStates() {
+            if (state.mode !== 'intervals' && state.mode !== 'pyramid') {
+                elements.skipBackward.classList.remove('show');
+                elements.skipForward.classList.remove('show');
+                return;
+            }
+
+            const shouldShow = state.running && state.phase !== 'finished';
+            elements.skipBackward.classList.toggle('show', shouldShow);
+            elements.skipForward.classList.toggle('show', shouldShow);
         }
 
         function skipForward() {
-            if (state.mode !== 'intervals') return;
-            if (!state.running) return;
-            if (state.phase === 'finished') return;
-
-            // Save current phase to history before skipping
-            savePhaseToHistory();
-
-            if (state.phase === 'prep') {
-                // Skip to work phase
-                state.phase = 'work';
-                state.prepCompleted = true;
-            } else if (state.phase === 'work') {
-                // Skip to rest (or next set if no rest)
-                if (state.settings.restDuration > 0) {
-                    state.phase = 'rest';
-                } else {
-                    // No rest, advance to next set
+            if (state.mode === 'pyramid') {
+                if (!state.running || state.phase === 'finished') return;
+                
+                // Skip current phase
+                const phaseTotal = getPhaseTotal();
+                state.elapsed = phaseTotal;
+                // The tick function will handle the transition
+            } else if (state.mode === 'intervals') {
+                if (!state.running || state.phase === 'finished') return;
+                
+                if (state.phase === 'prep') {
+                    state.phase = 'work';
+                    state.prepCompleted = true;
+                } else if (state.phase === 'work') {
+                    if (state.settings.restDuration > 0) {
+                        state.phase = 'rest';
+                    } else {
+                        if (state.currentSet >= state.settings.numSets) {
+                            finishTimer();
+                            return;
+                        }
+                        state.currentSet++;
+                        state.phase = 'work';
+                    }
+                } else if (state.phase === 'rest') {
                     if (state.currentSet >= state.settings.numSets) {
                         finishTimer();
                         return;
@@ -2066,66 +2222,22 @@
                     state.currentSet++;
                     state.phase = 'work';
                 }
-            } else if (state.phase === 'rest') {
-                // Skip to next work phase
-                if (state.currentSet >= state.settings.numSets) {
-                    finishTimer();
-                    return;
-                }
-                state.currentSet++;
-                state.phase = 'work';
-            }
 
-            // Reset timing for new phase
-            state.startTime = performance.now();
-            state.elapsed = 0;
-            lastCountdownBeep = -1;
-            playTransitionBeep();
-            updateDisplay();
+                state.startTime = performance.now();
+                state.elapsed = 0;
+                lastCountdownBeep = -1;
+                playTransitionBeep();
+                updateDisplay();
+            }
         }
 
         function skipBackward() {
-            if (state.mode !== 'intervals') return;
-            if (!state.running) return;
-            if (state.phaseHistory.length === 0) return;
-
-            // Pop the last phase from history
-            const previousPhase = state.phaseHistory.pop();
-            
-            // Restore previous phase state
-            state.phase = previousPhase.phase;
-            state.currentSet = previousPhase.set;
-            state.prepCompleted = previousPhase.prepCompleted;
-
-            // Reset timing for restored phase
+            // For now, just restart current phase
             state.startTime = performance.now();
             state.elapsed = 0;
             lastCountdownBeep = -1;
             playTransitionBeep();
             updateDisplay();
-        }
-
-        function updateSkipButtonStates() {
-            if (state.mode !== 'intervals') {
-                elements.skipBackward.classList.remove('show');
-                elements.skipForward.classList.remove('show');
-                return;
-            }
-
-            // Show skip buttons during interval mode when running
-            const shouldShow = state.running && state.phase !== 'finished';
-            elements.skipBackward.classList.toggle('show', shouldShow);
-            elements.skipForward.classList.toggle('show', shouldShow);
-
-            if (!shouldShow) return;
-
-            // Backward disabled if no history
-            elements.skipBackward.disabled = state.phaseHistory.length === 0;
-
-            // Forward disabled if on last phase of last set
-            const isLastSet = state.currentSet >= state.settings.numSets;
-            const isLastPhaseOfSet = state.phase === 'rest' || (state.phase === 'work' && state.settings.restDuration === 0);
-            elements.skipForward.disabled = isLastSet && isLastPhaseOfSet;
         }
 
         function startTimer() {
@@ -2135,8 +2247,8 @@
             }
 
             if (state.running) {
-                // Pause - save current phase for intervals mode
-                if (state.mode === 'intervals') {
+                // Pause
+                if (state.mode === 'intervals' || state.mode === 'pyramid') {
                     state.pausedPhase = state.phase;
                 }
                 state.running = false;
@@ -2150,10 +2262,16 @@
                 const isResume = state.phase === 'paused';
                 
                 if (state.phase === 'finished' || state.phase === 'ready') {
-                    // Fresh start - reset everything
                     resetTimer(false);
                     if (state.mode === 'intervals') {
-                        // Start with prep countdown if configured and > 0
+                        if (state.settings.prepCountdown > 0) {
+                            state.phase = 'prep';
+                        } else {
+                            state.phase = 'work';
+                            state.prepCompleted = true;
+                        }
+                    } else if (state.mode === 'pyramid') {
+                        initPyramid();
                         if (state.settings.prepCountdown > 0) {
                             state.phase = 'prep';
                         } else {
@@ -2164,8 +2282,7 @@
                         state.phase = 'countdown';
                     }
                 } else if (isResume) {
-                    // Resume from pause - restore previous phase
-                    if (state.mode === 'intervals') {
+                    if (state.mode === 'intervals' || state.mode === 'pyramid') {
                         state.phase = state.pausedPhase || 'work';
                     } else if (state.mode === 'countdown') {
                         state.phase = 'countdown';
@@ -2181,10 +2298,9 @@
                 updateButtonStates();
                 requestWakeLock();
 
-                // Play start beep only on fresh start
                 if (!isResume && state.elapsed === 0) {
                     playBeep(660, 0.1);
-                    vibrate(50); // Start vibration
+                    vibrate(50);
                 }
             }
         }
@@ -2202,10 +2318,14 @@
             state.phaseHistory = [];
             lastCountdownBeep = -1;
 
+            if (state.mode === 'pyramid') {
+                initPyramid();
+            }
+
             cancelAnimationFrame(animationFrameId);
             elements.tapContinue.classList.remove('show');
             elements.startBtn.textContent = 'Start';
-            elements.timerContainer.classList.remove('phase-work', 'phase-rest');
+            elements.timerContainer.classList.remove('phase-work', 'phase-rest', 'phase-prep');
 
             if (updateUI) {
                 updateDisplay();
@@ -2228,26 +2348,23 @@
             state.lastLapTime = state.elapsed;
 
             playBeep(500, 0.05);
-            vibrate(30); // Quick tap
+            vibrate(30);
             renderLaps();
         }
 
         function renderLaps() {
             if (state.mode !== 'stopwatch') {
                 elements.lapsContainer.style.display = 'none';
-                elements.lapsList.innerHTML = '';
                 return;
             }
 
             if (state.laps.length === 0) {
                 elements.lapsContainer.style.display = 'none';
-                elements.lapsList.innerHTML = '';
                 return;
             }
 
             elements.lapsContainer.style.display = 'block';
 
-            // Find best/worst laps (only if more than 1 lap)
             const lapTimes = state.laps.map(l => l.lapTime);
             const best = state.laps.length > 1 ? Math.min(...lapTimes) : null;
             const worst = state.laps.length > 1 ? Math.max(...lapTimes) : null;
@@ -2257,7 +2374,6 @@
                 .reverse()
                 .map(lap => {
                     let cls = '';
-                    // Only highlight best/worst if there are more than 2 laps
                     if (state.laps.length > 2 && best !== worst) {
                         if (lap.lapTime === best) cls = 'best';
                         else if (lap.lapTime === worst) cls = 'worst';
@@ -2286,17 +2402,14 @@
 
             const sets = [];
             
-            // Add prep countdown if configured
             if (state.settings.prepCountdown > 0) {
-                const prepCompleted = state.prepCompleted;
-                const prepActive = state.phase === 'prep';
                 sets.push({
                     number: 'P',
                     segments: [{
                         type: 'prep',
                         duration: state.settings.prepCountdown,
-                        completed: prepCompleted,
-                        active: prepActive
+                        completed: state.prepCompleted,
+                        active: state.phase === 'prep'
                     }]
                 });
             }
@@ -2304,7 +2417,6 @@
             for (let i = 1; i <= state.settings.numSets; i++) {
                 const segments = [];
                 
-                // Work segment
                 const workCompleted = i < state.currentSet || (i === state.currentSet && state.phase === 'rest');
                 const workActive = i === state.currentSet && state.phase === 'work';
                 segments.push({
@@ -2314,7 +2426,6 @@
                     active: workActive
                 });
                 
-                // Rest segment (if rest duration > 0)
                 if (state.settings.restDuration > 0) {
                     const restCompleted = i < state.currentSet;
                     const restActive = i === state.currentSet && state.phase === 'rest';
@@ -2339,12 +2450,36 @@
                     <div class="interval-set-label">${set.number}</div>
                 </div>
             `).join('');
+        }
 
-            // Scroll active segment into view
+        // ===== Pyramid Exercises Display =====
+        function renderPyramidExercises() {
+            if (state.mode !== 'pyramid') {
+                elements.pyramidExercises.classList.remove('show');
+                return;
+            }
+
+            elements.pyramidExercises.classList.add('show');
+
+            const exercises = state.pyramid.exercises;
+            
+            elements.pyramidExerciseList.innerHTML = exercises.map((exercise, index) => {
+                const isActive = index === state.pyramid.currentExercise && state.phase !== 'finished' && state.phase !== 'ready';
+                const isCompleted = index < state.pyramid.currentExercise || state.phase === 'finished';
+                
+                return `
+                    <div class="pyramid-exercise-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}">
+                        <div class="pyramid-exercise-name">${escapeHtml(exercise)}</div>
+                        <div class="pyramid-exercise-sets">${state.pyramid.pattern.join('-')}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll active into view
             setTimeout(() => {
-                const activeSegment = elements.intervalSets.querySelector('.interval-segment.active');
-                if (activeSegment) {
-                    activeSegment.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                const active = elements.pyramidExerciseList.querySelector('.active');
+                if (active) {
+                    active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                 }
             }, 100);
         }
@@ -2357,144 +2492,36 @@
 
             state.mode = mode;
 
-            // Update tabs
             $$('.mode-tab').forEach(tab => {
                 tab.classList.toggle('active', tab.dataset.mode === mode);
             });
 
-            // Show/hide elements based on mode
             elements.lapBtn.style.display = mode === 'stopwatch' ? 'block' : 'none';
             elements.countdownSettings.classList.toggle('show', mode === 'countdown');
             elements.intervalStructure.classList.toggle('show', mode === 'intervals');
+            elements.pyramidExercises.classList.toggle('show', mode === 'pyramid');
 
-            // Reset and update display
             resetTimer();
             
             if (mode === 'intervals') {
                 renderIntervalStructure();
             }
+            if (mode === 'pyramid') {
+                initPyramid();
+                renderPyramidExercises();
+            }
             
-            // Update button states
             updateButtonStates();
-            
-            // Update URL to reflect current mode and settings
-            updateURLWithSettings();
-        }
-
-        // ===== URL Query Parameters =====
-        function loadSettingsFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            let hasIntervalParams = false;
-            
-            // Interval timer settings
-            if (params.has('work')) {
-                const work = parseInt(params.get('work'));
-                if (!isNaN(work) && work >= 5 && work <= 300) {
-                    state.settings.workDuration = work;
-                    hasIntervalParams = true;
-                }
-            }
-            if (params.has('rest')) {
-                const rest = parseInt(params.get('rest'));
-                if (!isNaN(rest) && rest >= 0 && rest <= 300) {
-                    state.settings.restDuration = rest;
-                    hasIntervalParams = true;
-                }
-            }
-            if (params.has('sets')) {
-                const sets = parseInt(params.get('sets'));
-                if (!isNaN(sets) && sets >= 1 && sets <= 99) {
-                    state.settings.numSets = sets;
-                    hasIntervalParams = true;
-                }
-            }
-            if (params.has('pause')) {
-                state.settings.pauseBetweenSets = params.get('pause') === '1';
-                hasIntervalParams = true;
-            }
-            if (params.has('prep')) {
-                const prep = parseInt(params.get('prep'));
-                if (!isNaN(prep) && prep >= 0 && prep <= 10) {
-                    state.settings.prepCountdown = prep;
-                    hasIntervalParams = true;
-                }
-            }
-            
-            // Countdown settings
-            if (params.has('min')) {
-                const min = parseInt(params.get('min'));
-                if (!isNaN(min) && min >= 0 && min <= 99) {
-                    state.settings.countdownMin = min;
-                }
-            }
-            if (params.has('sec')) {
-                const sec = parseInt(params.get('sec'));
-                if (!isNaN(sec) && sec >= 0 && sec <= 59) {
-                    state.settings.countdownSec = sec;
-                }
-            }
-            if (params.has('autoRestart')) {
-                state.settings.autoRestart = params.get('autoRestart') === '1';
-            }
-            
-            // Mode from URL
-            if (params.has('mode')) {
-                const mode = params.get('mode');
-                if (['stopwatch', 'countdown', 'intervals'].includes(mode)) {
-                    return mode;
-                }
-            }
-            
-            // Auto-switch to intervals if interval params provided
-            if (hasIntervalParams) {
-                return 'intervals';
-            }
-            
-            return null;
-        }
-        
-        function updateURLWithSettings() {
-            const params = new URLSearchParams();
-            
-            // Always include mode for clarity
-            params.set('mode', state.mode);
-            
-            if (state.mode === 'intervals') {
-                // Only include if different from defaults
-                if (state.settings.workDuration !== 30) params.set('work', state.settings.workDuration);
-                if (state.settings.restDuration !== 10) params.set('rest', state.settings.restDuration);
-                if (state.settings.numSets !== 5) params.set('sets', state.settings.numSets);
-                if (state.settings.pauseBetweenSets) params.set('pause', '1');
-                if (state.settings.prepCountdown !== 3) params.set('prep', state.settings.prepCountdown);
-            } else if (state.mode === 'countdown') {
-                if (state.settings.countdownMin !== 5) params.set('min', state.settings.countdownMin);
-                if (state.settings.countdownSec !== 0) params.set('sec', state.settings.countdownSec);
-                if (state.settings.autoRestart) params.set('autoRestart', '1');
-            }
-            
-            // Build URL
-            const newURL = params.toString() 
-                ? `${window.location.pathname}?${params.toString()}`
-                : window.location.pathname;
-            
-            // Update without reload
-            history.replaceState(null, '', newURL);
         }
 
         // ===== Settings =====
         function loadSettings() {
-            // First load from localStorage
             const saved = localStorage.getItem('exerciseTimerSettings');
             if (saved) {
                 try {
                     Object.assign(state.settings, JSON.parse(saved));
-                } catch (e) {
-                    console.warn('Failed to load settings from localStorage:', e);
-                }
+                } catch (e) {}
             }
-            
-            // Then override with URL params (they take priority)
-            const modeFromURL = loadSettingsFromURL();
 
             // Apply to inputs
             elements.workDuration.value = state.settings.workDuration;
@@ -2509,15 +2536,19 @@
             elements.countdownMinDisplay.textContent = state.settings.countdownMin.toString().padStart(2, '0');
             elements.countdownSecDisplay.textContent = state.settings.countdownSec.toString().padStart(2, '0');
             
-            updateNotificationStatus();
+            // Pyramid settings
+            elements.pyramidHoldDuration.value = state.settings.pyramidHoldDuration;
+            elements.pyramidRestBetweenReps.value = state.settings.pyramidRestBetweenReps;
+            elements.pyramidRestBetweenSets.value = state.settings.pyramidRestBetweenSets;
+            elements.pyramidPattern.value = state.settings.pyramidPattern;
+            elements.pyramidPauseBetweenExercises.checked = state.settings.pyramidPauseBetweenExercises;
+            elements.pyramidExercisesInput.value = state.settings.pyramidExercises;
             
-            // Return the mode to use (from URL or default)
-            return modeFromURL;
+            updateNotificationStatus();
         }
 
         function saveSettings() {
             localStorage.setItem('exerciseTimerSettings', JSON.stringify(state.settings));
-            updateURLWithSettings();
         }
 
         function applyPreset(preset) {
@@ -2525,30 +2556,60 @@
                 tabata: { workDuration: 20, restDuration: 10, numSets: 8 },
                 '3030': { workDuration: 30, restDuration: 30, numSets: 10 },
                 emom: { workDuration: 60, restDuration: 0, numSets: 10 },
-                hiit: { workDuration: 45, restDuration: 15, numSets: 8 }
+                hiit: { workDuration: 45, restDuration: 15, numSets: 8 },
+                mcgill: { 
+                    pyramidPattern: '6,4,2',
+                    pyramidHoldDuration: 10,
+                    pyramidRestBetweenReps: 3,
+                    pyramidRestBetweenSets: 20,
+                    pyramidExercises: 'McGill Curl-Up\nSide Bridge L\nSide Bridge R\nBird-Dog L\nBird-Dog R',
+                    mode: 'pyramid'
+                },
+                'mcgill-advanced': { 
+                    pyramidPattern: '8,6,4',
+                    pyramidHoldDuration: 10,
+                    pyramidRestBetweenReps: 3,
+                    pyramidRestBetweenSets: 20,
+                    pyramidExercises: 'McGill Curl-Up\nRolling Side Bridge\nBird-Dog with Squares',
+                    mode: 'pyramid'
+                }
             };
 
             if (presets[preset]) {
-                Object.assign(state.settings, presets[preset]);
-                elements.workDuration.value = state.settings.workDuration;
-                elements.restDuration.value = state.settings.restDuration;
-                elements.numSets.value = state.settings.numSets;
-                saveSettings();
-
-                // Switch to intervals mode
-                elements.settingsPanel.classList.remove('show');
-                setMode('intervals');
+                const p = presets[preset];
+                if (p.mode === 'pyramid') {
+                    state.settings.pyramidPattern = p.pyramidPattern;
+                    state.settings.pyramidHoldDuration = p.pyramidHoldDuration;
+                    state.settings.pyramidRestBetweenReps = p.pyramidRestBetweenReps;
+                    state.settings.pyramidRestBetweenSets = p.pyramidRestBetweenSets;
+                    state.settings.pyramidExercises = p.pyramidExercises;
+                    
+                    elements.pyramidPattern.value = p.pyramidPattern;
+                    elements.pyramidHoldDuration.value = p.pyramidHoldDuration;
+                    elements.pyramidRestBetweenReps.value = p.pyramidRestBetweenReps;
+                    elements.pyramidRestBetweenSets.value = p.pyramidRestBetweenSets;
+                    elements.pyramidExercisesInput.value = p.pyramidExercises;
+                    
+                    saveSettings();
+                    elements.settingsPanel.classList.remove('show');
+                    setMode('pyramid');
+                } else {
+                    Object.assign(state.settings, p);
+                    elements.workDuration.value = state.settings.workDuration;
+                    elements.restDuration.value = state.settings.restDuration;
+                    elements.numSets.value = state.settings.numSets;
+                    saveSettings();
+                    elements.settingsPanel.classList.remove('show');
+                    setMode('intervals');
+                }
             }
         }
 
-        // ===== Button State Management =====
         function updateButtonStates() {
-            // Lap button: only enabled in stopwatch mode when timer is running
             const canLap = state.mode === 'stopwatch' && state.running;
             elements.lapBtn.disabled = !canLap;
             elements.lapBtn.style.opacity = canLap ? '1' : '0.4';
             
-            // Reset button: disabled when timer is running in intervals/countdown modes
             const canReset = !state.running || state.mode === 'stopwatch';
             elements.resetBtn.disabled = !canReset;
         }
@@ -2558,9 +2619,7 @@
             if ('wakeLock' in navigator) {
                 try {
                     state.wakeLock = await navigator.wakeLock.request('screen');
-                } catch (e) {
-                    console.warn('Wake lock request failed:', e);
-                }
+                } catch (e) {}
             }
         }
 
@@ -2571,7 +2630,6 @@
             }
         }
 
-        // Re-acquire wake lock if page becomes visible again
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible' && state.running) {
                 requestWakeLock();
@@ -2580,13 +2638,9 @@
 
         // ===== Event Listeners =====
         function init() {
-            const modeFromURL = loadSettings();
-
-            // Load and render templates
+            loadSettings();
             loadTemplates();
             renderTemplates();
-
-            // Check notification support and request permission early
             checkNotificationSupport();
 
             // Mode tabs
@@ -2598,23 +2652,17 @@
             elements.startBtn.addEventListener('click', startTimer);
             elements.resetBtn.addEventListener('click', () => resetTimer());
             elements.lapBtn.addEventListener('click', recordLap);
-
-            // Skip navigation buttons
             elements.skipBackward.addEventListener('click', skipBackward);
             elements.skipForward.addEventListener('click', skipForward);
-
-            // Tap to continue
             elements.tapContinue.addEventListener('click', continueFromPause);
 
-            // Click on timer ring to start/stop
+            // Click on timer ring
             const timerRing = document.querySelector('.timer-ring');
             if (timerRing) {
                 timerRing.addEventListener('click', (e) => {
-                    // Don't trigger if clicking on tap-continue overlay
                     if (elements.tapContinue.classList.contains('show')) return;
                     startTimer();
                 });
-                // Add cursor pointer style
                 timerRing.style.cursor = 'pointer';
             }
 
@@ -2658,16 +2706,11 @@
             elements.vibrationEnabled.addEventListener('change', (e) => {
                 state.settings.vibrationEnabled = e.target.checked;
                 saveSettings();
-                // Test vibration when toggled on
-                if (e.target.checked) {
-                    vibrate(50);
-                }
+                if (e.target.checked) vibrate(50);
             });
             elements.notificationsEnabled.addEventListener('change', (e) => {
                 state.settings.notificationsEnabled = e.target.checked;
                 saveSettings();
-                
-                // If enabling, check/request permission
                 if (e.target.checked && Notification.permission === 'default') {
                     Notification.requestPermission().then(permission => {
                         state.notificationPermission = permission;
@@ -2679,6 +2722,45 @@
             elements.autoRestartToggle.addEventListener('change', (e) => {
                 state.settings.autoRestart = e.target.checked;
                 saveSettings();
+            });
+
+            // Pyramid settings
+            elements.pyramidHoldDuration.addEventListener('change', (e) => {
+                state.settings.pyramidHoldDuration = Math.max(5, parseInt(e.target.value) || 10);
+                e.target.value = state.settings.pyramidHoldDuration;
+                saveSettings();
+            });
+            elements.pyramidRestBetweenReps.addEventListener('change', (e) => {
+                state.settings.pyramidRestBetweenReps = Math.max(0, parseInt(e.target.value) || 3);
+                e.target.value = state.settings.pyramidRestBetweenReps;
+                saveSettings();
+            });
+            elements.pyramidRestBetweenSets.addEventListener('change', (e) => {
+                state.settings.pyramidRestBetweenSets = Math.max(5, parseInt(e.target.value) || 20);
+                e.target.value = state.settings.pyramidRestBetweenSets;
+                saveSettings();
+            });
+            elements.pyramidPattern.addEventListener('change', (e) => {
+                state.settings.pyramidPattern = e.target.value;
+                saveSettings();
+                if (state.mode === 'pyramid') {
+                    initPyramid();
+                    renderPyramidExercises();
+                    updateDisplay();
+                }
+            });
+            elements.pyramidPauseBetweenExercises.addEventListener('change', (e) => {
+                state.settings.pyramidPauseBetweenExercises = e.target.checked;
+                saveSettings();
+            });
+            elements.pyramidExercisesInput.addEventListener('change', (e) => {
+                state.settings.pyramidExercises = e.target.value;
+                saveSettings();
+                if (state.mode === 'pyramid') {
+                    initPyramid();
+                    renderPyramidExercises();
+                    updateDisplay();
+                }
             });
 
             // Countdown preset buttons
@@ -2727,26 +2809,48 @@
             // Templates
             elements.saveTemplateBtn.addEventListener('click', saveCurrentAsTemplate);
             elements.newTemplateName.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    saveCurrentAsTemplate();
-                }
+                if (e.key === 'Enter') saveCurrentAsTemplate();
             });
-            elements.exportTemplates.addEventListener('click', exportAllTemplates);
+            elements.exportTemplates.addEventListener('click', () => {
+                if (state.templates.length === 0) {
+                    showToast('No templates to export', 'error');
+                    return;
+                }
+                const blob = new Blob([JSON.stringify(state.templates, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'exercise-timer-templates.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
             elements.importTemplates.addEventListener('click', () => {
                 elements.importTemplatesInput.click();
             });
             elements.importTemplatesInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    importTemplates(e.target.files[0]);
-                    e.target.value = ''; // Reset for future imports
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        try {
+                            const imported = JSON.parse(evt.target.result);
+                            if (Array.isArray(imported)) {
+                                state.templates = [...state.templates, ...imported];
+                                saveTemplates();
+                                renderTemplates();
+                                showToast(`Imported ${imported.length} templates`, 'success');
+                            }
+                        } catch (err) {
+                            showToast('Invalid file', 'error');
+                        }
+                    };
+                    reader.readAsText(e.target.files[0]);
+                    e.target.value = '';
                 }
             });
 
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
-                // Ignore if typing in an input
-                if (e.target.tagName === 'INPUT') return;
-                // Ignore if settings panel is open
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
                 if (elements.settingsPanel.classList.contains('show')) return;
 
                 if (e.code === 'Space') {
@@ -2759,13 +2863,10 @@
                 }
             });
 
-            // Initial display - use mode from URL if provided, otherwise default to stopwatch
-            setMode(modeFromURL || 'stopwatch');
+            // Initial display
+            setMode('stopwatch');
             updateDisplay();
             updateButtonStates();
-
-            // Check for shared template
-            checkForSharedTemplate();
         }
 
         init();
