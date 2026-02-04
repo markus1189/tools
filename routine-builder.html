@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Routine Builder</title>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js" integrity="sha384-1qlE7MZPM2pHD/pBZCU/yB8UCP52RYL8bge/qNdfNBCWToySp8/M+JL2waXU4hjJ" crossorigin="anonymous"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        background-color: #1e293b;
+        color: white;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .btn-active {
+        transform: scale(0.95);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      // Icons
+      const IconPlay = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+      );
+      const IconPause = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="6" y="4" width="4" height="16"></rect>
+          <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
+      );
+      const IconCheck = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      );
+      const IconSkip = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="5 4 15 12 5 20 5 4"></polygon>
+          <line x1="19" y1="5" x2="19" y2="19"></line>
+        </svg>
+      );
+      const IconBack = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="1 4 1 10 7 10"></polyline>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+        </svg>
+      );
+      const IconInfo = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+      );
+      const IconEdit = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+      );
+      const IconPlus = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      );
+      const IconTrash = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      );
+      const IconDownload = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      );
+      const IconUpload = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+      );
+      const IconHome = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      );
+
+      // Default demo routine
+      const DEFAULT_ROUTINE = [
+        {
+          id: 1,
+          title: "Warm-up Stretches",
+          side: "Both sides",
+          type: "timer",
+          duration: 60,
+          cues: ["Breathe deeply", "Move slowly", "Don't bounce"],
+          cat: "Warm-up",
+        },
+        {
+          id: 2,
+          title: "Push-ups",
+          side: "N/A",
+          type: "reps",
+          target: "10-15 reps",
+          cues: ["Keep core tight", "Full range of motion", "Control the descent"],
+          cat: "Strength",
+        },
+        {
+          id: 3,
+          title: "Plank Hold",
+          side: "N/A",
+          type: "timer",
+          duration: 30,
+          cues: ["Straight line from head to heels", "Don't let hips sag", "Breathe steadily"],
+          cat: "Core",
+        },
+      ];
+
+      const App = () => {
+        const [view, setView] = useState("home");
+        const [idx, setIdx] = useState(0);
+        const [timer, setTimer] = useState(0);
+        const [isActive, setIsActive] = useState(false);
+        const [history, setHistory] = useState([]);
+        const [routine, setRoutine] = useState([]);
+        const [routineName, setRoutineName] = useState("My Routine");
+        const [editingExercise, setEditingExercise] = useState(null);
+        const [showImportExport, setShowImportExport] = useState(false);
+
+        useEffect(() => {
+          const savedHistory = localStorage.getItem("routine_builder_history");
+          if (savedHistory) setHistory(JSON.parse(savedHistory));
+
+          const savedRoutine = localStorage.getItem("routine_builder_routine");
+          const savedName = localStorage.getItem("routine_builder_name");
+          
+          if (savedRoutine) {
+            setRoutine(JSON.parse(savedRoutine));
+            setRoutineName(savedName || "My Routine");
+          } else {
+            setRoutine(DEFAULT_ROUTINE);
+          }
+        }, []);
+
+        useEffect(() => {
+          let interval = null;
+          if (isActive && timer > 0) {
+            interval = setInterval(() => setTimer((t) => t - 1), 1000);
+          } else if (timer === 0 && isActive) {
+            setIsActive(false);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          }
+          return () => clearInterval(interval);
+        }, [isActive, timer]);
+
+        const saveRoutine = (newRoutine, name) => {
+          localStorage.setItem("routine_builder_routine", JSON.stringify(newRoutine));
+          localStorage.setItem("routine_builder_name", name);
+        };
+
+        const start = () => {
+          if (routine.length === 0) {
+            alert("Add exercises to your routine first!");
+            return;
+          }
+          setIdx(0);
+          setupEx(0);
+          setView("workout");
+        };
+
+        const setupEx = (i) => {
+          const ex = routine[i];
+          setTimer(ex.type === "timer" ? ex.duration : 0);
+          setIsActive(false);
+        };
+
+        const next = () => {
+          if (idx < routine.length - 1) {
+            setIdx(idx + 1);
+            setupEx(idx + 1);
+          } else {
+            finish();
+          }
+        };
+
+        const prev = () => {
+          if (idx > 0) {
+            setIdx(idx - 1);
+            setupEx(idx - 1);
+          }
+        };
+
+        const finish = () => {
+          const newLog = [
+            ...history,
+            { 
+              date: new Date().toISOString(),
+              routineName: routineName,
+              exerciseCount: routine.length
+            },
+          ];
+          setHistory(newLog);
+          localStorage.setItem("routine_builder_history", JSON.stringify(newLog));
+          setView("summary");
+        };
+
+        const formatTime = (s) => {
+          const m = Math.floor(s / 60);
+          const sec = s % 60;
+          return `${m}:${sec < 10 ? "0" : ""}${sec}`;
+        };
+
+        const addExercise = () => {
+          const newEx = {
+            id: Date.now(),
+            title: "New Exercise",
+            side: "N/A",
+            type: "reps",
+            target: "10 reps",
+            duration: 30,
+            cues: ["Form is key"],
+            cat: "General",
+          };
+          const newRoutine = [...routine, newEx];
+          setRoutine(newRoutine);
+          saveRoutine(newRoutine, routineName);
+          setEditingExercise(newEx.id);
+        };
+
+        const deleteExercise = (id) => {
+          if (confirm("Delete this exercise?")) {
+            const newRoutine = routine.filter(ex => ex.id !== id);
+            setRoutine(newRoutine);
+            saveRoutine(newRoutine, routineName);
+          }
+        };
+
+        const updateExercise = (id, updates) => {
+          const newRoutine = routine.map(ex => ex.id === id ? { ...ex, ...updates } : ex);
+          setRoutine(newRoutine);
+          saveRoutine(newRoutine, routineName);
+        };
+
+        const moveExercise = (id, direction) => {
+          const idx = routine.findIndex(ex => ex.id === id);
+          if ((direction === 'up' && idx === 0) || (direction === 'down' && idx === routine.length - 1)) return;
+          
+          const newRoutine = [...routine];
+          const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+          [newRoutine[idx], newRoutine[newIdx]] = [newRoutine[newIdx], newRoutine[idx]];
+          setRoutine(newRoutine);
+          saveRoutine(newRoutine, routineName);
+        };
+
+        const exportRoutine = () => {
+          const data = {
+            name: routineName,
+            routine: routine,
+            version: 1
+          };
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${routineName.replace(/\s+/g, '-').toLowerCase()}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        const importRoutine = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const data = JSON.parse(event.target.result);
+              if (data.routine && Array.isArray(data.routine)) {
+                setRoutine(data.routine);
+                setRoutineName(data.name || "Imported Routine");
+                saveRoutine(data.routine, data.name || "Imported Routine");
+                alert("Routine imported successfully!");
+              } else {
+                alert("Invalid routine file format");
+              }
+            } catch (err) {
+              alert("Error reading file: " + err.message);
+            }
+          };
+          reader.readAsText(file);
+        };
+
+        // HOME SCREEN
+        if (view === "home")
+          return (
+            <div className="flex flex-col h-screen p-6">
+              <a href="index.html" className="text-slate-400 hover:text-orange-500 transition-colors mb-6 inline-flex items-center gap-2">
+                ← Tools
+              </a>
+
+              <div className="mt-2 mb-6">
+                <input
+                  type="text"
+                  value={routineName}
+                  onChange={(e) => {
+                    setRoutineName(e.target.value);
+                    saveRoutine(routine, e.target.value);
+                  }}
+                  className="text-3xl font-bold bg-transparent border-b-2 border-transparent hover:border-orange-500 focus:border-orange-500 outline-none transition-colors text-orange-500 w-full"
+                  placeholder="Routine Name"
+                />
+                <p className="text-slate-400 text-sm mt-2">{routine.length} exercises • {history.length} completed sessions</p>
+              </div>
+
+              <div className="bg-slate-800 rounded-xl p-5 mb-6 border border-slate-700 shadow-lg">
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-slate-400">Status</span>
+                  <span className={`font-bold uppercase ${routine.length > 0 ? 'text-emerald-400' : 'text-yellow-500'}`}>
+                    {routine.length > 0 ? 'Ready' : 'Empty'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-400">Total Duration</span>
+                  <span className="font-mono text-xl">
+                    {formatTime(routine.filter(ex => ex.type === 'timer').reduce((sum, ex) => sum + ex.duration, 0))}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={start}
+                disabled={routine.length === 0}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold py-5 rounded-xl shadow-lg flex items-center justify-center gap-3 text-lg mb-4 active:scale-95 transition-transform"
+              >
+                <span className="bg-white/20 p-1 rounded-full"><IconPlay /></span>
+                START ROUTINE
+              </button>
+
+              <div className="flex gap-2 mb-6">
+                <button onClick={addExercise} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                  <IconPlus /> Add Exercise
+                </button>
+                <button onClick={() => setShowImportExport(!showImportExport)} className="bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg active:scale-95 transition-transform">
+                  {showImportExport ? '×' : '⋮'}
+                </button>
+              </div>
+
+              {showImportExport && (
+                <div className="bg-slate-800 rounded-lg p-4 mb-4 border border-slate-700 flex gap-2">
+                  <button onClick={exportRoutine} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2">
+                    <IconDownload /> Export
+                  </button>
+                  <label className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2 cursor-pointer">
+                    <IconUpload /> Import
+                    <input type="file" accept=".json" onChange={importRoutine} className="hidden" />
+                  </label>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto">
+                <h3 className="text-slate-500 text-xs uppercase tracking-widest mb-3">Exercises</h3>
+                {routine.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <p className="mb-2">No exercises yet</p>
+                    <p className="text-sm">Click "Add Exercise" to get started</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {routine.map((r, i) => (
+                      <div key={r.id} className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+                        {editingExercise === r.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={r.title}
+                              onChange={(e) => updateExercise(r.id, { title: e.target.value })}
+                              className="w-full bg-slate-900 text-white px-3 py-2 rounded border border-slate-600 focus:border-orange-500 outline-none"
+                              placeholder="Exercise name"
+                            />
+                            <input
+                              type="text"
+                              value={r.side}
+                              onChange={(e) => updateExercise(r.id, { side: e.target.value })}
+                              className="w-full bg-slate-900 text-white px-3 py-2 rounded border border-slate-600 focus:border-orange-500 outline-none text-sm"
+                              placeholder="Side/variation (e.g., 'Left side', 'Both', 'N/A')"
+                            />
+                            <div className="flex gap-2">
+                              <select
+                                value={r.type}
+                                onChange={(e) => updateExercise(r.id, { type: e.target.value })}
+                                className="bg-slate-900 text-white px-3 py-2 rounded border border-slate-600 focus:border-orange-500 outline-none"
+                              >
+                                <option value="reps">Reps</option>
+                                <option value="timer">Timer</option>
+                              </select>
+                              {r.type === 'timer' ? (
+                                <input
+                                  type="number"
+                                  value={r.duration}
+                                  onChange={(e) => updateExercise(r.id, { duration: parseInt(e.target.value) || 0 })}
+                                  className="flex-1 bg-slate-900 text-white px-3 py-2 rounded border border-slate-600 focus:border-orange-500 outline-none"
+                                  placeholder="Seconds"
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={r.target}
+                                  onChange={(e) => updateExercise(r.id, { target: e.target.value })}
+                                  className="flex-1 bg-slate-900 text-white px-3 py-2 rounded border border-slate-600 focus:border-orange-500 outline-none"
+                                  placeholder="Target (e.g., '10 reps', '3x8')"
+                                />
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              value={r.cat}
+                              onChange={(e) => updateExercise(r.id, { cat: e.target.value })}
+                              className="w-full bg-slate-900 text-white px-3 py-2 rounded border border-slate-600 focus:border-orange-500 outline-none text-sm"
+                              placeholder="Category (e.g., 'Strength', 'Mobility')"
+                            />
+                            <textarea
+                              value={r.cues.join('\n')}
+                              onChange={(e) => updateExercise(r.id, { cues: e.target.value.split('\n').filter(c => c.trim()) })}
+                              className="w-full bg-slate-900 text-white px-3 py-2 rounded border border-slate-600 focus:border-orange-500 outline-none text-sm"
+                              placeholder="Cues (one per line)"
+                              rows="3"
+                            />
+                            <div className="flex gap-2">
+                              <button onClick={() => setEditingExercise(null)} className="flex-1 bg-orange-500 text-white py-2 px-3 rounded text-sm">Done</button>
+                              <button onClick={() => deleteExercise(r.id)} className="bg-red-600 text-white py-2 px-3 rounded text-sm"><IconTrash /></button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-white">{r.title}</div>
+                                <div className="text-sm text-slate-400">{r.side}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm text-slate-400">
+                                  {r.type === "timer" ? formatTime(r.duration) : r.target}
+                                </div>
+                                <div className="text-xs text-orange-400">{r.cat}</div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 text-xs">
+                              <button onClick={() => setEditingExercise(r.id)} className="flex-1 bg-slate-700 text-slate-300 py-1 px-2 rounded flex items-center justify-center gap-1">
+                                <IconEdit /> Edit
+                              </button>
+                              <button onClick={() => moveExercise(r.id, 'up')} disabled={i === 0} className="bg-slate-700 text-slate-300 disabled:opacity-30 py-1 px-2 rounded">↑</button>
+                              <button onClick={() => moveExercise(r.id, 'down')} disabled={i === routine.length - 1} className="bg-slate-700 text-slate-300 disabled:opacity-30 py-1 px-2 rounded">↓</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+
+        // WORKOUT SCREEN
+        if (view === "workout") {
+          const ex = routine[idx];
+          const progress = ((idx + 1) / routine.length) * 100;
+
+          return (
+            <div className="flex flex-col h-screen bg-slate-900">
+              <div className="w-full h-1 bg-slate-800">
+                <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+              </div>
+
+              <div className="p-4 flex justify-between text-xs font-mono text-slate-500 uppercase tracking-widest">
+                <span>Ex {idx + 1}/{routine.length}</span>
+                <span className="text-orange-400">{ex.cat}</span>
+              </div>
+
+              <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+                <h2 className="text-3xl font-bold text-white mb-2">{ex.title}</h2>
+                <p className="text-xl text-orange-300 mb-8 font-medium">{ex.side}</p>
+
+                <div className="mb-8">
+                  {ex.type === "timer" ? (
+                    <div
+                      onClick={() => setIsActive(!isActive)}
+                      className={`text-7xl font-mono font-bold cursor-pointer select-none transition-colors ${isActive ? "text-orange-400" : "text-slate-600"}`}
+                    >
+                      {formatTime(timer)}
+                    </div>
+                  ) : (
+                    <div className="w-40 h-40 rounded-full border-4 border-slate-700 flex items-center justify-center bg-slate-800">
+                      <span className="text-3xl font-bold text-slate-300 px-4">{ex.target}</span>
+                    </div>
+                  )}
+                </div>
+
+                {ex.cues && ex.cues.length > 0 && (
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 w-full max-w-sm text-left relative">
+                    <div className="absolute -top-3 left-4 bg-slate-900 px-2 text-xs text-orange-500 font-bold uppercase flex items-center gap-1">
+                      <IconInfo /> Cues
+                    </div>
+                    <ul className="list-disc list-inside space-y-2 text-slate-300 text-sm mt-1">
+                      {ex.cues.map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 bg-slate-800 border-t border-slate-700 flex justify-between items-center">
+                <button onClick={prev} className={`p-4 rounded-full text-slate-400 ${idx === 0 ? "invisible" : ""}`}>
+                  <IconBack />
+                </button>
+
+                {ex.type === "timer" ? (
+                  <button
+                    onClick={() => setIsActive(!isActive)}
+                    className={`p-6 rounded-full shadow-xl active:scale-95 transition-transform ${isActive ? "bg-yellow-500 text-black" : "bg-orange-500 text-white"}`}
+                  >
+                    {isActive ? <IconPause /> : <IconPlay />}
+                  </button>
+                ) : (
+                  <button onClick={next} className="p-6 rounded-full bg-orange-500 text-white shadow-xl active:scale-95 transition-transform">
+                    <IconCheck />
+                  </button>
+                )}
+
+                <button onClick={next} className="p-4 rounded-full text-slate-400 hover:text-white">
+                  <IconSkip />
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        // SUMMARY SCREEN
+        if (view === "summary")
+          return (
+            <div className="flex flex-col h-screen items-center justify-center p-6 text-center">
+              <div className="text-orange-500 mb-6 scale-150"><IconCheck /></div>
+              <h1 className="text-3xl font-bold text-white mb-2">Well Done!</h1>
+              <p className="text-slate-400 mb-2">Routine completed successfully</p>
+              <p className="text-sm text-slate-500 mb-8">{routine.length} exercises • {history.length} total sessions</p>
+              <button onClick={() => setView("home")} className="bg-slate-700 hover:bg-slate-600 text-white py-3 px-8 rounded-lg font-medium flex items-center gap-2">
+                <IconHome /> Back to Home
+              </button>
+            </div>
+          );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
