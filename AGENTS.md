@@ -105,6 +105,17 @@ All tools are registered in `tools.json`:
 
 **Optional:** `dateUpdated` - only include when tool receives significant updates
 
+## Tool-Specific Documentation
+
+Some tools have complex state management or architecture requiring detailed docs:
+
+- **routine-builder.html**: See `docs/routine-builder.md` for state machine, audio system, sets/pyramid progression logic
+
+**When to read tool docs:**
+- Before modifying the tool
+- When fixing bugs or adding features
+- If you see unexpected state behavior
+
 ## Code Review Checklist
 
 When reviewing or making changes, verify:
