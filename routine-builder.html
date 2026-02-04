@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js" integrity="sha384-1qlE7MZPM2pHD/pBZCU/yB8UCP52RYL8bge/qNdfNBCWToySp8/M+JL2waXU4hjJ" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js" integrity="sha384-0d+Gr7vM4Drod8E3hXKgciWJSWbjD/opKLLygI9ktiWbuvlDwQLzU46wJ9s5gsp7" crossorigin="anonymous"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       body {
@@ -96,10 +97,40 @@
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
       );
+      const IconClipboard = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+        </svg>
+      );
+      const IconCopy = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+        </svg>
+      );
       const IconHome = () => (
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      );
+      const IconShare = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+      );
+      const IconSparkles = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+          <path d="M5 3v4"></path>
+          <path d="M19 17v4"></path>
+          <path d="M3 5h4"></path>
+          <path d="M17 19h4"></path>
         </svg>
       );
 
@@ -149,6 +180,23 @@
           const savedHistory = localStorage.getItem("routine_builder_history");
           if (savedHistory) setHistory(JSON.parse(savedHistory));
 
+          // Load from URL first (takes precedence)
+          const hash = window.location.hash.slice(1);
+          if (hash) {
+            try {
+              const decompressed = LZString.decompressFromEncodedURIComponent(hash);
+              if (decompressed) {
+                const data = JSON.parse(decompressed);
+                setRoutine(data.routine || []);
+                setRoutineName(data.name || "My Routine");
+                return;
+              }
+            } catch (e) {
+              console.error("Failed to load routine from URL:", e);
+            }
+          }
+
+          // Fall back to localStorage
           const savedRoutine = localStorage.getItem("routine_builder_routine");
           const savedName = localStorage.getItem("routine_builder_name");
           
@@ -174,6 +222,12 @@
         const saveRoutine = (newRoutine, name) => {
           localStorage.setItem("routine_builder_routine", JSON.stringify(newRoutine));
           localStorage.setItem("routine_builder_name", name);
+          
+          // Update URL
+          const data = { routine: newRoutine, name: name };
+          const json = JSON.stringify(data);
+          const compressed = LZString.compressToEncodedURIComponent(json);
+          window.history.replaceState(null, null, '#' + compressed);
         };
 
         const start = () => {
@@ -285,6 +339,31 @@
           URL.revokeObjectURL(url);
         };
 
+        const copyRoutine = async () => {
+          const data = {
+            name: routineName,
+            routine: routine,
+            version: 1
+          };
+          const json = JSON.stringify(data, null, 2);
+          
+          try {
+            await navigator.clipboard.writeText(json);
+            alert("Routine copied to clipboard! Paste it to an AI to modify it.");
+          } catch (err) {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = json;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("Routine copied to clipboard! Paste it to an AI to modify it.");
+          }
+        };
+
         const importRoutine = (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -306,6 +385,161 @@
             }
           };
           reader.readAsText(file);
+        };
+
+        const pasteRoutine = async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            const data = JSON.parse(text);
+            
+            if (data.routine && Array.isArray(data.routine)) {
+              setRoutine(data.routine);
+              setRoutineName(data.name || "Pasted Routine");
+              saveRoutine(data.routine, data.name || "Pasted Routine");
+              alert("Routine pasted successfully!");
+            } else {
+              alert("Invalid routine format in clipboard. Make sure you copied valid JSON.");
+            }
+          } catch (err) {
+            if (err.name === 'NotAllowedError') {
+              alert("Clipboard access denied. Please grant permission or use Import JSON instead.");
+            } else if (err instanceof SyntaxError) {
+              alert("Invalid JSON in clipboard. Make sure you copied valid JSON from the AI.");
+            } else {
+              alert("Error pasting routine: " + err.message);
+            }
+          }
+        };
+
+        const shareRoutine = async () => {
+          const url = window.location.href;
+          
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: routineName,
+                text: `Check out my ${routineName} workout routine!`,
+                url: url
+              });
+            } catch (err) {
+              if (err.name !== 'AbortError') {
+                copyToClipboard(url);
+              }
+            }
+          } else {
+            copyToClipboard(url);
+          }
+        };
+
+        const copyToClipboard = async (text) => {
+          try {
+            await navigator.clipboard.writeText(text);
+            alert("URL copied to clipboard!");
+          } catch (err) {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("URL copied to clipboard!");
+          }
+        };
+
+        const copyAIPrompt = async () => {
+          const prompt = `Generate a workout routine in JSON format for the Routine Builder tool.
+
+**JSON Format Requirements:**
+
+\`\`\`json
+{
+  "name": "Routine Name",
+  "routine": [
+    {
+      "id": 1,
+      "title": "Exercise Name",
+      "side": "Left/Right/Both/N/A",
+      "type": "reps" | "timer",
+      "target": "10-15 reps" (only for type: "reps"),
+      "duration": 30 (only for type: "timer", in seconds),
+      "cues": ["Form cue 1", "Form cue 2", "..."],
+      "cat": "Category name (e.g., Warm-up, Strength, Mobility, Core, Cardio)"
+    }
+  ],
+  "version": 1
+}
+\`\`\`
+
+**Field Descriptions:**
+
+- **name**: The name of the overall routine
+- **routine**: Array of exercise objects
+- **id**: Unique number for each exercise (sequential: 1, 2, 3...)
+- **title**: Exercise name (e.g., "Push-ups", "Plank", "Squats")
+- **side**: Which side/variation (e.g., "Left", "Right", "Both", "Alternating", "N/A")
+- **type**: Either "reps" (counted repetitions) or "timer" (timed holds)
+- **target**: For reps type only - target reps (e.g., "10 reps", "3x8", "15-20")
+- **duration**: For timer type only - duration in seconds (e.g., 30, 60, 120)
+- **cues**: Array of coaching cues/form reminders (e.g., ["Keep core tight", "Breathe steadily"])
+- **cat**: Category/phase of workout (e.g., "Warm-up", "Strength", "Mobility", "Core", "Cardio", "Cool-down")
+
+**Important Rules:**
+
+1. Each exercise must have EITHER "target" (for reps) OR "duration" (for timer), not both
+2. IDs should be sequential starting from 1
+3. All fields are required except: if type is "reps", omit "duration"; if type is "timer", omit "target"
+4. Cues array can have 1-5 items
+5. Categories should be consistent across similar exercises
+
+**Example:**
+
+\`\`\`json
+{
+  "name": "Morning Mobility Routine",
+  "routine": [
+    {
+      "id": 1,
+      "title": "Cat-Cow Stretch",
+      "side": "N/A",
+      "type": "reps",
+      "target": "10 slow reps",
+      "cues": ["Move with breath", "Full range of motion"],
+      "cat": "Mobility"
+    },
+    {
+      "id": 2,
+      "title": "Plank Hold",
+      "side": "N/A",
+      "type": "timer",
+      "duration": 30,
+      "cues": ["Straight line head to heels", "Don't let hips sag"],
+      "cat": "Core"
+    }
+  ],
+  "version": 1
+}
+\`\`\`
+
+Now, please generate a routine based on my requirements. Output only valid JSON.`;
+
+          try {
+            await navigator.clipboard.writeText(prompt);
+            alert("AI prompt copied to clipboard! Paste it into your AI chat and describe the workout you want.");
+          } catch (err) {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = prompt;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("AI prompt copied to clipboard! Paste it into your AI chat and describe the workout you want.");
+          }
         };
 
         // HOME SCREEN
@@ -354,9 +588,12 @@
                 START ROUTINE
               </button>
 
-              <div className="flex gap-2 mb-6">
+              <div className="flex gap-2 mb-4">
                 <button onClick={addExercise} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
                   <IconPlus /> Add Exercise
+                </button>
+                <button onClick={shareRoutine} className="bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                  <IconShare /> Share
                 </button>
                 <button onClick={() => setShowImportExport(!showImportExport)} className="bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg active:scale-95 transition-transform">
                   {showImportExport ? '×' : '⋮'}
@@ -364,14 +601,26 @@
               </div>
 
               {showImportExport && (
-                <div className="bg-slate-800 rounded-lg p-4 mb-4 border border-slate-700 flex gap-2">
-                  <button onClick={exportRoutine} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2">
-                    <IconDownload /> Export
+                <div className="bg-slate-800 rounded-lg p-4 mb-4 border border-slate-700 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={copyRoutine} className="bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2">
+                      <IconCopy /> Copy
+                    </button>
+                    <button onClick={pasteRoutine} className="bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2">
+                      <IconClipboard /> Paste
+                    </button>
+                    <button onClick={exportRoutine} className="bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2">
+                      <IconDownload /> Export
+                    </button>
+                    <label className="bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2 cursor-pointer">
+                      <IconUpload /> Import
+                      <input type="file" accept=".json" onChange={importRoutine} className="hidden" />
+                    </label>
+                  </div>
+                  <button onClick={copyAIPrompt} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2">
+                    <IconSparkles /> Copy AI Prompt
                   </button>
-                  <label className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-2 cursor-pointer">
-                    <IconUpload /> Import
-                    <input type="file" accept=".json" onChange={importRoutine} className="hidden" />
-                  </label>
+                  <p className="text-xs text-slate-400 text-center">Use with ChatGPT/Claude to generate routines</p>
                 </div>
               )}
 
