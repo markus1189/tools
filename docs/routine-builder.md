@@ -118,13 +118,37 @@ needsUserAction = (isResting && !isLastSet) ||
 
 **On every save**: Updates both localStorage AND URL hash via `history.replaceState()`.
 
+## AI Prompt ↔ Data Format
+
+**CRITICAL**: The AI prompt in `copyAIPrompt()` is the schema documentation for users.
+
+**When changing data format, MUST update AI prompt**:
+- Add new exercise type → document in prompt
+- Add field to sets → document field with examples
+- Change validation rules → update "Important Rules" section
+- Change format → add migration example
+
+**AI prompt serves dual purpose**:
+1. **User documentation** - Only place users see format specification
+2. **LLM contract** - AI generates JSON matching this schema
+
+**Location**: Search for `const copyAIPrompt` in routine-builder.html
+
+**Test after changes**: 
+1. Copy AI prompt
+2. Paste to ChatGPT/Claude
+3. Ask for routine with new feature
+4. Verify generated JSON works with Paste button
+
+**Format drift = broken UX**: If prompt doesn't match code, users can't generate valid routines.
+
 ## Common Modifications
 
 ### Add new exercise type:
 1. Update `setupEx()` to handle new type
 2. Update workout view render logic (ex.type === "newtype")
 3. Update controls section with appropriate button
-4. Update AI prompt with format docs
+4. **Update AI prompt** - add type to examples, field descriptions, and rules
 
 ### Change audio feedback:
 Modify `playBeep()` calls in timer useEffect. Adjust frequencies/durations in play*Beep() functions.
