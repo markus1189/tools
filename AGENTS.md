@@ -20,11 +20,22 @@ Static HTML tools hosted on GitHub Pages. No build steps, no frameworks. Each to
 
 ## Constraints
 
-- **Self-contained HTML**: Each tool is a single `.html` file
-- **No build steps**: No React, Vue, Webpack, Vite, etc.
-- **Dependencies via CDN only**: Use cdnjs, unpkg, jsdelivr, or esm.sh
-- **Pin versions**: Never use `@latest` - always specify exact versions
+**Core principle**: Each tool must work directly from GitHub Pages as a single `.html` file with zero build process.
+
+- **Self-contained HTML**: Each tool is a single `.html` file that works when opened directly
+- **No build steps**: No compilation, transpilation, or bundling - what you write is what gets served
+- **All dependencies via CDN**: Use cdnjs, unpkg, jsdelivr, or esm.sh for any external libraries
+- **Pin exact versions**: Never use `@latest` tags - always specify exact versions (e.g., `react@18.2.0`)
 - **Naming**: Use kebab-case for filenames (e.g., `json-formatter.html`)
+
+**Technology choices**:
+- **Vanilla JS preferred** for simplicity and zero dependencies
+- **Frameworks allowed** if loaded via CDN (React, Vue, Alpine, etc.)
+  - Use production/minified builds
+  - Include all required dependencies (e.g., React needs react + react-dom + babel-standalone for JSX)
+  - Verify tools work when opened locally in a browser (`file://`)
+
+The key test: Can you `git clone` the repo, open `tool-name.html` in a browser, and have it work immediately?
 
 ## CDN Resources and SRI Verification
 
