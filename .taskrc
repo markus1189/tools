@@ -10,6 +10,8 @@ uda.source.type=string
 uda.source.label=Source
 uda.notes.type=string
 uda.notes.label=Notes
+uda.blocked_reason.type=string
+uda.blocked_reason.label=Blocked By
 
 # Useful reports
 report.inbox.columns=id,project,description,tags
@@ -19,3 +21,9 @@ report.inbox.sort=urgency-
 
 # Human handoff tag
 color.tag.needs-human=bold red
+
+# Blockers report
+report.blockers.columns=id,project,description,blocked_reason,tags
+report.blockers.labels=ID,Project,Description,Blocked By,Tags
+report.blockers.filter=+blocked status:pending
+report.blockers.sort=urgency-
