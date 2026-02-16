@@ -66,8 +66,8 @@
       );
       const IconBack = () => (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="1 4 1 10 7 10"></polyline>
-          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          <polygon points="19 20 9 12 19 4 19 20"></polygon>
+          <line x1="5" y1="19" x2="5" y2="5"></line>
         </svg>
       );
       const IconInfo = () => (
@@ -1120,90 +1120,79 @@ Now, please generate a routine based on my requirements. Output only valid JSON.
                   )}
                 </div>
 
-                {ex.cues && ex.cues.length > 0 && (
-                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 w-full max-w-sm text-left relative">
-                    <div className="absolute -top-3 left-4 bg-slate-900 px-2 text-xs text-orange-500 font-bold uppercase flex items-center gap-1">
+              </div>
+
+              {ex.cues && ex.cues.length > 0 && (
+                <div className="px-4 pb-3">
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 w-full text-left relative">
+                    <div className="absolute -top-3 left-4 bg-slate-800 px-2 text-xs text-orange-500 font-bold uppercase flex items-center gap-1">
                       <IconInfo /> Cues
                     </div>
                     <ul className="list-disc list-inside space-y-2 text-slate-300 text-sm mt-1">
                       {ex.cues.map((c, i) => <li key={i}>{c}</li>)}
                     </ul>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="p-6 bg-slate-800 border-t border-slate-700">
-                {ex.type === "sets" ? (
-                  <div className="space-y-3">
-                    {/* Set skip buttons for sets exercises */}
-                    <div className="flex justify-center gap-2 text-xs text-slate-500">
-                      <button 
-                        onClick={skipToPrevSet}
-                        className={`px-3 py-1 rounded flex items-center gap-1 ${(currentSet === 0 && idx === 0) ? "opacity-30" : "hover:text-slate-300 hover:bg-slate-700"}`}
-                        disabled={currentSet === 0 && idx === 0}
-                      >
-                        <IconSkipBack /> Prev Set
-                      </button>
-                      <button 
-                        onClick={skipToNextSet}
-                        className="px-3 py-1 rounded flex items-center gap-1 hover:text-slate-300 hover:bg-slate-700"
-                      >
-                        Next Set <IconSkipForward />
-                      </button>
-                    </div>
-                    
-                    {/* Main controls */}
-                    <div className="flex justify-between items-center">
-                      <button onClick={prev} className={`p-4 rounded-full text-slate-400 ${idx === 0 ? "invisible" : ""}`}>
-                        <IconBack />
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          if (ex.sets[currentSet].duration && !isResting && !isRepResting) {
-                            setIsActive(!isActive);
-                          } else {
-                            nextSet();
-                          }
-                        }}
-                        className="p-6 rounded-full bg-orange-500 text-white shadow-xl active:scale-95 transition-transform"
-                      >
-                        {ex.sets[currentSet].duration && !isResting && !isRepResting ? (
-                          isActive ? <IconPause /> : <IconPlay />
-                        ) : (
-                          <IconCheck />
-                        )}
-                      </button>
-
-                      <button onClick={next} className="p-4 rounded-full text-slate-400 hover:text-white">
-                        <IconSkip />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-between items-center">
-                    <button onClick={prev} className={`p-4 rounded-full text-slate-400 ${idx === 0 ? "invisible" : ""}`}>
-                      <IconBack />
+                {ex.type === "sets" && (
+                  <div className="flex justify-center gap-2 text-xs text-slate-500 mb-3">
+                    <button 
+                      onClick={skipToPrevSet}
+                      className={`px-3 py-1 rounded flex items-center gap-1 ${(currentSet === 0 && idx === 0) ? "opacity-30" : "hover:text-slate-300 hover:bg-slate-700"}`}
+                      disabled={currentSet === 0 && idx === 0}
+                    >
+                      <IconSkipBack /> Prev Set
                     </button>
-
-                    {ex.type === "timer" ? (
-                      <button
-                        onClick={() => setIsActive(!isActive)}
-                        className={`p-6 rounded-full shadow-xl active:scale-95 transition-transform ${isActive ? "bg-yellow-500 text-black" : "bg-orange-500 text-white"}`}
-                      >
-                        {isActive ? <IconPause /> : <IconPlay />}
-                      </button>
-                    ) : (
-                      <button onClick={next} className="p-6 rounded-full bg-orange-500 text-white shadow-xl active:scale-95 transition-transform">
-                        <IconCheck />
-                      </button>
-                    )}
-
-                    <button onClick={next} className="p-4 rounded-full text-slate-400 hover:text-white">
-                      <IconSkip />
+                    <button 
+                      onClick={skipToNextSet}
+                      className="px-3 py-1 rounded flex items-center gap-1 hover:text-slate-300 hover:bg-slate-700"
+                    >
+                      Next Set <IconSkipForward />
                     </button>
                   </div>
                 )}
+
+                <div className="flex justify-between items-center">
+                  <button onClick={prev} className={`p-4 rounded-full text-slate-400 ${idx === 0 ? "invisible" : ""}`}>
+                    <IconBack />
+                  </button>
+
+                  {ex.type === "sets" && ex.sets ? (
+                    <button
+                      onClick={() => {
+                        if (ex.sets[currentSet].duration && !isResting && !isRepResting) {
+                          setIsActive(!isActive);
+                        } else {
+                          nextSet();
+                        }
+                      }}
+                      className="p-6 rounded-full bg-orange-500 text-white shadow-xl active:scale-95 transition-transform"
+                    >
+                      {ex.sets[currentSet].duration && !isResting && !isRepResting ? (
+                        isActive ? <IconPause /> : <IconPlay />
+                      ) : (
+                        <IconCheck />
+                      )}
+                    </button>
+                  ) : ex.type === "timer" ? (
+                    <button
+                      onClick={() => setIsActive(!isActive)}
+                      className={`p-6 rounded-full shadow-xl active:scale-95 transition-transform ${isActive ? "bg-yellow-500 text-black" : "bg-orange-500 text-white"}`}
+                    >
+                      {isActive ? <IconPause /> : <IconPlay />}
+                    </button>
+                  ) : (
+                    <button onClick={next} className="p-6 rounded-full bg-orange-500 text-white shadow-xl active:scale-95 transition-transform">
+                      <IconCheck />
+                    </button>
+                  )}
+
+                  <button onClick={next} className="p-4 rounded-full text-slate-400 hover:text-white">
+                    <IconSkip />
+                  </button>
+                </div>
               </div>
             </div>
           );
