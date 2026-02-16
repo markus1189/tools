@@ -92,7 +92,8 @@
       "title": "Routine Builder",
       "description": "Create and track custom exercise routines with timer and rep-based exercises",
       "icon": "list-checks",
-      "dateAdded": "2026-02-04"
+      "dateAdded": "2026-02-04",
+      "dateUpdated": "2026-02-16"
     }
   ]
 }

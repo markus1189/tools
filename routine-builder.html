@@ -146,24 +146,35 @@
         </svg>
       );
 
-      // Audio feedback
+      // Audio feedback — single shared AudioContext (avoids browser limits & startup latency)
+      let audioCtx = null;
+      const getAudioCtx = () => {
+        if (!audioCtx || audioCtx.state === 'closed') {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        return audioCtx;
+      };
+
       const playBeep = (frequency = 800, duration = 100) => {
         try {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
+          const ctx = getAudioCtx();
+          const oscillator = ctx.createOscillator();
+          const gainNode = ctx.createGain();
           
           oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
+          gainNode.connect(ctx.destination);
           
           oscillator.frequency.value = frequency;
           oscillator.type = 'sine';
           
-          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+          gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration / 1000);
           
-          oscillator.start(audioContext.currentTime);
-          oscillator.stop(audioContext.currentTime + duration / 1000);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + duration / 1000);
         } catch (e) {
           console.log('Audio not supported:', e);
         }
@@ -385,7 +396,7 @@
             // No micro-rest, go directly to next rep
             setCurrentRep(currentRep + 1);
             setTimer(currentSetData.duration || 0);
-            setIsActive(false);
+            setIsActive(currentSetData.duration ? true : false);
             return;
           }
           
