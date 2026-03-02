@@ -48,7 +48,7 @@ Multi-set progression with auto-flow.
 - `repRest`: Micro-rest BETWEEN reps in seconds (optional)
 - `rest`: Recovery AFTER all reps complete (optional)
 
-**Auto-progression flow** (single Play press):
+**Auto-progression flow** (single Play press for timed sets):
 ```
 Rep 1 (duration) → repRest → Rep 2 (duration) → ... → Rep N (duration)
   ↓
@@ -56,6 +56,11 @@ Set rest
   ↓
 Next set starts (needs Play press)
 ```
+
+**Manual untimed sets flow** (`reps` with no `duration` and no `repRest`):
+- User performs all reps in the set
+- Single Check tap marks the whole set complete
+- Optional `rest` still runs between sets
 
 ## Critical Functions
 
@@ -66,10 +71,12 @@ Initialize exercise at index `i`. Resets: currentSet, currentRep, isResting, isR
 **Most complex function**. Handles state machine:
 
 1. **If isRepResting**: Complete micro-rest → start next rep (auto-start if timed)
-2. **If mid-set** (currentRep < totalReps-1):
+2. **If isResting**: Rest is done (or skipped) → advance to next set/exercise
+3. **If manual untimed set** (`!duration && !repRest && reps > 1`): one Check tap completes entire set
+4. **If mid-set** (currentRep < totalReps-1):
    - If repRest exists → enter isRepResting
    - Else → increment rep, continue
-3. **If set complete**:
+5. **If set complete**:
    - If rest exists → enter isResting
    - Else → advance to next set or exercise
 

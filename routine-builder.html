@@ -373,6 +373,20 @@
 
           const currentSetData = ex.sets[currentSet];
           const totalReps = currentSetData.reps || 1;
+
+          const advanceToNextSetOrExercise = () => {
+            if (currentSet < ex.sets.length - 1) {
+              const nextSetIdx = currentSet + 1;
+              setCurrentSet(nextSetIdx);
+              setCurrentRep(0);
+              setIsResting(false);
+              setIsRepResting(false);
+              setTimer(ex.sets[nextSetIdx].duration || 0);
+              setIsActive(false);
+            } else {
+              next();
+            }
+          };
           
           // If we just finished a rep rest, start the next rep AUTOMATICALLY
           if (isRepResting) {
@@ -381,6 +395,25 @@
             setTimer(currentSetData.duration || 0);
             // Auto-start the next rep if it's a timed hold
             setIsActive(currentSetData.duration ? true : false);
+            return;
+          }
+
+          // If we're in set rest, this tap (or timer completion) advances to the next set
+          if (isResting) {
+            advanceToNextSetOrExercise();
+            return;
+          }
+
+          // Untimed multi-rep sets are treated as "complete the whole set, then tap once"
+          const isManualUntimedSet = !currentSetData.duration && !currentSetData.repRest && totalReps > 1;
+          if (isManualUntimedSet) {
+            if (currentSetData.rest && currentSet < ex.sets.length - 1) {
+              setIsResting(true);
+              setTimer(currentSetData.rest);
+              setIsActive(true);
+              return;
+            }
+            advanceToNextSetOrExercise();
             return;
           }
           
@@ -402,7 +435,7 @@
           
           // We've completed all reps in this set
           // If there's a rest period before next set
-          if (!isResting && currentSetData.rest && currentSet < ex.sets.length - 1) {
+          if (currentSetData.rest && currentSet < ex.sets.length - 1) {
             setIsResting(true);
             setTimer(currentSetData.rest);
             setIsActive(true);
@@ -410,17 +443,7 @@
           }
           
           // Move to next set or next exercise
-          if (currentSet < ex.sets.length - 1) {
-            const nextSetIdx = currentSet + 1;
-            setCurrentSet(nextSetIdx);
-            setCurrentRep(0);
-            setIsResting(false);
-            setIsRepResting(false);
-            setTimer(ex.sets[nextSetIdx].duration || 0);
-            setIsActive(false);
-          } else {
-            next();
-          }
+          advanceToNextSetOrExercise();
         };
 
         const next = () => {
