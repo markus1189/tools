@@ -197,6 +197,12 @@
         setTimeout(() => playBeep(1100, 200), 280);
       };
 
+      const playSetEndBeep = () => {
+        // Distinct high-to-low drop: the SET is over (you're heading into set rest)
+        playBeep(1000, 130);
+        setTimeout(() => playBeep(500, 280), 150);
+      };
+
       // Default demo routine
       const DEFAULT_ROUTINE = [
         {
@@ -300,20 +306,27 @@
             // Check if this is a completion that requires user action
             const ex = routine[idx];
             let needsUserAction = false;
-            
+            let endingSet = false;
+
             if (ex && ex.type === "sets") {
               const currentSetData = ex.sets[currentSet];
               const totalReps = currentSetData.reps || 1;
               const isLastRepOfSet = currentRep >= totalReps - 1;
               const isLastSet = currentSet >= ex.sets.length - 1;
-              
+              const holdFinished = !isResting && !isRepResting;
+
+              // A hold just ended the set and we're about to drop into set rest
+              endingSet = holdFinished && isLastRepOfSet && !isLastSet && !!currentSetData.rest;
+
               // User needs to press Play if:
               // 1. This is a set rest between sets, OR
               // 2. This is the last rep of the last set (exercise complete)
               needsUserAction = (isResting && !isLastSet) || (isLastRepOfSet && isLastSet && !isRepResting && !isResting);
             }
-            
-            if (needsUserAction) {
+
+            if (endingSet) {
+              playSetEndBeep(); // Distinct tone: the set is over
+            } else if (needsUserAction) {
               playSetCompleteBeep(); // Three-tone sound for "press play to continue"
             } else {
               playCompletionBeep(); // Regular two-tone completion sound
@@ -1155,10 +1168,10 @@ Now, please generate a routine based on my requirements. Output only valid JSON.
                             <p className="text-lg text-slate-300 mt-2 font-semibold">
                               {isResting ? (
                                 <span className="text-yellow-400">Set Rest</span>
-                              ) : isRepResting ? (
-                                <span className="text-yellow-300">Brief Rest</span>
                               ) : (
-                                <span>Set {currentSet + 1}/{ex.sets.length}
+                                <span className={isRepResting ? "text-yellow-300" : ""}>
+                                  {isRepResting && "Brief Rest • "}
+                                  Set {currentSet + 1}/{ex.sets.length}
                                   {ex.sets[currentSet].reps > 1 && ` • Rep ${currentRep + 1}/${ex.sets[currentSet].reps}`}
                                 </span>
                               )}
