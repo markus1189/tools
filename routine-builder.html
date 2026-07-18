@@ -1265,10 +1265,10 @@ Now, please generate a routine based on my requirements. Output only valid JSON.
                     </button>
                   ) : ex.type === "timer" ? (
                     <button
-                      onClick={() => setIsActive(!isActive)}
+                      onClick={() => timer === 0 ? next() : setIsActive(!isActive)}
                       className={`p-6 rounded-full shadow-xl active:scale-95 transition-transform ${isActive ? "bg-yellow-500 text-black" : "bg-orange-500 text-white"}`}
                     >
-                      {isActive ? <IconPause /> : <IconPlay />}
+                      {timer === 0 ? <IconCheck /> : isActive ? <IconPause /> : <IconPlay />}
                     </button>
                   ) : (
                     <button onClick={next} className="p-6 rounded-full bg-orange-500 text-white shadow-xl active:scale-95 transition-transform">
