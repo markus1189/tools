@@ -1842,27 +1842,32 @@ Bird-Dog R</textarea>
             return showMs ? { time: timeStr, ms: msStr } : { time: timeStr, ms: '' };
         }
 
+        function getEffectivePhase() {
+            return state.phase === 'paused' ? (state.pausedPhase || state.phase) : state.phase;
+        }
+
         function getPhaseTotal() {
+            const phase = getEffectivePhase();
             if (state.mode === 'countdown') {
                 const total = (state.settings.countdownMin * 60 + state.settings.countdownSec) * 1000;
                 return Math.max(1000, total);
             }
             if (state.mode === 'intervals') {
-                if (state.phase === 'prep') {
+                if (phase === 'prep') {
                     return state.settings.prepCountdown * 1000;
                 }
-                return (state.phase === 'work' || state.phase === 'ready')
+                return (phase === 'work' || phase === 'ready')
                     ? state.settings.workDuration * 1000
                     : state.settings.restDuration * 1000;
             }
             if (state.mode === 'pyramid') {
-                if (state.phase === 'prep') {
+                if (phase === 'prep') {
                     return state.settings.prepCountdown * 1000;
                 }
-                if (state.phase === 'work') {
+                if (phase === 'work') {
                     return state.settings.pyramidHoldDuration * 1000;
                 }
-                if (state.phase === 'rest') {
+                if (phase === 'rest') {
                     // Check if this is rest between reps or rest between sets
                     const currentReps = state.pyramid.pattern[state.pyramid.currentSetIndex];
                     if (state.pyramid.currentRep >= currentReps) {
@@ -1897,6 +1902,7 @@ Bird-Dog R</textarea>
             const isCountdown = state.mode === 'countdown';
             const isIntervals = state.mode === 'intervals';
             const isPyramid = state.mode === 'pyramid';
+            const effPhase = getEffectivePhase();
 
             let displayTime = state.elapsed;
             let progress = 0;
@@ -1924,18 +1930,18 @@ Bird-Dog R</textarea>
 
             // Phase label and info
             if (isPyramid) {
-                if (state.phase === 'prep') {
+                if (effPhase === 'prep') {
                     elements.phaseLabel.textContent = 'GET READY';
                     elements.exerciseName.textContent = state.pyramid.exercises[state.pyramid.currentExercise] || '';
                     elements.repInfo.textContent = '';
                     elements.setInfo.textContent = '';
-                } else if (state.phase === 'work') {
+                } else if (effPhase === 'work') {
                     elements.phaseLabel.textContent = 'HOLD';
                     const currentReps = state.pyramid.pattern[state.pyramid.currentSetIndex];
                     elements.exerciseName.textContent = state.pyramid.exercises[state.pyramid.currentExercise] || '';
                     elements.repInfo.textContent = `Rep ${state.pyramid.currentRep} of ${currentReps}`;
                     elements.setInfo.textContent = `Set ${state.pyramid.currentSetIndex + 1} of ${state.pyramid.pattern.length}`;
-                } else if (state.phase === 'rest') {
+                } else if (effPhase === 'rest') {
                     const currentReps = state.pyramid.pattern[state.pyramid.currentSetIndex];
                     if (state.pyramid.currentRep >= currentReps) {
                         elements.phaseLabel.textContent = 'REST';
@@ -1943,9 +1949,9 @@ Bird-Dog R</textarea>
                         elements.phaseLabel.textContent = 'BREATHE';
                     }
                     elements.exerciseName.textContent = state.pyramid.exercises[state.pyramid.currentExercise] || '';
-                    elements.repInfo.textContent = '';
-                    elements.setInfo.textContent = '';
-                } else if (state.phase === 'finished') {
+                    elements.repInfo.textContent = `Rep ${state.pyramid.currentRep} of ${currentReps}`;
+                    elements.setInfo.textContent = `Set ${state.pyramid.currentSetIndex + 1} of ${state.pyramid.pattern.length}`;
+                } else if (effPhase === 'finished') {
                     elements.phaseLabel.textContent = 'DONE';
                     elements.exerciseName.textContent = '';
                     elements.repInfo.textContent = '';
@@ -1960,15 +1966,18 @@ Bird-Dog R</textarea>
             } else if (isIntervals) {
                 elements.exerciseName.textContent = '';
                 elements.repInfo.textContent = '';
-                if (state.phase === 'prep') {
+                if (effPhase === 'prep') {
                     elements.phaseLabel.textContent = 'GET READY';
                     elements.setInfo.textContent = 'Starting in...';
-                } else if (state.phase === 'work') {
+                } else if (effPhase === 'work') {
                     elements.phaseLabel.textContent = 'WORK';
                     elements.setInfo.textContent = `Set ${state.currentSet} of ${state.settings.numSets}`;
-                } else if (state.phase === 'rest') {
+                } else if (effPhase === 'rest') {
                     elements.phaseLabel.textContent = 'REST';
                     elements.setInfo.textContent = `Set ${state.currentSet} of ${state.settings.numSets}`;
+                } else if (effPhase === 'finished') {
+                    elements.phaseLabel.textContent = 'DONE';
+                    elements.setInfo.textContent = '';
                 } else {
                     elements.phaseLabel.textContent = '';
                     elements.setInfo.textContent = '';
@@ -2053,7 +2062,11 @@ Bird-Dog R</textarea>
                         state.startTime = performance.now();
                         state.elapsed = 0;
                         lastCountdownBeep = -1;
-                        playTransitionBeep();
+                        if (state.currentSet >= state.settings.numSets) {
+                            playFinishSound();
+                        } else {
+                            playTransitionBeep();
+                        }
                     } else {
                         advanceSet();
                     }
@@ -2349,6 +2362,7 @@ Bird-Dog R</textarea>
                 cancelAnimationFrame(animationFrameId);
                 elements.startBtn.textContent = 'Resume';
                 updateButtonStates();
+                updateDisplay();
                 releaseWakeLock();
             } else {
                 // Start or Resume
@@ -2493,8 +2507,9 @@ Bird-Dog R</textarea>
 
             elements.intervalStructure.classList.add('show');
 
+            const effPhase = getEffectivePhase();
             const sets = [];
-            
+
             if (state.settings.prepCountdown > 0) {
                 sets.push({
                     number: 'P',
@@ -2502,16 +2517,16 @@ Bird-Dog R</textarea>
                         type: 'prep',
                         duration: state.settings.prepCountdown,
                         completed: state.prepCompleted,
-                        active: state.phase === 'prep'
+                        active: effPhase === 'prep'
                     }]
                 });
             }
-            
+
             for (let i = 1; i <= state.settings.numSets; i++) {
                 const segments = [];
-                
-                const workCompleted = i < state.currentSet || (i === state.currentSet && state.phase === 'rest');
-                const workActive = i === state.currentSet && state.phase === 'work';
+
+                const workCompleted = i < state.currentSet || (i === state.currentSet && effPhase === 'rest');
+                const workActive = i === state.currentSet && effPhase === 'work';
                 segments.push({
                     type: 'work',
                     duration: state.settings.workDuration,
@@ -2521,7 +2536,7 @@ Bird-Dog R</textarea>
                 
                 if (state.settings.restDuration > 0) {
                     const restCompleted = i < state.currentSet;
-                    const restActive = i === state.currentSet && state.phase === 'rest';
+                    const restActive = i === state.currentSet && effPhase === 'rest';
                     segments.push({
                         type: 'rest',
                         duration: state.settings.restDuration,
