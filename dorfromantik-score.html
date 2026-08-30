@@ -463,6 +463,21 @@
             transform: scale(0.95);
         }
 
+        .supply-chip { min-width: 40px; }
+
+        .chip.used {
+            border-color: var(--border);
+            color: var(--text-muted);
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .chip.used:active {
+            background: var(--bg-input);
+            color: var(--text-muted);
+            transform: scale(0.95);
+        }
+
         .chip-input {
             width: 56px;
             padding: 8px 6px;
@@ -710,14 +725,17 @@
         const STORAGE_KEY = 'dorfromantik-score_state';
         const CHIPS_47 = [4, 5, 6, 7];
         const CHIPS_46 = [4, 5, 6];
+        // Fester Marker-Vorrat je Auftragstyp
+        const SUPPLY_47 = [4, 4, 5, 5, 6, 6, 7]; // Wald, Getreide, Dorf
+        const SUPPLY_46 = [4, 4, 5, 5, 6, 6]; // Gleis, Fluss (kein 7er)
 
         // Die fünf Auftragstypen (7er-Marker nur bei Wald, Getreide, Dorf)
         const TASK_TYPES = [
-            { key: 'wald', label: 'Wald', emoji: '🌲', cssVar: '--forest', chips: CHIPS_47 },
-            { key: 'getreide', label: 'Getreide', emoji: '🌾', cssVar: '--wheat', chips: CHIPS_47 },
-            { key: 'dorf', label: 'Dorf', emoji: '🏘️', cssVar: '--village', chips: CHIPS_47 },
-            { key: 'gleis', label: 'Gleis', emoji: '🚂', cssVar: '--track', chips: CHIPS_46 },
-            { key: 'fluss', label: 'Fluss', emoji: '🌊', cssVar: '--river', chips: CHIPS_46 },
+            { key: 'wald', label: 'Wald', emoji: '🌲', cssVar: '--forest', chips: CHIPS_47, supply: SUPPLY_47 },
+            { key: 'getreide', label: 'Getreide', emoji: '🌾', cssVar: '--wheat', chips: CHIPS_47, supply: SUPPLY_47 },
+            { key: 'dorf', label: 'Dorf', emoji: '🏘️', cssVar: '--village', chips: CHIPS_47, supply: SUPPLY_47 },
+            { key: 'gleis', label: 'Gleis', emoji: '🚂', cssVar: '--track', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'fluss', label: 'Fluss', emoji: '🌊', cssVar: '--river', chips: CHIPS_46, supply: SUPPLY_46 },
         ];
 
         // Verdoppler-Plättchen je Auftragstyp
@@ -730,7 +748,7 @@
             {
                 title: 'Aufträge',
                 hint: 'Wird vom Auftrags-Tracker oben automatisch befüllt – manuell korrigierbar',
-                fields: TASK_TYPES.map((t) => F(t.key, t.label, t.emoji, t.cssVar, 'tally', { chips: t.chips })),
+                fields: TASK_TYPES.map((t) => F(t.key, t.label, t.emoji, t.cssVar, 'tally', { chips: t.chips, supply: t.supply })),
             },
             {
                 title: 'Fahnen',
@@ -849,6 +867,25 @@
         }
 
         // ── Summen ───────────────────────────────────────────────
+        // Ordnet Tally-Einträge dem festen Marker-Vorrat zu.
+        // usedPerValue: wie viele Chips je Wert durchgestrichen werden;
+        // overflow: Tally-Indizes, die nicht (mehr) in den Vorrat passen.
+        function allocateSupply(supply, tally) {
+            const remaining = {};
+            supply.forEach((v) => (remaining[v] = (remaining[v] || 0) + 1));
+            const usedPerValue = {};
+            const overflow = [];
+            tally.forEach((v, i) => {
+                if (remaining[v] > 0) {
+                    remaining[v]--;
+                    usedPerValue[v] = (usedPerValue[v] || 0) + 1;
+                } else {
+                    overflow.push(i);
+                }
+            });
+            return { usedPerValue, overflow };
+        }
+
         const fieldTotal = (f, v) => (f.kind === 'tally' ? v.reduce((a, b) => a + b, 0) : num(v));
         const sumSection = (section) => section.fields.reduce((a, f) => a + fieldTotal(f, state.fields[f.key]), 0);
         const sumCustom = () => state.custom.reduce((a, c) => a + num(c.points), 0);
@@ -916,7 +953,7 @@
         function valueInputHtml() {
             return `
                 <input class="chip-input" type="number" inputmode="numeric" placeholder="…" data-role="custom-value">
-                <button class="chip chip-go" data-role="custom-add">+</button>`;
+                <button class="chip chip-go" data-action="custom-add">+</button>`;
         }
 
         function renderTracker() {
@@ -1028,19 +1065,41 @@
                                 </button>`;
                         if (open) {
                             html += '<div class="pad">';
-                            if (v.length > 0) {
-                                html += '<div class="entries">';
-                                v.forEach((e, i) => {
-                                    html += `<button class="entry" data-action="remove-entry" data-index="${i}" title="Entfernen">${e} ×</button>`;
+                            if (f.supply) {
+                                // Fester Marker-Vorrat: erledigte Werte durchstreichen
+                                const { usedPerValue, overflow } = allocateSupply(f.supply, v);
+                                const seen = {};
+                                html += '<div class="chips supply-chips">';
+                                f.supply.forEach((c) => {
+                                    seen[c] = (seen[c] || 0) + 1;
+                                    const used = seen[c] <= (usedPerValue[c] || 0);
+                                    const label = used ? `Auftrag ${c} erledigt – tippen zum Zurücksetzen` : `Auftrag ${c} als erledigt markieren`;
+                                    html += `<button class="chip supply-chip${used ? ' used' : ''}" data-action="${used ? 'remove-value' : 'add-entry'}" data-value="${c}" aria-pressed="${used}" aria-label="${label}">${c}</button>`;
                                 });
                                 html += '</div>';
+                                if (overflow.length > 0) {
+                                    html += '<div class="entries">';
+                                    overflow.forEach((i) => {
+                                        html += `<button class="entry" data-action="remove-entry" data-index="${i}" title="Entfernen">${v[i]} ×</button>`;
+                                    });
+                                    html += '</div>';
+                                }
+                                html += `<div class="chips">${valueInputHtml()}</div></div>`;
+                            } else {
+                                if (v.length > 0) {
+                                    html += '<div class="entries">';
+                                    v.forEach((e, i) => {
+                                        html += `<button class="entry" data-action="remove-entry" data-index="${i}" title="Entfernen">${e} ×</button>`;
+                                    });
+                                    html += '</div>';
+                                }
+                                html += '<div class="chips">';
+                                (f.chips || []).forEach((c) => {
+                                    html += `<button class="chip" data-action="add-entry" data-value="${c}">+${c}</button>`;
+                                });
+                                html += valueInputHtml();
+                                html += '</div></div>';
                             }
-                            html += '<div class="chips">';
-                            (f.chips || []).forEach((c) => {
-                                html += `<button class="chip" data-action="add-entry" data-value="${c}">+${c}</button>`;
-                            });
-                            html += valueInputHtml();
-                            html += '</div></div>';
                         }
                         html += '</div>';
                     } else {
@@ -1283,6 +1342,15 @@
                     renderSections();
                     updateTotals();
                     break;
+                case 'remove-value': {
+                    const val = num(btn.dataset.value);
+                    const i = state.fields[key].lastIndexOf(val);
+                    if (i >= 0) state.fields[key] = [...state.fields[key].slice(0, i), ...state.fields[key].slice(i + 1)];
+                    saveState();
+                    renderSections();
+                    updateTotals();
+                    break;
+                }
                 case 'step': {
                     const step = field.step || 1;
                     const delta = num(btn.dataset.delta);
