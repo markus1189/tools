@@ -463,6 +463,19 @@
             transform: scale(0.95);
         }
 
+        .chip:disabled {
+            border-color: var(--border);
+            color: var(--text-muted);
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        .chip:disabled:active {
+            background: transparent;
+            color: var(--text-muted);
+            transform: none;
+        }
+
         .supply-chip { min-width: 40px; }
 
         .chip.used {
@@ -787,11 +800,11 @@
                 title: 'Verdopplungen',
                 hint: 'Verdoppelt einen erfüllten Auftrag des Typs: dessen Punkte nochmal eintragen',
                 fields: [
-                    F('waldhuette', 'Waldhütte', '🛖', '--forest', 'tally', { chips: CHIPS_47, sub: 'Wald-Auftrag ×2' }),
-                    F('erntefest', 'Erntefest', '🎉', '--wheat', 'tally', { chips: CHIPS_47, sub: 'Getreide-Auftrag ×2' }),
-                    F('wachturm', 'Wachturm', '🗼', '--village', 'tally', { chips: CHIPS_47, sub: 'Dorf-Auftrag ×2' }),
-                    F('lokomotive', 'Lokomotive', '🚂', '--track', 'tally', { chips: CHIPS_46, sub: 'Gleis-Auftrag ×2' }),
-                    F('schiff', 'Schiff', '⛵', '--river', 'tally', { chips: CHIPS_46, sub: 'Fluss-Auftrag ×2' }),
+                    F('waldhuette', 'Waldhütte', '🛖', '--forest', 'tally', { chips: CHIPS_47, sub: 'Wald-Auftrag ×2', doubles: 'wald' }),
+                    F('erntefest', 'Erntefest', '🎉', '--wheat', 'tally', { chips: CHIPS_47, sub: 'Getreide-Auftrag ×2', doubles: 'getreide' }),
+                    F('wachturm', 'Wachturm', '🗼', '--village', 'tally', { chips: CHIPS_47, sub: 'Dorf-Auftrag ×2', doubles: 'dorf' }),
+                    F('lokomotive', 'Lokomotive', '🚂', '--track', 'tally', { chips: CHIPS_46, sub: 'Gleis-Auftrag ×2', doubles: 'gleis' }),
+                    F('schiff', 'Schiff', '⛵', '--river', 'tally', { chips: CHIPS_46, sub: 'Fluss-Auftrag ×2', doubles: 'fluss' }),
                 ],
             },
         ];
@@ -869,7 +882,8 @@
         // ── Summen ───────────────────────────────────────────────
         // Ordnet Tally-Einträge dem festen Marker-Vorrat zu.
         // usedPerValue: wie viele Chips je Wert durchgestrichen werden;
-        // overflow: Tally-Indizes, die nicht (mehr) in den Vorrat passen.
+        // overflow: Tally-Indizes, die nicht (mehr) in den Vorrat passen;
+        // remaining: verbleibende Marker je Wert.
         function allocateSupply(supply, tally) {
             const remaining = {};
             supply.forEach((v) => (remaining[v] = (remaining[v] || 0) + 1));
@@ -883,8 +897,19 @@
                     overflow.push(i);
                 }
             });
-            return { usedPerValue, overflow };
+            return { usedPerValue, overflow, remaining };
         }
+
+        // Marker eines Typs, die schon im Spiel sind: gewertet, offen oder gescheitert
+        function consumedMarkers(typeKey) {
+            return [
+                ...state.fields[typeKey],
+                ...state.openTasks.filter((t) => t.type === typeKey).map((t) => t.value),
+                ...state.failedTasks.filter((t) => t.type === typeKey).map((t) => t.value),
+            ];
+        }
+
+        const countVal = (arr, x) => arr.reduce((a, y) => a + (y === x ? 1 : 0), 0);
 
         const fieldTotal = (f, v) => (f.kind === 'tally' ? v.reduce((a, b) => a + b, 0) : num(v));
         const sumSection = (section) => section.fields.reduce((a, f) => a + fieldTotal(f, state.fields[f.key]), 0);
@@ -1025,9 +1050,11 @@
                 html += '</div>';
                 if (pickType) {
                     const typ = TASK_TYPES.find((x) => x.key === pickType);
+                    const { remaining } = allocateSupply(typ.supply, consumedMarkers(typ.key));
                     html += '<div class="chips"><span class="val-label">Wert:</span>';
                     typ.chips.forEach((v) => {
-                        html += `<button class="chip" data-action="add-task" data-value="${v}">${v}</button>`;
+                        const depleted = !(remaining[v] > 0);
+                        html += `<button class="chip" data-action="add-task" data-value="${v}"${depleted ? ` disabled title="Kein ${v}er-Marker mehr im Vorrat"` : ''}>${v}</button>`;
                     });
                     html += valueInputHtml();
                     html += '</div>';
@@ -1095,7 +1122,9 @@
                                 }
                                 html += '<div class="chips">';
                                 (f.chips || []).forEach((c) => {
-                                    html += `<button class="chip" data-action="add-entry" data-value="${c}">+${c}</button>`;
+                                    // Verdoppler: nur Werte erfüllter, noch nicht verdoppelter Aufträge
+                                    const depleted = f.doubles ? countVal(state.fields[f.doubles], c) - countVal(v, c) <= 0 : false;
+                                    html += `<button class="chip" data-action="add-entry" data-value="${c}"${depleted ? ` disabled title="Kein erfüllter ${c}er-Auftrag zum Verdoppeln"` : ''}>+${c}</button>`;
                                 });
                                 html += valueInputHtml();
                                 html += '</div></div>';
@@ -1306,6 +1335,15 @@
         });
 
         // Wertungszeilen
+        // Nach manueller Änderung eines Tally-Felds; Auftragstypen beeinflussen
+        // auch den Marker-Vorrat im Tracker
+        function afterFieldChange(key) {
+            saveState();
+            if (FIELD_BY_KEY[key].supply) renderTracker();
+            renderSections();
+            updateTotals();
+        }
+
         $('#sectionsRoot').addEventListener('click', (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
@@ -1321,34 +1359,26 @@
                     break;
                 case 'add-entry':
                     state.fields[key] = [...state.fields[key], num(btn.dataset.value)];
-                    saveState();
-                    renderSections();
-                    updateTotals();
+                    afterFieldChange(key);
                     break;
                 case 'custom-add': {
                     const input = $('[data-role="custom-value"]', block);
                     const v = num(input && input.value);
                     if (v > 0) {
                         state.fields[key] = [...state.fields[key], v];
-                        saveState();
-                        renderSections();
-                        updateTotals();
+                        afterFieldChange(key);
                     }
                     break;
                 }
                 case 'remove-entry':
                     state.fields[key] = state.fields[key].filter((_, i) => i !== num(btn.dataset.index));
-                    saveState();
-                    renderSections();
-                    updateTotals();
+                    afterFieldChange(key);
                     break;
                 case 'remove-value': {
                     const val = num(btn.dataset.value);
                     const i = state.fields[key].lastIndexOf(val);
                     if (i >= 0) state.fields[key] = [...state.fields[key].slice(0, i), ...state.fields[key].slice(i + 1)];
-                    saveState();
-                    renderSections();
-                    updateTotals();
+                    afterFieldChange(key);
                     break;
                 }
                 case 'step': {
@@ -1370,9 +1400,7 @@
                 if (block && v > 0) {
                     const key = block.dataset.field;
                     state.fields[key] = [...state.fields[key], v];
-                    saveState();
-                    renderSections();
-                    updateTotals();
+                    afterFieldChange(key);
                 }
             }
         });
