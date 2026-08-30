@@ -94,6 +94,13 @@
       "icon": "list-checks",
       "dateAdded": "2026-02-04",
       "dateUpdated": "2026-02-16"
+    },
+    {
+      "id": "dorfromantik-score",
+      "title": "Dorfromantik Wertung",
+      "description": "Digital score sheet for the Dorfromantik board game with task tracker, doublers, and shareable results",
+      "icon": "hexagon",
+      "dateAdded": "2026-08-30"
     }
   ]
 }

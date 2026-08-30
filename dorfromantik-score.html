@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Digitale Wertungskarte für das Brettspiel Dorfromantik mit Auftrags-Tracker">
+    <meta name="theme-color" content="#f97316">
+    <title>Dorfromantik Wertung</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --bg-input: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #f97316;
+            --accent-hover: #fb923c;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --forest: #6aa84f;
+            --wheat: #d9a733;
+            --village: #d3714c;
+            --track: #9d9cab;
+            --river: #4f9bd1;
+            --flag-red: #e05a41;
+            --heart: #e05a41;
+            --gold: #d4a437;
+            --rice: #a9b24a;
+            --hex-flat: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            --hex-point: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 0.75rem 8.5rem;
+        }
+
+        button, input {
+            font-family: inherit;
+        }
+
+        button:focus-visible, input:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .sheet {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        header {
+            position: relative;
+            text-align: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .back-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .kicker {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Meta row */
+        .meta-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .meta-row input {
+            border: none;
+            border-bottom: 1.5px dashed var(--border);
+            background: transparent;
+            font-size: 14px;
+            color: var(--text);
+            padding: 6px 2px;
+            min-width: 0;
+            border-radius: 0;
+        }
+
+        .meta-row input:focus {
+            outline: none;
+            border-bottom-color: var(--accent);
+        }
+
+        .meta-row .partie { width: 96px; }
+        .meta-row .spieler { flex: 1; }
+
+        /* Sections */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 12px 12px;
+            margin-bottom: 12px;
+        }
+
+        .tracker {
+            border: 1.5px solid var(--accent);
+        }
+
+        .sec-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+
+        .sec-head h2 {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .subtotal {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 3px 0 10px;
+            line-height: 1.4;
+        }
+
+        /* Task tracker */
+        .task-grid {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .task-card {
+            flex: 1;
+            border: 1.5px solid;
+            border-radius: 10px;
+            padding: 10px 6px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card-hover);
+        }
+
+        .task-card.doubled {
+            box-shadow: 0 0 0 2px var(--gold);
+        }
+
+        .task-hex-btn {
+            position: relative;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+
+        .task-hex {
+            width: 58px;
+            height: 64px;
+            clip-path: var(--hex-point);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #0a0a0a;
+        }
+
+        .task-emoji { font-size: 18px; line-height: 1; }
+
+        .task-num {
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .x2-badge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background: var(--gold);
+            color: #0a0a0a;
+            font-weight: 700;
+            font-size: 11px;
+            border-radius: 999px;
+            padding: 2px 6px;
+        }
+
+        .task-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .done-btn {
+            border: none;
+            border-radius: 8px;
+            color: #0a0a0a;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 7px 0;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .x2-toggle {
+            border: 1px dashed var(--text-muted);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 2px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .x2-toggle.on {
+            border-style: solid;
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .fail-btn {
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--danger);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 2px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .drop-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .done-row, .failed-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            border-top: 1px dashed var(--border);
+            margin-top: 10px;
+            padding-top: 8px;
+        }
+
+        .done-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .done-chip {
+            border: 1px solid;
+            background: transparent;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .failed-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--danger);
+        }
+
+        .failed-chip {
+            border: 1px solid var(--danger);
+            background: transparent;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--danger);
+            cursor: pointer;
+            text-decoration: line-through;
+        }
+
+        .composer {
+            border-top: 1px dashed var(--border);
+            padding-top: 10px;
+        }
+
+        .type-pick {
+            display: flex;
+            gap: 8px;
+        }
+
+        .type-btn {
+            flex: 1;
+            height: 44px;
+            border: 1.5px solid;
+            border-radius: 10px;
+            background: transparent;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .type-btn:active { transform: scale(0.95); }
+
+        .val-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-right: 2px;
+        }
+
+        /* Score rows */
+        .field-block {
+            border-top: 1px solid var(--border);
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 0;
+            width: 100%;
+        }
+
+        .row-btn {
+            background: transparent;
+            border: none;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+            font-size: inherit;
+        }
+
+        .hex-chip {
+            clip-path: var(--hex-flat);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 34px;
+            height: 30px;
+            font-size: 15px;
+        }
+
+        .row-label {
+            flex: 1;
+            font-size: 15px;
+            line-height: 1.25;
+            min-width: 0;
+        }
+
+        .sub {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .row-total {
+            font-weight: 700;
+            font-size: 17px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .chev {
+            color: var(--text-muted);
+            font-size: 12px;
+            width: 12px;
+        }
+
+        .pad {
+            padding: 0 0 10px 44px;
+        }
+
+        .entries {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .entry {
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            cursor: pointer;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .chip {
+            min-width: 44px;
+            padding: 8px 10px;
+            border: 1.5px solid var(--accent);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .chip:active {
+            background: var(--accent);
+            color: #0a0a0a;
+            transform: scale(0.95);
+        }
+
+        .chip-input {
+            width: 56px;
+            padding: 8px 6px;
+            border: 1.5px dashed var(--text-muted);
+            border-radius: 10px;
+            background: transparent;
+            font-size: 15px;
+            font-weight: 700;
+            text-align: center;
+            color: var(--text);
+        }
+
+        .chip-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .chip-go { min-width: 40px; }
+
+        .stepper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .step-btn {
+            width: 40px;
+            height: 40px;
+            border: 1.5px solid var(--accent);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .step-btn:active {
+            background: var(--accent);
+            color: #0a0a0a;
+            transform: scale(0.95);
+        }
+
+        .step-val {
+            width: 40px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 18px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Custom fields */
+        .custom-label {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            border-bottom: 1.5px dashed var(--border);
+            background: transparent;
+            font-size: 14px;
+            color: var(--text);
+            padding: 4px 2px;
+            border-radius: 0;
+        }
+
+        .custom-label:focus {
+            outline: none;
+            border-bottom-color: var(--accent);
+        }
+
+        .pts {
+            width: 60px;
+            text-align: right;
+            font-size: 17px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+            border: none;
+            border-bottom: 1.5px solid var(--border);
+            background: transparent;
+            padding: 4px 2px;
+            border-radius: 0;
+        }
+
+        .pts:focus {
+            outline: none;
+            border-bottom-color: var(--accent);
+        }
+
+        .del {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .del:hover { color: var(--danger); }
+
+        .add-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px 0;
+            border: 1.5px dashed var(--text-muted);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .reset {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 13px;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        .reset:hover { color: var(--danger); }
+
+        .flash {
+            animation: flash-row 0.9s ease;
+        }
+
+        @keyframes flash-row {
+            0% { background: rgba(249, 115, 22, 0.25); }
+            100% { background: transparent; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .flash { animation: none; }
+        }
+
+        /* Footer */
+        .footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+            z-index: 10;
+        }
+
+        .share-btn {
+            min-width: 96px;
+            padding: 10px 12px;
+            border: 1.5px solid var(--accent);
+            border-radius: 12px;
+            background: var(--accent);
+            color: #0a0a0a;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .share-btn:active { transform: scale(0.95); }
+
+        .share-btn.ghost {
+            background: transparent;
+            color: var(--accent);
+            min-width: 84px;
+        }
+
+        .total-hex {
+            width: 78px;
+            height: 88px;
+            clip-path: var(--hex-point);
+            background: var(--accent);
+            color: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .total-hex .n {
+            font-size: 24px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .total-hex .l {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            opacity: 0.85;
+        }
+    </style>
+</head>
+<body>
+    <div class="sheet">
+        <header>
+            <a href="index.html" class="back-link">← Tools</a>
+            <h1>Wertungskarte</h1>
+            <p class="kicker">Dorfromantik – alles freigeschaltet</p>
+        </header>
+
+        <div class="meta-row">
+            <input class="partie" id="metaPartie" type="number" inputmode="numeric" placeholder="Partie 👑">
+            <input class="spieler" id="metaSpieler" type="text" placeholder="Wer spielt mit?">
+        </div>
+
+        <div class="section tracker" id="trackerSection"></div>
+
+        <div id="sectionsRoot"></div>
+
+        <div class="section" id="customSection">
+            <div class="sec-head">
+                <h2>Sonstiges</h2>
+                <span class="subtotal" id="customSubtotal">0</span>
+            </div>
+            <p class="hint">Errungenschaften, Große Mühle &amp; Co. – frei benennen</p>
+            <div id="customRows"></div>
+            <button class="add-btn" id="addCustomBtn">+ Feld hinzufügen</button>
+        </div>
+
+        <button class="reset" id="resetBtn">Blatt zurücksetzen</button>
+    </div>
+
+    <div class="footer">
+        <button class="share-btn" id="shareBtn">📤 Teilen</button>
+        <div class="total-hex">
+            <span class="n" id="totalNum">0</span>
+            <span class="l">Punkte</span>
+        </div>
+        <button class="share-btn ghost" id="copyBtn">Kopieren</button>
+    </div>
+
+    <script>
+        'use strict';
+
+        // ── Konfiguration ────────────────────────────────────────
+        const STORAGE_KEY = 'dorfromantik-score_state';
+        const CHIPS_47 = [4, 5, 6, 7];
+        const CHIPS_46 = [4, 5, 6];
+
+        // Die fünf Auftragstypen (7er-Marker nur bei Wald, Getreide, Dorf)
+        const TASK_TYPES = [
+            { key: 'wald', label: 'Wald', emoji: '🌲', cssVar: '--forest', chips: CHIPS_47 },
+            { key: 'getreide', label: 'Getreide', emoji: '🌾', cssVar: '--wheat', chips: CHIPS_47 },
+            { key: 'dorf', label: 'Dorf', emoji: '🏘️', cssVar: '--village', chips: CHIPS_47 },
+            { key: 'gleis', label: 'Gleis', emoji: '🚂', cssVar: '--track', chips: CHIPS_46 },
+            { key: 'fluss', label: 'Fluss', emoji: '🌊', cssVar: '--river', chips: CHIPS_46 },
+        ];
+
+        // Verdoppler-Plättchen je Auftragstyp
+        const DOUBLER = { wald: 'waldhuette', getreide: 'erntefest', dorf: 'wachturm', gleis: 'lokomotive', fluss: 'schiff' };
+        const DOUBLER_LABEL = { wald: 'Waldhütte', getreide: 'Erntefest', dorf: 'Wachturm', gleis: 'Lokomotive', fluss: 'Schiff' };
+
+        const F = (key, label, emoji, cssVar, kind, extra = {}) => ({ key, label, emoji, cssVar, kind, ...extra });
+
+        const SECTIONS = [
+            {
+                title: 'Aufträge',
+                hint: 'Wird vom Auftrags-Tracker oben automatisch befüllt – manuell korrigierbar',
+                fields: TASK_TYPES.map((t) => F(t.key, t.label, t.emoji, t.cssVar, 'tally', { chips: t.chips })),
+            },
+            {
+                title: 'Fahnen',
+                hint: 'Gebiet geschlossen? Plättchenzahl des Gebiets eintragen',
+                fields: [
+                    F('fGruen', 'Grüne Fahnen', '🚩', '--forest', 'tally', { chips: [4, 6, 8, 10] }),
+                    F('fGelb', 'Gelbe Fahnen', '🚩', '--wheat', 'tally', { chips: [4, 6, 8, 10] }),
+                    F('fRot', 'Rote Fahnen', '🚩', '--flag-red', 'tally', { chips: [4, 6, 8, 10] }),
+                ],
+            },
+            {
+                title: 'Längen',
+                hint: 'Einfach mitzählen: je Plättchen +1',
+                fields: [
+                    F('langGleis', 'Längstes Gleis', '📏', '--track', 'stepper'),
+                    F('langFluss', 'Längster Fluss', '📏', '--river', 'stepper'),
+                ],
+            },
+            {
+                title: 'Sonderplättchen',
+                hint: 'Direkt beim Legen/Abschließen eintragen',
+                fields: [
+                    F('roteHerzen', 'Rote Herzen', '❤️', '--heart', 'tally', { chips: [1, 2, 3, 4, 5, 6], sub: '1 je passende Kante' }),
+                    F('goldHerz', 'Goldenes Herz', '💛', '--gold', 'tally', { chips: [4, 6, 8, 10, 12], sub: '2 je passende Kante' }),
+                    F('zirkus', 'Zirkus', '🎪', '--flag-red', 'tally', { chips: [10], sub: '10, wenn komplett umschlossen' }),
+                    F('bahnwaerter', 'Bahnwärter', '🚦', '--track', 'tally', { chips: [2, 4, 6], sub: '2 je Bahnübergang' }),
+                    F('schaeferin', 'Schäferin', '🐑', '--forest', 'stepper', { step: 2, sub: '1 je Schaf – Schafplättchen zu je 2' }),
+                    F('huegel', 'Hügel', '⛰️', '--rice', 'tally', { chips: [2, 4, 6], sub: '2 je Auftragsplättchen auf Distanz 2' }),
+                    F('baustelle', 'Baustelle', '🚧', '--wheat', 'tally', { chips: [7], sub: '7 je Gebiet mit 7+ Plättchen' }),
+                    F('ballon', 'Ballon-Startplatz', '🎈', '--river', 'tally', { chips: [2, 4, 6, 8, 10], sub: '2 je Distanz' }),
+                    F('bahnhof', 'Bahnhof', '🚉', '--track', 'tally', { chips: [4, 6, 8, 10], sub: 'abgeschlossen: 1 je Plättchen' }),
+                    F('hafen', 'Hafen', '⚓', '--river', 'tally', { chips: [4, 6, 8, 10], sub: 'abgeschlossen: 1 je Plättchen' }),
+                ],
+            },
+            {
+                title: 'Verdopplungen',
+                hint: 'Verdoppelt einen erfüllten Auftrag des Typs: dessen Punkte nochmal eintragen',
+                fields: [
+                    F('waldhuette', 'Waldhütte', '🛖', '--forest', 'tally', { chips: CHIPS_47, sub: 'Wald-Auftrag ×2' }),
+                    F('erntefest', 'Erntefest', '🎉', '--wheat', 'tally', { chips: CHIPS_47, sub: 'Getreide-Auftrag ×2' }),
+                    F('wachturm', 'Wachturm', '🗼', '--village', 'tally', { chips: CHIPS_47, sub: 'Dorf-Auftrag ×2' }),
+                    F('lokomotive', 'Lokomotive', '🚂', '--track', 'tally', { chips: CHIPS_46, sub: 'Gleis-Auftrag ×2' }),
+                    F('schiff', 'Schiff', '⛵', '--river', 'tally', { chips: CHIPS_46, sub: 'Fluss-Auftrag ×2' }),
+                ],
+            },
+        ];
+
+        const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
+        const FIELD_BY_KEY = Object.fromEntries(ALL_FIELDS.map((f) => [f.key, f]));
+
+        // ── State ────────────────────────────────────────────────
+        const num = (v) => {
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) ? n : 0;
+        };
+
+        const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+        const emptyFields = () => {
+            const o = {};
+            ALL_FIELDS.forEach((f) => (o[f.key] = f.kind === 'tally' ? [] : 0));
+            return o;
+        };
+
+        const initialState = () => ({
+            meta: { partie: '', spieler: '' },
+            fields: emptyFields(),
+            custom: [],
+            openTasks: [],
+            failedTasks: [],
+            completedTasks: [],
+        });
+
+        let state = loadState();
+        // UI-Zustand (nicht persistiert)
+        let openKey = null;
+        let pickType = null;
+        let flashKeys = null;
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return initialState();
+                const parsed = JSON.parse(raw);
+                const base = initialState();
+                const fields = emptyFields();
+                if (parsed.fields && typeof parsed.fields === 'object') {
+                    ALL_FIELDS.forEach((f) => {
+                        const v = parsed.fields[f.key];
+                        if (f.kind === 'tally' && Array.isArray(v)) {
+                            fields[f.key] = v.filter((x) => Number.isFinite(x));
+                        } else if (f.kind === 'stepper' && Number.isFinite(v)) {
+                            fields[f.key] = v;
+                        }
+                    });
+                }
+                return {
+                    meta: { ...base.meta, ...(parsed.meta || {}) },
+                    fields,
+                    custom: Array.isArray(parsed.custom) ? parsed.custom : [],
+                    openTasks: Array.isArray(parsed.openTasks) ? parsed.openTasks : [],
+                    failedTasks: Array.isArray(parsed.failedTasks) ? parsed.failedTasks : [],
+                    completedTasks: Array.isArray(parsed.completedTasks) ? parsed.completedTasks : [],
+                };
+            } catch {
+                return initialState();
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch {
+                // Speicher voll oder blockiert – Tool funktioniert trotzdem
+            }
+        }
+
+        // ── Summen ───────────────────────────────────────────────
+        const fieldTotal = (f, v) => (f.kind === 'tally' ? v.reduce((a, b) => a + b, 0) : num(v));
+        const sumSection = (section) => section.fields.reduce((a, f) => a + fieldTotal(f, state.fields[f.key]), 0);
+        const sumCustom = () => state.custom.reduce((a, c) => a + num(c.points), 0);
+        const sumAll = () => SECTIONS.reduce((a, s) => a + sumSection(s), 0) + sumCustom();
+
+        // ── Export ───────────────────────────────────────────────
+        function buildExport() {
+            const { meta, fields, custom } = state;
+            const lines = [];
+            const d = new Date().toLocaleDateString('de-DE');
+            lines.push(`Dorfromantik – Wertung${meta.partie ? ` · Partie ${meta.partie}` : ''} · ${d}`);
+            if (meta.spieler) lines.push(`Mitspieler: ${meta.spieler}`);
+            lines.push('');
+            SECTIONS.forEach((s) => {
+                const st = sumSection(s);
+                if (st === 0) return;
+                lines.push(`${s.title}: ${st}`);
+                s.fields.forEach((f) => {
+                    const v = fields[f.key];
+                    const ft = fieldTotal(f, v);
+                    if (ft === 0) return;
+                    const detail = f.kind === 'tally' && v.length > 1 ? ` (${v.join('+')})` : '';
+                    lines.push(`  ${f.emoji} ${f.label}: ${ft}${detail}`);
+                });
+            });
+            const cs = sumCustom();
+            if (cs !== 0) {
+                lines.push(`Sonstiges: ${cs}`);
+                custom.forEach((c) => {
+                    if (num(c.points)) lines.push(`  🎁 ${c.label || 'Feld'}: ${num(c.points)}`);
+                });
+            }
+            if (state.completedTasks.length > 0) {
+                const done = state.completedTasks
+                    .map((t) => {
+                        const typ = TASK_TYPES.find((x) => x.key === t.type);
+                        return `${typ.emoji}${t.value}${t.doubled ? '×2' : ''}`;
+                    })
+                    .join(' · ');
+                lines.push(`Erledigt (${state.completedTasks.length}): ${done}`);
+            }
+            if (state.failedTasks.length > 0) {
+                const failed = state.failedTasks
+                    .map((t) => {
+                        const typ = TASK_TYPES.find((x) => x.key === t.type);
+                        return `${typ.emoji}${t.value}`;
+                    })
+                    .join(' · ');
+                lines.push(`Gescheitert: ${failed}`);
+            }
+            lines.push('');
+            lines.push(`Gesamt: ${sumAll()} Punkte ⭐`);
+            return lines.join('\n');
+        }
+
+        // ── Rendering ────────────────────────────────────────────
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const cssColor = (v) => `var(${v})`;
+
+        function hexChip(emoji, cssVar) {
+            return `<span class="hex-chip" aria-hidden="true" style="background:${cssColor(cssVar)}">${emoji}</span>`;
+        }
+
+        function valueInputHtml() {
+            return `
+                <input class="chip-input" type="number" inputmode="numeric" placeholder="…" data-role="custom-value">
+                <button class="chip chip-go" data-role="custom-add">+</button>`;
+        }
+
+        function renderTracker() {
+            const el = $('#trackerSection');
+            const tasks = state.openTasks;
+            let html = `
+                <div class="sec-head">
+                    <h2>Offene Aufträge</h2>
+                    <span class="subtotal">${tasks.length}/3</span>
+                </div>
+                <p class="hint">Typ, dann Markerwert antippen. Lang drücken (oder ×2) markiert einen Auftrag als verdoppelt –
+                ✓ trägt ihn automatisch in die Wertung ein, verdoppelte zusätzlich bei Waldhütte &amp; Co.</p>`;
+
+            if (tasks.length > 0) {
+                html += '<div class="task-grid">';
+                tasks.forEach((t) => {
+                    const typ = TASK_TYPES.find((x) => x.key === t.type);
+                    html += `
+                        <div class="task-card${t.doubled ? ' doubled' : ''}" style="border-color:${cssColor(typ.cssVar)}" data-task-id="${t.id}">
+                            <button class="task-hex-btn" data-action="toggle-double" title="Lang drücken: verdoppeln" aria-pressed="${!!t.doubled}">
+                                <span class="task-hex" style="background:${cssColor(typ.cssVar)}">
+                                    <span class="task-emoji">${typ.emoji}</span>
+                                    <span class="task-num">${t.value}</span>
+                                </span>
+                                ${t.doubled ? '<span class="x2-badge">×2</span>' : ''}
+                            </button>
+                            <div class="task-actions">
+                                <button class="done-btn" style="background:${cssColor(typ.cssVar)}" data-action="complete">✓ erledigt</button>
+                                <button class="x2-toggle${t.doubled ? ' on' : ''}" data-action="toggle-double-btn">×2 ${DOUBLER_LABEL[t.type]}</button>
+                                <button class="fail-btn" data-action="fail">✗ gescheitert</button>
+                                <button class="drop-btn" data-action="remove">entfernen</button>
+                            </div>
+                        </div>`;
+                });
+                html += '</div>';
+            }
+
+            if (state.completedTasks.length > 0) {
+                html += `<div class="done-row"><span class="done-label">Erledigt (${state.completedTasks.length}):</span>`;
+                state.completedTasks.forEach((t) => {
+                    const typ = TASK_TYPES.find((x) => x.key === t.type);
+                    html += `<button class="done-chip" style="border-color:${cssColor(typ.cssVar)};color:${cssColor(typ.cssVar)}"
+                        data-action="uncomplete" data-task-id="${t.id}" title="Zurückholen (Punkte werden entfernt)">
+                        ${typ.emoji} ${t.value}${t.doubled ? ' ×2' : ''} ×</button>`;
+                });
+                html += '</div>';
+            }
+
+            if (state.failedTasks.length > 0) {
+                html += '<div class="failed-row"><span class="failed-label">Gescheitert:</span>';
+                state.failedTasks.forEach((t) => {
+                    const typ = TASK_TYPES.find((x) => x.key === t.type);
+                    html += `<button class="failed-chip" data-action="unfail" data-task-id="${t.id}" title="Zurückholen">
+                        ${typ.emoji} ${t.value} ×</button>`;
+                });
+                html += '</div>';
+            }
+
+            if (tasks.length < 3) {
+                html += '<div class="composer"><div class="type-pick">';
+                TASK_TYPES.forEach((t) => {
+                    const sel = pickType === t.key;
+                    const style = sel
+                        ? `background:${cssColor(t.cssVar)};border-color:${cssColor(t.cssVar)}`
+                        : `border-color:${cssColor(t.cssVar)}`;
+                    html += `<button class="type-btn" style="${style}" data-action="pick-type" data-type="${t.key}"
+                        aria-pressed="${sel}" title="${t.label}">${t.emoji}</button>`;
+                });
+                html += '</div>';
+                if (pickType) {
+                    const typ = TASK_TYPES.find((x) => x.key === pickType);
+                    html += '<div class="chips"><span class="val-label">Wert:</span>';
+                    typ.chips.forEach((v) => {
+                        html += `<button class="chip" data-action="add-task" data-value="${v}">${v}</button>`;
+                    });
+                    html += valueInputHtml();
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            el.innerHTML = html;
+        }
+
+        function renderSections() {
+            const root = $('#sectionsRoot');
+            let html = '';
+            SECTIONS.forEach((section, si) => {
+                html += `
+                    <div class="section">
+                        <div class="sec-head">
+                            <h2>${section.title}</h2>
+                            <span class="subtotal" data-section-total="${si}">${sumSection(section)}</span>
+                        </div>
+                        <p class="hint">${section.hint}</p>`;
+                section.fields.forEach((f) => {
+                    const v = state.fields[f.key];
+                    const flash = flashKeys && flashKeys.includes(f.key) ? ' flash' : '';
+                    const subHtml = f.sub ? `<span class="sub">${esc(f.sub)}</span>` : '';
+                    if (f.kind === 'tally') {
+                        const open = openKey === f.key;
+                        html += `
+                            <div class="field-block${flash}" data-field="${f.key}">
+                                <button class="row row-btn" data-action="toggle-open" aria-expanded="${open}">
+                                    ${hexChip(f.emoji, f.cssVar)}
+                                    <span class="row-label">${esc(f.label)}${subHtml}</span>
+                                    <span class="row-total">${fieldTotal(f, v)}</span>
+                                    <span class="chev">${open ? '▾' : '▸'}</span>
+                                </button>`;
+                        if (open) {
+                            html += '<div class="pad">';
+                            if (v.length > 0) {
+                                html += '<div class="entries">';
+                                v.forEach((e, i) => {
+                                    html += `<button class="entry" data-action="remove-entry" data-index="${i}" title="Entfernen">${e} ×</button>`;
+                                });
+                                html += '</div>';
+                            }
+                            html += '<div class="chips">';
+                            (f.chips || []).forEach((c) => {
+                                html += `<button class="chip" data-action="add-entry" data-value="${c}">+${c}</button>`;
+                            });
+                            html += valueInputHtml();
+                            html += '</div></div>';
+                        }
+                        html += '</div>';
+                    } else {
+                        const step = f.step || 1;
+                        html += `
+                            <div class="field-block${flash}" data-field="${f.key}">
+                                <div class="row">
+                                    ${hexChip(f.emoji, f.cssVar)}
+                                    <span class="row-label">${esc(f.label)}${subHtml}</span>
+                                    <div class="stepper">
+                                        <button class="step-btn" data-action="step" data-delta="${-step}" aria-label="minus ${step}">−</button>
+                                        <span class="step-val">${num(v)}</span>
+                                        <button class="step-btn" data-action="step" data-delta="${step}" aria-label="plus ${step}">+</button>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                });
+                html += '</div>';
+            });
+            root.innerHTML = html;
+            flashKeys = null;
+        }
+
+        function renderCustom() {
+            const rows = $('#customRows');
+            let html = '';
+            state.custom.forEach((c) => {
+                html += `
+                    <div class="row" data-custom-id="${c.id}">
+                        <span class="hex-chip" aria-hidden="true" style="background:var(--accent)">🎁</span>
+                        <input class="custom-label" type="text" placeholder="Feld benennen …" value="${esc(c.label)}" data-role="label">
+                        <input class="pts" type="number" inputmode="numeric" placeholder="0" value="${esc(c.points)}" data-role="points">
+                        <button class="del" data-action="del-custom" aria-label="Feld entfernen">×</button>
+                    </div>`;
+            });
+            rows.innerHTML = html;
+        }
+
+        function updateTotals() {
+            $('#totalNum').textContent = sumAll();
+            $('#customSubtotal').textContent = sumCustom();
+            document.querySelectorAll('[data-section-total]').forEach((el) => {
+                el.textContent = sumSection(SECTIONS[num(el.dataset.sectionTotal)]);
+            });
+        }
+
+        function renderAll() {
+            renderTracker();
+            renderSections();
+            renderCustom();
+            updateTotals();
+        }
+
+        // ── Auftrags-Aktionen ────────────────────────────────────
+        function completeTask(t) {
+            state.fields[t.type] = [...state.fields[t.type], t.value];
+            const keys = [t.type];
+            if (t.doubled) {
+                const dKey = DOUBLER[t.type];
+                state.fields[dKey] = [...state.fields[dKey], t.value];
+                keys.push(dKey);
+            }
+            state.openTasks = state.openTasks.filter((x) => x.id !== t.id);
+            state.completedTasks.push({ id: t.id, type: t.type, value: t.value, doubled: !!t.doubled });
+            flashKeys = keys;
+            saveState();
+            renderAll();
+        }
+
+        function uncompleteTask(id) {
+            const t = state.completedTasks.find((x) => x.id === id);
+            if (!t || state.openTasks.length >= 3) return;
+            const removeLast = (arr, v) => {
+                const i = arr.lastIndexOf(v);
+                return i >= 0 ? [...arr.slice(0, i), ...arr.slice(i + 1)] : arr;
+            };
+            state.fields[t.type] = removeLast(state.fields[t.type], t.value);
+            if (t.doubled) {
+                const dKey = DOUBLER[t.type];
+                state.fields[dKey] = removeLast(state.fields[dKey], t.value);
+            }
+            state.completedTasks = state.completedTasks.filter((x) => x.id !== id);
+            state.openTasks.push({ id: t.id, type: t.type, value: t.value, doubled: t.doubled });
+            saveState();
+            renderAll();
+        }
+
+        function failTask(t) {
+            state.openTasks = state.openTasks.filter((x) => x.id !== t.id);
+            state.failedTasks.push({ id: t.id, type: t.type, value: t.value });
+            saveState();
+            renderAll();
+        }
+
+        function unfailTask(id) {
+            const t = state.failedTasks.find((x) => x.id === id);
+            if (!t || state.openTasks.length >= 3) return;
+            state.failedTasks = state.failedTasks.filter((x) => x.id !== id);
+            state.openTasks.push({ ...t, doubled: false });
+            saveState();
+            renderAll();
+        }
+
+        function toggleDouble(id) {
+            state.openTasks = state.openTasks.map((t) => (t.id === id ? { ...t, doubled: !t.doubled } : t));
+            saveState();
+            renderTracker();
+        }
+
+        // ── Event-Handling ───────────────────────────────────────
+        // Lang drücken auf dem Hex-Plättchen verdoppelt den Auftrag
+        let pressTimer = null;
+        let longPressed = false;
+
+        $('#trackerSection').addEventListener('pointerdown', (e) => {
+            const btn = e.target.closest('[data-action="toggle-double"]');
+            if (!btn) return;
+            const id = btn.closest('[data-task-id]').dataset.taskId;
+            longPressed = false;
+            pressTimer = setTimeout(() => {
+                longPressed = true;
+                toggleDouble(id);
+            }, 450);
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) =>
+            $('#trackerSection').addEventListener(ev, () => clearTimeout(pressTimer), true)
+        );
+        $('#trackerSection').addEventListener('contextmenu', (e) => {
+            if (e.target.closest('[data-action="toggle-double"]')) e.preventDefault();
+        });
+
+        $('#trackerSection').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const card = btn.closest('[data-task-id]');
+            const taskId = (card || btn).dataset.taskId;
+            const task = state.openTasks.find((t) => t.id === taskId);
+
+            switch (action) {
+                case 'pick-type':
+                    pickType = pickType === btn.dataset.type ? null : btn.dataset.type;
+                    renderTracker();
+                    break;
+                case 'add-task': {
+                    if (!pickType) return;
+                    state.openTasks.push({ id: uid(), type: pickType, value: num(btn.dataset.value), doubled: false });
+                    pickType = null;
+                    saveState();
+                    renderTracker();
+                    break;
+                }
+                case 'custom-add': {
+                    if (!pickType) return;
+                    const input = $('[data-role="custom-value"]', $('#trackerSection'));
+                    const v = num(input && input.value);
+                    if (v > 0) {
+                        state.openTasks.push({ id: uid(), type: pickType, value: v, doubled: false });
+                        pickType = null;
+                        saveState();
+                        renderTracker();
+                    }
+                    break;
+                }
+                case 'complete':
+                    if (task) completeTask(task);
+                    break;
+                case 'fail':
+                    if (task) failTask(task);
+                    break;
+                case 'remove':
+                    state.openTasks = state.openTasks.filter((t) => t.id !== taskId);
+                    saveState();
+                    renderTracker();
+                    break;
+                case 'toggle-double':
+                    // Klick nach Lang-Drücken nicht doppelt auslösen
+                    if (!longPressed) toggleDouble(taskId);
+                    longPressed = false;
+                    break;
+                case 'toggle-double-btn':
+                    toggleDouble(taskId);
+                    break;
+                case 'uncomplete':
+                    uncompleteTask(btn.dataset.taskId);
+                    break;
+                case 'unfail':
+                    unfailTask(btn.dataset.taskId);
+                    break;
+            }
+        });
+
+        $('#trackerSection').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.matches('[data-role="custom-value"]')) {
+                const v = num(e.target.value);
+                if (v > 0 && pickType) {
+                    state.openTasks.push({ id: uid(), type: pickType, value: v, doubled: false });
+                    pickType = null;
+                    saveState();
+                    renderTracker();
+                }
+            }
+        });
+
+        // Wertungszeilen
+        $('#sectionsRoot').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const block = btn.closest('[data-field]');
+            if (!block) return;
+            const key = block.dataset.field;
+            const field = FIELD_BY_KEY[key];
+
+            switch (btn.dataset.action) {
+                case 'toggle-open':
+                    openKey = openKey === key ? null : key;
+                    renderSections();
+                    break;
+                case 'add-entry':
+                    state.fields[key] = [...state.fields[key], num(btn.dataset.value)];
+                    saveState();
+                    renderSections();
+                    updateTotals();
+                    break;
+                case 'custom-add': {
+                    const input = $('[data-role="custom-value"]', block);
+                    const v = num(input && input.value);
+                    if (v > 0) {
+                        state.fields[key] = [...state.fields[key], v];
+                        saveState();
+                        renderSections();
+                        updateTotals();
+                    }
+                    break;
+                }
+                case 'remove-entry':
+                    state.fields[key] = state.fields[key].filter((_, i) => i !== num(btn.dataset.index));
+                    saveState();
+                    renderSections();
+                    updateTotals();
+                    break;
+                case 'step': {
+                    const step = field.step || 1;
+                    const delta = num(btn.dataset.delta);
+                    state.fields[key] = Math.max(0, num(state.fields[key]) + (delta < 0 ? -step : step));
+                    saveState();
+                    renderSections();
+                    updateTotals();
+                    break;
+                }
+            }
+        });
+
+        $('#sectionsRoot').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.matches('[data-role="custom-value"]')) {
+                const block = e.target.closest('[data-field]');
+                const v = num(e.target.value);
+                if (block && v > 0) {
+                    const key = block.dataset.field;
+                    state.fields[key] = [...state.fields[key], v];
+                    saveState();
+                    renderSections();
+                    updateTotals();
+                }
+            }
+        });
+
+        // Sonstiges
+        $('#addCustomBtn').addEventListener('click', () => {
+            state.custom.push({ id: uid(), label: '', points: '' });
+            saveState();
+            renderCustom();
+        });
+
+        $('#customRows').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="del-custom"]');
+            if (!btn) return;
+            const id = btn.closest('[data-custom-id]').dataset.customId;
+            state.custom = state.custom.filter((c) => c.id !== id);
+            saveState();
+            renderCustom();
+            updateTotals();
+        });
+
+        $('#customRows').addEventListener('input', (e) => {
+            const row = e.target.closest('[data-custom-id]');
+            if (!row) return;
+            const c = state.custom.find((x) => x.id === row.dataset.customId);
+            if (!c) return;
+            if (e.target.dataset.role === 'label') c.label = e.target.value;
+            if (e.target.dataset.role === 'points') c.points = e.target.value;
+            saveState();
+            updateTotals();
+        });
+
+        // Meta
+        $('#metaPartie').addEventListener('input', (e) => {
+            state.meta.partie = e.target.value;
+            saveState();
+        });
+        $('#metaSpieler').addEventListener('input', (e) => {
+            state.meta.spieler = e.target.value;
+            saveState();
+        });
+
+        // Reset
+        $('#resetBtn').addEventListener('click', () => {
+            if (!confirm('Blatt wirklich zurücksetzen? Alle Einträge gehen verloren.')) return;
+            state = initialState();
+            openKey = null;
+            pickType = null;
+            saveState();
+            $('#metaPartie').value = '';
+            $('#metaSpieler').value = '';
+            renderAll();
+        });
+
+        // Teilen / Kopieren
+        let copiedTimer = null;
+        function showCopied() {
+            $('#shareBtn').textContent = '✓ Kopiert';
+            $('#copyBtn').textContent = '✓';
+            clearTimeout(copiedTimer);
+            copiedTimer = setTimeout(() => {
+                $('#shareBtn').textContent = '📤 Teilen';
+                $('#copyBtn').textContent = 'Kopieren';
+            }, 1500);
+        }
+
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            showCopied();
+        }
+
+        $('#shareBtn').addEventListener('click', async () => {
+            const text = buildExport();
+            if (navigator.share) {
+                try {
+                    await navigator.share({ text });
+                    return;
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return; // Nutzer hat abgebrochen
+                }
+            }
+            copyText(text);
+        });
+
+        $('#copyBtn').addEventListener('click', () => copyText(buildExport()));
+
+        // ── Init ─────────────────────────────────────────────────
+        $('#metaPartie').value = state.meta.partie;
+        $('#metaSpieler').value = state.meta.spieler;
+        renderAll();
+    </script>
+</body>
+</html>
