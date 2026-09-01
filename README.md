@@ -17,7 +17,7 @@ A personal collection of self-contained web-based tools, hosted at **[markus1189
 - **GZIP Compressor** - Compress and decompress text using GZIP with Base64 encoding and optional URL-safe replacements
 - **Raindrop Quick Add** - Quickly add bookmarks to Raindrop.io with automatic metadata parsing
 - **Routine Builder** - Create and track custom exercise routines with timer and rep-based exercises
-- **Dorfromantik Wertung** - Digital score sheet for the Dorfromantik board game with task tracker, doublers, and shareable results
+- **Dorfromantik Wertung** - Digital score sheet for the Dorfromantik board game with task tracker, quick-entry chip strip in the footer (MRU-ordered, persisted across games), finalizable special tiles with explicit zero scoring, doublers, and shareable results
 
 ## Tech Stack
 
