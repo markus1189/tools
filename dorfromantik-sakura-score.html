@@ -1256,7 +1256,8 @@
                 const arr = JSON.parse(localStorage.getItem(UNLOCK_KEY));
                 if (Array.isArray(arr)) return arr.filter((k) => ALL_UNLOCK_KEYS.includes(k));
             } catch { /* leer */ }
-            return [];
+            // Noch nie gespeichert: alles freigespielt – einschränken über den Dialog
+            return [...ALL_UNLOCK_KEYS];
         }
         let unlocks = loadUnlocks();
         const isUnlocked = (key) => !key || unlocks.includes(key);
