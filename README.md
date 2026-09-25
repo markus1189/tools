@@ -18,6 +18,7 @@ A personal collection of self-contained web-based tools, hosted at **[markus1189
 - **Raindrop Quick Add** - Quickly add bookmarks to Raindrop.io with automatic metadata parsing
 - **Routine Builder** - Create and track custom exercise routines with timer and rep-based exercises
 - **Dorfromantik Wertung** - Digital score sheet for the Dorfromantik board game with task tracker, quick-entry chip strip in the footer (MRU-ordered, persisted across games), finalizable special tiles with explicit zero scoring, doublers, and shareable results
+- **Dorfromantik Sakura Wertung** - Digital score sheet for Dorfromantik: Sakura with task tracker (fixed marker supply, Fujiyama 4-task limit), wraparound and 7-tasks, cherry blossoms capped at 50, count-based scoring for unlocked special tiles, and a campaign unlock list that survives sheet resets and hides locked rows
 
 ## Tech Stack
 

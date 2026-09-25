@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Digitale Wertungskarte für Dorfromantik: Sakura mit Auftrags-Tracker und Kampagnen-Freischaltungen">
+    <meta name="theme-color" content="#f97316">
+    <title>Dorfromantik Sakura Wertung</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --bg-input: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #f97316;
+            --accent-hover: #fb923c;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --cherry: #e58fb5;
+            --road: #b08a5e;
+            --village: #d0584a;
+            --track: #9d9cab;
+            --river: #4f9bd1;
+            --flag-red: #e05a41;
+            --heart: #e05a41;
+            --gold: #d4a437;
+            --rice: #7fb24a;
+            --hex-flat: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            --hex-point: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 0.75rem 12rem;
+        }
+
+        button, input {
+            font-family: inherit;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        button:focus-visible, input:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .sheet {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        header {
+            position: relative;
+            text-align: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .back-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .kicker {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Meta row */
+        .meta-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .meta-row input {
+            border: none;
+            border-bottom: 1.5px dashed var(--border);
+            background: transparent;
+            font-size: 14px;
+            color: var(--text);
+            padding: 6px 2px;
+            min-width: 0;
+            border-radius: 0;
+        }
+
+        .meta-row input:focus {
+            outline: none;
+            border-bottom-color: var(--accent);
+        }
+
+        .meta-row .partie { width: 96px; }
+        .meta-row .spieler { flex: 1; }
+
+        /* Sections */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 12px 12px;
+            margin-bottom: 12px;
+        }
+
+        .tracker {
+            border: 1.5px solid var(--accent);
+        }
+
+        .sec-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+
+        .sec-head h2 {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .subtotal {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 3px 0 10px;
+            line-height: 1.4;
+        }
+
+        /* Task tracker */
+        .task-grid {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .task-card {
+            flex: 1;
+            border: 1.5px solid;
+            border-radius: 10px;
+            padding: 10px 6px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card-hover);
+        }
+
+        .task-card.doubled {
+            box-shadow: 0 0 0 2px var(--gold);
+        }
+
+        .task-hex-btn {
+            position: relative;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+
+        .task-hex {
+            width: 58px;
+            height: 64px;
+            clip-path: var(--hex-point);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #0a0a0a;
+        }
+
+        .task-emoji { font-size: 18px; line-height: 1; }
+
+        .task-num {
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .x2-badge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background: var(--gold);
+            color: #0a0a0a;
+            font-weight: 700;
+            font-size: 11px;
+            border-radius: 999px;
+            padding: 2px 6px;
+        }
+
+        .task-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .done-btn {
+            border: none;
+            border-radius: 8px;
+            color: #0a0a0a;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 7px 0;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .x2-toggle {
+            border: 1px dashed var(--text-muted);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 2px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .x2-toggle.on {
+            border-style: solid;
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .fail-btn {
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--danger);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 2px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .drop-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .done-row, .failed-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            border-top: 1px dashed var(--border);
+            margin-top: 10px;
+            padding-top: 8px;
+        }
+
+        .done-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .done-chip {
+            border: 1px solid;
+            background: transparent;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .failed-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--danger);
+        }
+
+        .failed-chip {
+            border: 1px solid var(--danger);
+            background: transparent;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--danger);
+            cursor: pointer;
+            text-decoration: line-through;
+        }
+
+        .composer {
+            border-top: 1px dashed var(--border);
+            padding-top: 10px;
+        }
+
+        .type-pick {
+            display: flex;
+            gap: 8px;
+        }
+
+        .type-btn {
+            flex: 1;
+            height: 44px;
+            border: 1.5px solid;
+            border-radius: 10px;
+            background: transparent;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .type-btn:active { transform: scale(0.95); }
+
+        .val-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-right: 2px;
+        }
+
+        /* Score rows */
+        .field-block {
+            border-top: 1px solid var(--border);
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 0;
+            width: 100%;
+        }
+
+        .row-btn {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0;
+            background: transparent;
+            border: none;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+            font-size: inherit;
+        }
+
+        .final-btn {
+            flex-shrink: 0;
+            width: 34px;
+            height: 34px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .final-btn.on {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .final-btn:active { transform: scale(0.95); }
+
+        .field-block.final .row-total { color: var(--success); }
+
+        .final-note {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--success);
+            margin: 2px 0 8px;
+        }
+
+        .quickpad .final-note { margin: 4px 0 0; }
+
+        .hex-chip {
+            clip-path: var(--hex-flat);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 34px;
+            height: 30px;
+            font-size: 15px;
+        }
+
+        .row-label {
+            flex: 1;
+            font-size: 15px;
+            line-height: 1.25;
+            min-width: 0;
+        }
+
+        .sub {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .row-total {
+            font-weight: 700;
+            font-size: 17px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .chev {
+            color: var(--text-muted);
+            font-size: 12px;
+            width: 12px;
+        }
+
+        .pad {
+            padding: 0 0 10px 44px;
+        }
+
+        .entries {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .entry {
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            cursor: pointer;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .chip {
+            min-width: 44px;
+            padding: 8px 10px;
+            border: 1.5px solid var(--accent);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .chip:active {
+            background: var(--accent);
+            color: #0a0a0a;
+            transform: scale(0.95);
+        }
+
+        .chip:disabled {
+            border-color: var(--border);
+            color: var(--text-muted);
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        .chip:disabled:active {
+            background: transparent;
+            color: var(--text-muted);
+            transform: none;
+        }
+
+        .supply-chip { min-width: 40px; }
+
+        .chip.used {
+            border-color: var(--border);
+            color: var(--text-muted);
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .chip.used:active {
+            background: var(--bg-input);
+            color: var(--text-muted);
+            transform: scale(0.95);
+        }
+
+        .chip-input {
+            width: 56px;
+            padding: 8px 6px;
+            border: 1.5px dashed var(--text-muted);
+            border-radius: 10px;
+            background: transparent;
+            font-size: 15px;
+            font-weight: 700;
+            text-align: center;
+            color: var(--text);
+        }
+
+        .chip-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .chip-go { min-width: 40px; }
+
+        .chip-zero {
+            border-style: dashed;
+            color: var(--text-muted);
+        }
+
+        .stepper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .step-btn {
+            width: 40px;
+            height: 40px;
+            border: 1.5px solid var(--accent);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .step-btn:active {
+            background: var(--accent);
+            color: #0a0a0a;
+            transform: scale(0.95);
+        }
+
+        .step-val {
+            width: 40px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 18px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Custom fields */
+        .custom-label {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            border-bottom: 1.5px dashed var(--border);
+            background: transparent;
+            font-size: 14px;
+            color: var(--text);
+            padding: 4px 2px;
+            border-radius: 0;
+        }
+
+        .custom-label:focus {
+            outline: none;
+            border-bottom-color: var(--accent);
+        }
+
+        .pts {
+            width: 60px;
+            text-align: right;
+            font-size: 17px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+            border: none;
+            border-bottom: 1.5px solid var(--border);
+            background: transparent;
+            padding: 4px 2px;
+            border-radius: 0;
+        }
+
+        .pts:focus {
+            outline: none;
+            border-bottom-color: var(--accent);
+        }
+
+        .del {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .del:hover { color: var(--danger); }
+
+        .add-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px 0;
+            border: 1.5px dashed var(--text-muted);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .reset {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 13px;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        .reset:hover { color: var(--danger); }
+
+        .flash {
+            animation: flash-row 0.9s ease;
+        }
+
+        @keyframes flash-row {
+            0% { background: rgba(249, 115, 22, 0.25); }
+            100% { background: transparent; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .flash { animation: none; }
+        }
+
+        /* Footer: MRU-Strip + Total-Hex + Menü-Knopf */
+        .footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+            z-index: 10;
+        }
+
+        /* Schnellpad: klappt über dem Footer auf, öffnet per Strip-Chip */
+        .qp-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1;
+        }
+
+        .quickpad {
+            position: absolute;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            width: calc(100% - 16px);
+            max-width: 464px;
+            bottom: calc(100% + 8px);
+            background: var(--bg-card);
+            border: 1.5px solid var(--accent);
+            border-radius: 14px;
+            padding: 12px;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
+            z-index: 3;
+            max-height: 46vh;
+            overflow-y: auto;
+        }
+
+        .qp-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .qp-head .final-btn { margin-left: auto; }
+
+        .qp-head .qp-total { margin-left: auto; }
+
+        .qp-head .final-btn + .qp-total,
+        .qp-head .final-btn + .qp-close { margin-left: 0; }
+
+        .qp-title {
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .qp-total {
+            margin-left: auto;
+            font-weight: 700;
+            font-size: 17px;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent);
+        }
+
+        .qp-close {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 24px;
+            line-height: 1;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+
+        .qp-close:hover { color: var(--danger); }
+
+        .quickpad .pad { padding: 0 0 4px 44px; }
+
+        /* MRU-Strip */
+        .strip {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .strip::-webkit-scrollbar { display: none; }
+
+        .strip-chip {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-input);
+            color: var(--text);
+            padding: 9px 11px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .strip-chip:active { transform: scale(0.95); }
+
+        .strip-chip.active {
+            border-color: var(--accent);
+            background: rgba(249, 115, 22, 0.14);
+        }
+
+        .strip-chip.active .sc-label,
+        .strip-chip.active .sc-total { color: var(--accent); }
+
+        .sc-emoji { font-size: 15px; line-height: 1; }
+
+        .sc-label { white-space: nowrap; }
+
+        .sc-total { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+
+        .strip-chip.done .sc-total { color: var(--success); }
+
+        .footer-main {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .total-hex {
+            width: 72px;
+            height: 80px;
+            clip-path: var(--hex-point);
+            background: var(--accent);
+            color: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .total-hex .n {
+            font-size: 22px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .total-hex .l {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            opacity: 0.85;
+        }
+
+        .menu-wrap { position: relative; }
+
+        .menu-btn {
+            width: 44px;
+            height: 44px;
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-input);
+            color: var(--text-muted);
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .menu-btn:active { transform: scale(0.95); }
+
+        .menu-pop {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 10px);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            min-width: 160px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+            z-index: 4;
+        }
+
+        .menu-pop button {
+            border: none;
+            background: transparent;
+            color: var(--text);
+            text-align: left;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .menu-pop button:hover {
+            background: var(--bg-card-hover);
+            color: var(--accent);
+        }
+
+        .flash-hex { animation: pulse-total 0.7s ease; }
+
+        @keyframes pulse-total {
+            0% { transform: scale(1.12); }
+            60% { transform: scale(0.97); }
+            100% { transform: scale(1); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .flash-hex { animation: none; }
+        }
+
+        /* ── Sakura-Ergänzungen ───────────────────────────────── */
+        .type-pick { flex-wrap: wrap; }
+        .type-btn { min-width: 44px; }
+        .type-btn.seven { font-size: 15px; font-weight: 700; color: var(--text); }
+
+        .fuji-btn {
+            border: 1.5px dashed var(--border);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            padding: 3px 10px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .fuji-btn.on {
+            border-style: solid;
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .count-pts {
+            min-width: 34px;
+            text-align: right;
+            margin-right: 8px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent);
+        }
+
+        .empty-note {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 6px 0 2px;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow-y: auto;
+            padding: 20px 12px 40px;
+        }
+        .overlay[hidden] { display: none; }
+
+        .overlay-panel {
+            width: 100%;
+            max-width: 560px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px 18px;
+        }
+
+        .unlock-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .unlock-head h2 { font-size: 18px; flex: 1; }
+
+        .unlock-box {
+            margin-top: 14px;
+        }
+        .unlock-box h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .unlock-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 7px 0;
+            border-top: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .unlock-row input {
+            width: 20px;
+            height: 20px;
+            margin-top: 1px;
+            accent-color: var(--accent);
+            flex-shrink: 0;
+        }
+        .unlock-row .u-name { font-size: 15px; }
+        .unlock-row .u-cond {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        .text-btn {
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .text-btn:active { transform: scale(0.95); }
+
+        #openUnlocksBtn { margin-bottom: 14px; }
+
+        .total-hex .x {
+            font-size: 10px;
+            color: var(--text-muted);
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="sheet">
+        <header>
+            <a href="index.html" class="back-link">← Tools</a>
+            <h1>Wertungskarte</h1>
+            <p class="kicker" id="kicker">Dorfromantik: Sakura</p>
+        </header>
+
+        <div class="meta-row">
+            <input class="partie" id="metaPartie" type="number" inputmode="numeric" placeholder="Partie 👑">
+            <input class="spieler" id="metaSpieler" type="text" placeholder="Wer spielt mit?">
+        </div>
+
+        <div class="section tracker" id="trackerSection"></div>
+
+        <div id="sectionsRoot"></div>
+
+        <div class="section" id="customSection">
+            <div class="sec-head">
+                <h2>Sonstiges</h2>
+                <span class="subtotal" id="customSubtotal">0</span>
+            </div>
+            <p class="hint">Korrekturen, Hausregeln &amp; Co. – frei benennen</p>
+            <div id="customRows"></div>
+            <button class="add-btn" id="addCustomBtn">+ Feld hinzufügen</button>
+        </div>
+
+        <button class="add-btn" id="openUnlocksBtn">🔓 Freigespielte Erfolge verwalten</button>
+        <button class="reset" id="resetBtn">Blatt zurücksetzen</button>
+    </div>
+
+    <div class="overlay" id="unlockOverlay" hidden>
+        <div class="overlay-panel" role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+            <div class="unlock-head">
+                <h2 id="unlockTitle">Freigespielt</h2>
+                <button class="qp-close" id="unlockClose" aria-label="Schließen">×</button>
+            </div>
+            <p class="hint">Kampagnenstand – bleibt beim Zurücksetzen des Blatts erhalten. Gesperrte Wertungszeilen werden ausgeblendet.</p>
+            <div id="unlockList"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="qp-backdrop" id="qpBackdrop" hidden></div>
+        <div class="quickpad" id="quickPad" hidden></div>
+        <div class="strip" id="stripRow" aria-label="Schnelleintrag"></div>
+        <div class="footer-main">
+            <div class="total-hex">
+                <span class="n" id="totalNum">0</span>
+                <span class="l">Punkte</span>
+                <span class="x" id="crossNum"></span>
+            </div>
+            <div class="menu-wrap">
+                <button class="menu-btn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Mehr Optionen">⋯</button>
+                <div class="menu-pop" id="menuPop" hidden>
+                    <button id="menuUnlocks">🔓 Freigespielt</button>
+                    <button id="menuShare">📤 Teilen</button>
+                    <button id="menuCopy">📋 Kopieren</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        'use strict';
+
+        // ── Konfiguration ────────────────────────────────────────
+        const STORAGE_KEY = 'dorfromantik-sakura-score_state';
+        const UNLOCK_KEY = 'dorfromantik-sakura-score_unlocks';
+        const CHIPS_46 = [4, 5, 6];
+        // Fester Marker-Vorrat: je Typ 2× 4, 5 und 6 (auch Rundumaufträge)
+        const SUPPLY_46 = [4, 4, 5, 5, 6, 6];
+
+        // Alle Erfolge des Kampagnenblatts, nach Schachtel. cond = Freispielbedingung
+        const UNLOCKS = [
+            { box: 'Schachtel 1', items: [
+                { key: 'rundum', name: 'Rundumaufträge', cond: 'Beim Öffnen von Schachtel 1' },
+                { key: 'lagerhaus', name: 'Lagerhaus', cond: '4+ erfüllte Rundumaufträge in einer Partie' },
+            ] },
+            { box: 'Schachtel 2', items: [
+                { key: 'see', name: 'See', cond: 'Kampagnenpfad' },
+                { key: 'kreuzung', name: 'Straßenkreuzung', cond: 'Kampagnenpfad' },
+                { key: 'staudamm', name: 'Staudamm', cond: 'Fluss aus 8+ Plättchen, an beiden Enden abgeschlossen' },
+                { key: 'sackgasse', name: 'Sackgasse', cond: 'Straße aus 8+ Plättchen, an beiden Enden abgeschlossen' },
+            ] },
+            { box: 'Schachtel 3 · Kirschblüten', items: [
+                { key: 'blueten', name: 'Kirschblüten', cond: 'Beim Öffnen von Schachtel 3 (+1 Sammler gratis)' },
+                { key: 'pilger', name: 'Pilger', cond: '45+ aus Kirschbaum-Aufträgen & -Fahnen (−1 je abgegebener Blüte)' },
+                { key: 'vogelfreundin', name: 'Vogelfreundin', cond: '45+ aus Reis-Aufträgen & -Fahnen (−1 je Blüte)' },
+                { key: 'gourmet', name: 'Gourmet', cond: '45+ aus Dorf-Aufträgen & -Fahnen (−1 je Blüte)' },
+                { key: 'haendler', name: 'Händler', cond: '40+ aus Straßen-Aufträgen & längster Straße (−1 je Blüte)' },
+                { key: 'koi', name: 'Koi-Kennerin', cond: '40+ aus Fluss-Aufträgen & längstem Fluss (−1 je Blüte)' },
+                { key: 'teemeisterin', name: 'Teemeisterin', cond: 'Blütenpfad' },
+                { key: 'sumo', name: 'Sumoringer', cond: 'Blütenpfad' },
+                { key: 'moos', name: 'Moossammlerin', cond: 'Blütenpfad' },
+                { key: 'reisb', name: 'Reisbäuerin', cond: 'Blütenpfad' },
+                { key: 'reiskuchen', name: 'Reiskuchen', cond: 'Blütenpfad · 1×/Partie Marker −1, Aufladen 5 Blüten' },
+                { key: 'umtrunk', name: 'Umtrunk', cond: 'Blütenpfad · 1×/Partie Marker +1, Aufladen 5 Blüten' },
+                { key: 'geschenk', name: 'Geschenk', cond: 'Blütenpfad · 1×/Partie 2 Marker ziehen, Aufladen 5 Blüten' },
+                { key: 'meister', name: 'Meisterprüfung', cond: '250+ Punkte und zugleich 10 Blüten zahlen → öffnet Schachtel 5' },
+            ] },
+            { box: 'Schachtel 4 · Kampagnenpfad', items: [
+                { key: 'tempel', name: 'Tempel', cond: 'Kampagnenpfad (+1-Felder: weitere Tempel)' },
+                { key: 'quellen', name: 'Heiße Quellen', cond: 'Kampagnenpfad' },
+                { key: 'affen', name: 'Badende Affen', cond: '6+ aus abgeschlossenen Heißen Quellen (ohne Rundum-Bonus) → öffnet Schachtel 6' },
+                { key: 'bruecken', name: 'Brücken', cond: 'Kampagnenpfad (+1-Feld: 3. Brücke)' },
+                { key: 'tore', name: 'Tore', cond: 'Kampagnenpfad (+1-Feld: 3. Tor)' },
+                { key: 'einsiedler', name: 'Einsiedler', cond: 'Kampagnenpfad' },
+                { key: 'sternwarte', name: 'Sternwarte', cond: 'Kampagnenpfad' },
+                { key: 'kartograph', name: 'Kartograph', cond: 'Kampagnenpfad' },
+                { key: 'kalligraph', name: 'Kalligraph', cond: 'Kampagnenpfad · umschlossen: +1 Kampagnenfeld, +1 je 10 Blüten' },
+                { key: 'kontor', name: 'Kontor', cond: 'Kampagnenpfad' },
+                { key: 'fujiyama', name: 'Fujiyama', cond: 'Kampagnenpfad (nach Blütenpfad-Ende)' },
+            ] },
+            { box: 'Schachtel 5 · Meisterprüfung', items: [
+                { key: 'sDR', name: 'Dorf & Reis', cond: '5+ abgeschlossene Dorfgebiete aus je 2+ Plättchen' },
+                { key: 'sKD', name: 'Kirschbaum & Dorf', cond: '5+ abgeschlossene Kirschbaumgebiete aus je 2+ Plättchen' },
+                { key: 'sRK', name: 'Reis & Kirschbaum', cond: '5+ abgeschlossene Reisgebiete aus je 2+ Plättchen' },
+                { key: 'dekret', name: 'Dekret des Kaisers', cond: '12+ Punkte mit Tempeln' },
+            ] },
+            { box: 'Schachtel 6 · Badende Affen', items: [
+                { key: 'wolken', name: 'Kleine Wolken', cond: '300+ Punkte' },
+                { key: 'buntefahne', name: 'Bunte Fahne', cond: '30+ Punkte aus einem abgeschlossenen Fahnengebiet' },
+                { key: 'schiff', name: 'Schiff & Anlegestelle', cond: '200+ Punkte und Fluss aus 12+ Plättchen' },
+                { key: 'ochsen', name: 'Ochsenkarren & Handelsposten', cond: '200+ Punkte und Straße aus 12+ Plättchen' },
+                { key: 'daimyo', name: 'Daimyo', cond: '169+ Punkte durch Aufträge' },
+                { key: 'poet', name: 'Poet', cond: '18 Punkte mit Tempeln' },
+            ] },
+        ];
+        const ALL_UNLOCK_KEYS = UNLOCKS.flatMap((b) => b.items.map((i) => i.key));
+
+        // Auftragstypen im Tracker. 7er-Aufträge: je 1 Plättchen mit 7er-Marker
+        const TASK_TYPES = [
+            { key: 'kirsch', label: 'Kirschbaum', emoji: '🌸', cssVar: '--cherry', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'reis', label: 'Reis', emoji: '🌾', cssVar: '--rice', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'dorf', label: 'Dorf', emoji: '🏯', cssVar: '--village', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'strasse', label: 'Straße', emoji: '🛤️', cssVar: '--road', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'fluss', label: 'Fluss', emoji: '🌊', cssVar: '--river', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'rundum', label: 'Rundum', emoji: '🔄', cssVar: '--accent', chips: CHIPS_46, supply: SUPPLY_46, unlock: 'rundum' },
+            { key: 'sDR', label: 'Dorf & Reis', emoji: '7', cssVar: '--village', bg: 'linear-gradient(135deg, var(--village) 50%, var(--rice) 50%)', chips: [7], supply: [7], unlock: 'sDR', seven: true },
+            { key: 'sKD', label: 'Kirschbaum & Dorf', emoji: '7', cssVar: '--cherry', bg: 'linear-gradient(135deg, var(--cherry) 50%, var(--village) 50%)', chips: [7], supply: [7], unlock: 'sKD', seven: true },
+            { key: 'sRK', label: 'Reis & Kirschbaum', emoji: '7', cssVar: '--rice', bg: 'linear-gradient(135deg, var(--rice) 50%, var(--cherry) 50%)', chips: [7], supply: [7], unlock: 'sRK', seven: true },
+        ];
+        const TYPE_BY_KEY = Object.fromEntries(TASK_TYPES.map((t) => [t.key, t]));
+
+        const F = (key, label, emoji, cssVar, kind, extra = {}) => ({ key, label, emoji, cssVar, kind, ...extra });
+        // count: Anzahl eingeben, Punkte = Anzahl × mult (optional gedeckelt auf max)
+        const C = (key, label, emoji, cssVar, extra = {}) => F(key, label, emoji, cssVar, 'count', extra);
+        const taskField = (t) => F(t.key, t.label, t.seven ? '7️⃣' : t.emoji, t.cssVar, 'tally', { chips: t.chips, supply: t.supply, unlock: t.unlock, short: t.seven ? `7 ${t.label}` : t.label });
+
+        const SECTIONS = [
+            {
+                title: 'Aufträge',
+                hint: 'Wird vom Auftrags-Tracker oben automatisch befüllt – manuell korrigierbar',
+                fields: TASK_TYPES.slice(0, 5).map(taskField),
+            },
+            {
+                title: 'Rundumaufträge',
+                hint: 'Bonus erst am Spielende zählen: an längster Straße +2, am längsten Fluss +2 (an beiden +4)',
+                fields: [
+                    taskField(TASK_TYPES[5]),
+                    C('rundumStrasse', 'An längster Straße', '🛤️', '--road', { mult: 2, max: 6, sub: '+2 je erfülltem Rundumauftrag', short: 'Rund·Str', unlock: 'rundum' }),
+                    C('rundumFluss', 'Am längsten Fluss', '🌊', '--river', { mult: 2, max: 6, sub: '+2 je erfülltem Rundumauftrag', short: 'Rund·Fluss', unlock: 'rundum' }),
+                ],
+            },
+            {
+                title: '7er-Aufträge',
+                hint: 'Gebiet aus 7 Plättchen einer der beiden Landschaften',
+                fields: TASK_TYPES.slice(6).map(taskField),
+            },
+            {
+                title: 'Fahnen',
+                hint: 'Nur abgeschlossene Gebiete: Plättchenzahl des Gebiets eintragen (Bunte Fahne zählt zur gewählten Farbe)',
+                fields: [
+                    F('fRosa', 'Rosa Fahnen', '🚩', '--cherry', 'tally', { chips: [4, 6, 8, 10], short: 'Rosa' }),
+                    F('fGruen', 'Grüne Fahnen', '🚩', '--rice', 'tally', { chips: [4, 6, 8, 10], short: 'Grün' }),
+                    F('fRot', 'Rote Fahnen', '🚩', '--village', 'tally', { chips: [4, 6, 8, 10], short: 'Rot' }),
+                ],
+            },
+            {
+                title: 'Längen',
+                hint: 'Je Plättchen +1',
+                fields: [
+                    C('langStrasse', 'Längste Straße', '📏', '--road', { short: 'Straße' }),
+                    C('langFluss', 'Längster Fluss', '📏', '--river', { short: 'Fluss' }),
+                ],
+            },
+            {
+                title: 'Kirschblüten',
+                hint: 'Gesammelte Blüten-Plättchen (1/2/5) eintragen – max. 50 Punkte, zählen auch wenn ihr sie ausgebt',
+                fields: [
+                    F('blueten', 'Kirschblüten', '🌸', '--cherry', 'tally', { chips: [1, 2, 5], max: 50, sub: 'max. 50', short: 'Blüten', unlock: 'blueten' }),
+                ],
+            },
+            {
+                title: 'Freigespielt',
+                hint: 'Anzahl eintragen – Punkte werden berechnet',
+                fields: [
+                    C('tempel', 'Tempel', '⛩️', '--village', { mult: 6, max: 3, sub: '6 je Tempel mit 6 passenden Kanten', unlock: 'tempel' }),
+                    C('quellen', 'Heiße Quellen', '♨️', '--river', { mult: 3, sub: '3 je abgeschlossener Quelle', short: 'Quellen', unlock: 'quellen' }),
+                    C('quellenRundum', 'Rundum an Quelle', '♨️', '--accent', { mult: 3, max: 6, sub: '3 je erf. Rundumauftrag an ≥1 abgeschl. Quelle (einmal)', short: 'Quell·Rund', unlock: 'quellen' }),
+                    C('bruecken', 'Brücken', '🌉', '--river', { mult: 5, max: 3, sub: '5 je Brücke am längsten Fluss', unlock: 'bruecken' }),
+                    C('tore', 'Tore', '⛩', '--road', { mult: 5, max: 3, sub: '5 je Tor an der längsten Straße', unlock: 'tore' }),
+                    C('einsiedler', 'Einsiedler', '🧘', '--rice', { mult: 3, max: 6, sub: '3 je Kante ohne Nachbarplättchen', unlock: 'einsiedler' }),
+                    C('sternwarte', 'Sternwarte', '🔭', '--cherry', { mult: 3, sub: '3 je abgeschl. Fahnengebiet – nur wenn selbst in einem', unlock: 'sternwarte' }),
+                    C('kartograph', 'Kartograph', '🗺️', '--rice', { mult: 2, sub: '2 je erfülltem Auftragsplättchen in Blickrichtung', unlock: 'kartograph' }),
+                    C('sumo', 'Sumoringer', '🤼', '--village', { mult: 1, max: 6, sub: '1 je passende Dorfkante', unlock: 'sumo' }),
+                    C('moos', 'Moossammlerin', '🌸', '--cherry', { mult: 1, max: 6, sub: '1 je passende Kirschbaumkante', short: 'Moos', unlock: 'moos' }),
+                    C('reisb', 'Reisbäuerin', '🌾', '--rice', { mult: 1, max: 6, sub: '1 je passende Reiskante', unlock: 'reisb' }),
+                    C('schiff', 'Schiff & Anlegestelle', '⛵', '--river', { mult: 1, sub: 'im selben Fluss: 1 je Flussplättchen dazwischen', short: 'Schiff', unlock: 'schiff' }),
+                    C('ochsen', 'Ochsenkarren & Handelsposten', '🐂', '--road', { mult: 1, sub: 'auf derselben Straße: 1 je Straßenplättchen dazwischen', short: 'Ochsen', unlock: 'ochsen' }),
+                    C('poet', 'Poet', '📜', '--rice', { mult: 3, max: 6, sub: '3 je angrenzende Wiesenkante', unlock: 'poet' }),
+                ],
+            },
+        ];
+
+        const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
+        const FIELD_BY_KEY = Object.fromEntries(ALL_FIELDS.map((f) => [f.key, f]));
+
+        // Ergebnis → Kreuze auf dem Fortschrittspfad (Highscoreliste Kampagnenblatt)
+        const CROSS_STEPS = [[440, 16], [410, 15], [380, 14], [350, 13], [320, 12], [290, 11], [270, 10], [250, 9], [230, 8], [210, 7], [190, 6], [170, 5], [150, 4], [130, 3], [110, 2], [0, 1]];
+        const crossesFor = (total) => CROSS_STEPS.find(([min]) => total >= min)[1];
+
+        // ── Freischaltungen (Kampagne) ───────────────────────────
+        function loadUnlocks() {
+            try {
+                const arr = JSON.parse(localStorage.getItem(UNLOCK_KEY));
+                if (Array.isArray(arr)) return arr.filter((k) => ALL_UNLOCK_KEYS.includes(k));
+            } catch { /* leer */ }
+            return [];
+        }
+        let unlocks = loadUnlocks();
+        const isUnlocked = (key) => !key || unlocks.includes(key);
+        const fieldOn = (f) => isUnlocked(f.unlock);
+        const typeOn = (t) => isUnlocked(t.unlock);
+        const activeFields = (s) => s.fields.filter(fieldOn);
+
+        function saveUnlocks() {
+            try { localStorage.setItem(UNLOCK_KEY, JSON.stringify(unlocks)); } catch { /* egal */ }
+        }
+
+        // ── Schnellzugriff (MRU-Strip) ──────────────────────────
+        const RECENT_KEY = 'dorfromantik-sakura-score_recent';
+        const RECENT_SEED = ['fRosa', 'fGruen', 'fRot', 'blueten', 'tempel', 'quellen', 'langStrasse', 'langFluss'];
+        const RECENT_MAX = 8;
+
+        function loadRecent() {
+            try {
+                const arr = JSON.parse(localStorage.getItem(RECENT_KEY));
+                if (Array.isArray(arr)) {
+                    const valid = arr.filter((k) => FIELD_BY_KEY[k]);
+                    RECENT_SEED.forEach((k) => { if (!valid.includes(k)) valid.push(k); });
+                    return valid.slice(0, RECENT_MAX * 2);
+                }
+            } catch { /* kaputt oder leer – Seed nehmen */ }
+            return [...RECENT_SEED];
+        }
+
+        let recentKeys = loadRecent();
+        let drawerKey = null;
+
+        // Nur freigespielte Felder erscheinen im Strip
+        const visibleRecent = () => recentKeys.filter((k) => FIELD_BY_KEY[k] && fieldOn(FIELD_BY_KEY[k])).slice(0, RECENT_MAX);
+
+        function promoteRecent(key) {
+            if (!FIELD_BY_KEY[key]) return;
+            recentKeys = [key, ...recentKeys.filter((k) => k !== key)].slice(0, RECENT_MAX * 2);
+            try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentKeys)); } catch { /* egal */ }
+        }
+
+        // ── State ────────────────────────────────────────────────
+        const num = (v) => {
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) ? n : 0;
+        };
+
+        const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+        const emptyFields = () => {
+            const o = {};
+            ALL_FIELDS.forEach((f) => (o[f.key] = f.kind === 'tally' ? [] : 0));
+            return o;
+        };
+
+        const initialState = () => ({
+            meta: { partie: '', spieler: '' },
+            fields: emptyFields(),
+            custom: [],
+            openTasks: [],
+            failedTasks: [],
+            completedTasks: [],
+            finalFields: [],
+            fuji: false,
+        });
+
+        let state = loadState();
+        let openKey = null;
+        let pickType = null;
+        let flashKeys = null;
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return initialState();
+                const parsed = JSON.parse(raw);
+                const base = initialState();
+                const fields = emptyFields();
+                if (parsed.fields && typeof parsed.fields === 'object') {
+                    ALL_FIELDS.forEach((f) => {
+                        const v = parsed.fields[f.key];
+                        if (f.kind === 'tally' && Array.isArray(v)) {
+                            fields[f.key] = v.filter((x) => Number.isFinite(x));
+                        } else if (f.kind === 'count' && Number.isFinite(v)) {
+                            fields[f.key] = v;
+                        }
+                    });
+                }
+                const validTask = (t) => t && TYPE_BY_KEY[t.type];
+                return {
+                    meta: { ...base.meta, ...(parsed.meta || {}) },
+                    fields,
+                    custom: Array.isArray(parsed.custom) ? parsed.custom : [],
+                    openTasks: Array.isArray(parsed.openTasks) ? parsed.openTasks.filter(validTask) : [],
+                    failedTasks: Array.isArray(parsed.failedTasks) ? parsed.failedTasks.filter(validTask) : [],
+                    completedTasks: Array.isArray(parsed.completedTasks) ? parsed.completedTasks.filter(validTask) : [],
+                    finalFields: Array.isArray(parsed.finalFields) ? parsed.finalFields.filter((k) => FIELD_BY_KEY[k]) : [],
+                    fuji: !!parsed.fuji,
+                };
+            } catch {
+                return initialState();
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch {
+                // Speicher voll oder blockiert – Tool funktioniert trotzdem
+            }
+        }
+
+        // Fujiyama komplett: 4 statt 3 offene Aufträge
+        const taskLimit = () => (isUnlocked('fujiyama') && state.fuji ? 4 : 3);
+
+        // ── Summen ───────────────────────────────────────────────
+        function allocateSupply(supply, tally) {
+            const remaining = {};
+            supply.forEach((v) => (remaining[v] = (remaining[v] || 0) + 1));
+            const usedPerValue = {};
+            const overflow = [];
+            tally.forEach((v, i) => {
+                if (remaining[v] > 0) {
+                    remaining[v]--;
+                    usedPerValue[v] = (usedPerValue[v] || 0) + 1;
+                } else {
+                    overflow.push(i);
+                }
+            });
+            return { usedPerValue, overflow, remaining };
+        }
+
+        function consumedMarkers(typeKey) {
+            return [
+                ...state.fields[typeKey],
+                ...state.openTasks.filter((t) => t.type === typeKey).map((t) => t.value),
+                ...state.failedTasks.filter((t) => t.type === typeKey).map((t) => t.value),
+            ];
+        }
+
+        const cap = (f, n) => (f.max != null && f.kind === 'tally' ? Math.min(n, f.max) : n);
+        const fieldTotal = (f, v) => {
+            if (f.kind === 'tally') return cap(f, v.reduce((a, b) => a + b, 0));
+            return num(v) * (f.mult || 1);
+        };
+        const isFinal = (key) => state.finalFields.includes(key);
+        const sumSection = (section) => activeFields(section).reduce((a, f) => a + fieldTotal(f, state.fields[f.key]), 0);
+        const sumCustom = () => state.custom.reduce((a, c) => a + num(c.points), 0);
+        const sumAll = () => SECTIONS.reduce((a, s) => a + sumSection(s), 0) + sumCustom();
+
+        // ── Export ───────────────────────────────────────────────
+        function buildExport() {
+            const { meta, fields, custom } = state;
+            const lines = [];
+            const d = new Date().toLocaleDateString('de-DE');
+            lines.push(`Dorfromantik: Sakura – Wertung${meta.partie ? ` · Partie ${meta.partie}` : ''} · ${d}`);
+            if (meta.spieler) lines.push(`Mitspieler: ${meta.spieler}`);
+            lines.push('');
+            SECTIONS.forEach((s) => {
+                const st = sumSection(s);
+                if (st === 0) return;
+                lines.push(`${s.title}: ${st}`);
+                activeFields(s).forEach((f) => {
+                    const v = fields[f.key];
+                    const ft = fieldTotal(f, v);
+                    if (ft === 0) return;
+                    let detail = '';
+                    if (f.kind === 'tally' && v.length > 1) detail = ` (${v.join('+')})`;
+                    if (f.kind === 'count' && (f.mult || 1) > 1) detail = ` (${num(v)}×${f.mult})`;
+                    lines.push(`  ${f.emoji} ${f.label}: ${ft}${detail}`);
+                });
+            });
+            const cs = sumCustom();
+            if (cs !== 0) {
+                lines.push(`Sonstiges: ${cs}`);
+                custom.forEach((c) => {
+                    if (num(c.points)) lines.push(`  🎁 ${c.label || 'Feld'}: ${num(c.points)}`);
+                });
+            }
+            const fmt = (t) => `${TYPE_BY_KEY[t.type].seven ? '7️⃣' : TYPE_BY_KEY[t.type].emoji}${t.value}`;
+            if (state.completedTasks.length > 0) {
+                lines.push(`Erledigt (${state.completedTasks.length}): ${state.completedTasks.map(fmt).join(' · ')}`);
+            }
+            if (state.failedTasks.length > 0) {
+                lines.push(`Gescheitert: ${state.failedTasks.map(fmt).join(' · ')}`);
+            }
+            lines.push('');
+            const total = sumAll();
+            lines.push(`Gesamt: ${total} Punkte 🌸 → ${crossesFor(total)} Kreuze auf dem Kampagnenpfad`);
+            return lines.join('\n');
+        }
+
+        // ── Rendering ────────────────────────────────────────────
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const cssColor = (v) => `var(${v})`;
+        const typeBg = (t) => t.bg || cssColor(t.cssVar);
+
+        function hexChip(emoji, cssVar) {
+            return `<span class="hex-chip" aria-hidden="true" style="background:${cssColor(cssVar)}">${emoji}</span>`;
+        }
+
+        function valueInputHtml() {
+            return `
+                <input class="chip-input" type="number" inputmode="numeric" placeholder="…" data-role="custom-value">
+                <button class="chip chip-go" data-action="custom-add">+</button>`;
+        }
+
+        function renderTracker() {
+            const el = $('#trackerSection');
+            const tasks = state.openTasks;
+            const limit = taskLimit();
+            const fujiBtn = isUnlocked('fujiyama')
+                ? `<button class="fuji-btn${state.fuji ? ' on' : ''}" data-action="toggle-fuji" aria-pressed="${state.fuji}">🗻 Fujiyama komplett</button>`
+                : '';
+            let html = `
+                <div class="sec-head">
+                    <h2>Offene Aufträge</h2>
+                    ${fujiBtn}
+                    <span class="subtotal">${tasks.length}/${limit}</span>
+                </div>
+                <p class="hint">Typ, dann Markerwert antippen – ✓ trägt den Auftrag automatisch in die Wertung ein.</p>`;
+
+            if (tasks.length > 0) {
+                html += '<div class="task-grid">';
+                tasks.forEach((t) => {
+                    const typ = TYPE_BY_KEY[t.type];
+                    html += `
+                        <div class="task-card" style="border-color:${cssColor(typ.cssVar)}" data-task-id="${t.id}">
+                            <span class="task-hex" style="background:${typeBg(typ)}" title="${esc(typ.label)}">
+                                <span class="task-emoji">${typ.seven ? '' : typ.emoji}</span>
+                                <span class="task-num">${t.value}</span>
+                            </span>
+                            <div class="task-actions">
+                                <button class="done-btn" style="background:${cssColor(typ.cssVar)}" data-action="complete">✓ erledigt</button>
+                                <button class="fail-btn" data-action="fail">✗ gescheitert</button>
+                                <button class="drop-btn" data-action="remove">entfernen</button>
+                            </div>
+                        </div>`;
+                });
+                html += '</div>';
+            }
+
+            const chipLabel = (typ) => (typ.seven ? `7 ${typ.label}` : typ.emoji);
+            if (state.completedTasks.length > 0) {
+                html += `<div class="done-row"><span class="done-label">Erledigt (${state.completedTasks.length}):</span>`;
+                state.completedTasks.forEach((t) => {
+                    const typ = TYPE_BY_KEY[t.type];
+                    html += `<button class="done-chip" style="border-color:${cssColor(typ.cssVar)};color:${cssColor(typ.cssVar)}"
+                        data-action="uncomplete" data-task-id="${t.id}" title="Zurückholen (Punkte werden entfernt)">
+                        ${typ.seven ? esc(typ.label) : `${typ.emoji} ${t.value}`} ×</button>`;
+                });
+                html += '</div>';
+            }
+
+            if (state.failedTasks.length > 0) {
+                html += '<div class="failed-row"><span class="failed-label">Gescheitert:</span>';
+                state.failedTasks.forEach((t) => {
+                    const typ = TYPE_BY_KEY[t.type];
+                    html += `<button class="failed-chip" data-action="unfail" data-task-id="${t.id}" title="Zurückholen">
+                        ${typ.seven ? esc(typ.label) : `${typ.emoji} ${t.value}`} ×</button>`;
+                });
+                html += '</div>';
+            }
+
+            if (tasks.length < limit) {
+                html += '<div class="composer"><div class="type-pick">';
+                TASK_TYPES.filter(typeOn).forEach((t) => {
+                    const sel = pickType === t.key;
+                    const { remaining } = allocateSupply(t.supply, consumedMarkers(t.key));
+                    const empty = Object.values(remaining).every((n) => n <= 0);
+                    const style = sel
+                        ? `background:${typeBg(t)};border-color:${cssColor(t.cssVar)}`
+                        : t.seven ? `background:${typeBg(t)};border-color:transparent;opacity:0.75` : `border-color:${cssColor(t.cssVar)}`;
+                    html += `<button class="type-btn${t.seven ? ' seven' : ''}" style="${style}" data-action="pick-type" data-type="${t.key}"
+                        aria-pressed="${sel}" title="${esc(t.label)}"${empty ? ' disabled' : ''}>${t.seven ? '7' : t.emoji}</button>`;
+                });
+                html += '</div>';
+                if (pickType) {
+                    const typ = TYPE_BY_KEY[pickType];
+                    const { remaining } = allocateSupply(typ.supply, consumedMarkers(typ.key));
+                    html += `<div class="chips"><span class="val-label">${esc(typ.label)}:</span>`;
+                    typ.chips.forEach((v) => {
+                        const depleted = !(remaining[v] > 0);
+                        html += `<button class="chip" data-action="add-task" data-value="${v}"${depleted ? ` disabled title="Kein ${v}er-Marker mehr im Vorrat"` : ''}>${v}</button>`;
+                    });
+                    if (!typ.seven) html += valueInputHtml();
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            el.innerHTML = html;
+        }
+
+        function tallyPadHtml(f) {
+            const v = state.fields[f.key];
+            if (isFinal(f.key)) {
+                return '<p class="final-note">✓ Final gezählt – zum Ändern Final aufheben</p>';
+            }
+            if (f.supply) {
+                const { usedPerValue, overflow } = allocateSupply(f.supply, v);
+                const seen = {};
+                let html = '<div class="chips supply-chips">';
+                f.supply.forEach((c) => {
+                    seen[c] = (seen[c] || 0) + 1;
+                    const used = seen[c] <= (usedPerValue[c] || 0);
+                    const label = used ? `Auftrag ${c} erledigt – tippen zum Zurücksetzen` : `Auftrag ${c} als erledigt markieren`;
+                    html += `<button class="chip supply-chip${used ? ' used' : ''}" data-action="${used ? 'remove-value' : 'add-entry'}" data-value="${c}" aria-pressed="${used}" aria-label="${label}">${c}</button>`;
+                });
+                html += '</div>';
+                if (overflow.length > 0) {
+                    html += '<div class="entries">';
+                    overflow.forEach((i) => {
+                        html += `<button class="entry" data-action="remove-entry" data-index="${i}" title="Entfernen">${v[i]} ×</button>`;
+                    });
+                    html += '</div>';
+                }
+                if (f.chips.length > 1) html += `<div class="chips">${valueInputHtml()}</div>`;
+                return html;
+            }
+            let html = '';
+            if (v.length > 0) {
+                html += '<div class="entries">';
+                v.forEach((e, i) => {
+                    html += `<button class="entry" data-action="remove-entry" data-index="${i}" title="Entfernen">${e} ×</button>`;
+                });
+                html += '</div>';
+            }
+            html += '<div class="chips">';
+            (f.chips || []).forEach((c) => {
+                html += `<button class="chip" data-action="add-entry" data-value="${c}">+${c}</button>`;
+            });
+            html += `<button class="chip chip-zero" data-action="add-entry" data-value="0">0</button>`;
+            html += valueInputHtml();
+            html += '</div>';
+            return html;
+        }
+
+        function stepperHtml(f) {
+            return `<div class="stepper">
+                <button class="step-btn" data-action="step" data-delta="-1" aria-label="minus 1">−</button>
+                <span class="step-val">${num(state.fields[f.key])}</span>
+                <button class="step-btn" data-action="step" data-delta="1" aria-label="plus 1">+</button>
+            </div>`;
+        }
+
+        function renderSections() {
+            const root = $('#sectionsRoot');
+            let html = '';
+            SECTIONS.forEach((section, si) => {
+                const fields = activeFields(section);
+                if (fields.length === 0) return; // noch nichts freigespielt
+                html += `
+                    <div class="section">
+                        <div class="sec-head">
+                            <h2>${section.title}</h2>
+                            <span class="subtotal" data-section-total="${si}">${sumSection(section)}</span>
+                        </div>
+                        <p class="hint">${esc(section.hint)}</p>`;
+                fields.forEach((f) => {
+                    const v = state.fields[f.key];
+                    const flash = flashKeys && flashKeys.includes(f.key) ? ' flash' : '';
+                    const subHtml = f.sub ? `<span class="sub">${esc(f.sub)}</span>` : '';
+                    if (f.kind === 'tally') {
+                        const open = openKey === f.key;
+                        const final = isFinal(f.key);
+                        const finalBtn = f.finalize ? `<button class="final-btn${final ? ' on' : ''}" data-action="toggle-final" aria-pressed="${final}" title="${final ? 'Final aufheben' : 'Final markieren (voll gezählt)'}" aria-label="${esc(f.label)} final markieren">✓</button>` : '';
+                        html += `
+                            <div class="field-block${flash}${final ? ' final' : ''}" data-field="${f.key}">
+                                <div class="row">
+                                    <button class="row-btn" data-action="toggle-open" aria-expanded="${open}">
+                                        ${hexChip(f.emoji, f.cssVar)}
+                                        <span class="row-label">${esc(f.label)}${subHtml}</span>
+                                        <span class="row-total">${fieldTotal(f, v)}</span>
+                                        <span class="chev">${open ? '▾' : '▸'}</span>
+                                    </button>
+                                    ${finalBtn}
+                                </div>`;
+                        if (open) {
+                            html += `<div class="pad">${tallyPadHtml(f)}</div>`;
+                        }
+                        html += '</div>';
+                    } else {
+                        const pts = (f.mult || 1) > 1 ? `<span class="count-pts" title="Punkte">${fieldTotal(f, v)}</span>` : '';
+                        html += `
+                            <div class="field-block${flash}" data-field="${f.key}">
+                                <div class="row">
+                                    ${hexChip(f.emoji, f.cssVar)}
+                                    <span class="row-label">${esc(f.label)}${subHtml}</span>
+                                    ${pts}
+                                    ${stepperHtml(f)}
+                                </div>
+                            </div>`;
+                    }
+                });
+                html += '</div>';
+            });
+            root.innerHTML = html;
+            flashKeys = null;
+        }
+
+        function renderCustom() {
+            const rows = $('#customRows');
+            let html = '';
+            state.custom.forEach((c) => {
+                html += `
+                    <div class="row" data-custom-id="${c.id}">
+                        <span class="hex-chip" aria-hidden="true" style="background:var(--accent)">🎁</span>
+                        <input class="custom-label" type="text" placeholder="Feld benennen …" value="${esc(c.label)}" data-role="label">
+                        <input class="pts" type="number" inputmode="numeric" placeholder="0" value="${esc(c.points)}" data-role="points">
+                        <button class="del" data-action="del-custom" aria-label="Feld entfernen">×</button>
+                    </div>`;
+            });
+            rows.innerHTML = html;
+        }
+
+        function renderUnlocks() {
+            let html = `<button class="text-btn" data-action="unlock-all">Alle an</button>
+                <button class="text-btn" data-action="unlock-none">Alle aus</button>`;
+            UNLOCKS.forEach((b) => {
+                html += `<div class="unlock-box"><h3>${esc(b.box)}</h3>`;
+                b.items.forEach((i) => {
+                    html += `<label class="unlock-row">
+                        <input type="checkbox" data-unlock="${i.key}"${unlocks.includes(i.key) ? ' checked' : ''}>
+                        <span><span class="u-name">${esc(i.name)}</span><span class="u-cond">${esc(i.cond)}</span></span>
+                    </label>`;
+                });
+                html += '</div>';
+            });
+            $('#unlockList').innerHTML = html;
+            $('#unlockTitle').textContent = `Freigespielt (${unlocks.length}/${ALL_UNLOCK_KEYS.length})`;
+        }
+
+        function renderKicker() {
+            $('#kicker').textContent = `Dorfromantik: Sakura · ${unlocks.length}/${ALL_UNLOCK_KEYS.length} freigespielt`;
+        }
+
+        function flashEl(el) {
+            el.classList.remove('flash-hex');
+            void el.offsetWidth;
+            el.classList.add('flash-hex');
+            el.addEventListener('animationend', () => el.classList.remove('flash-hex'), { once: true });
+        }
+
+        function pulseTotals(key) {
+            if (navigator.vibrate) { try { navigator.vibrate(10); } catch { /* egal */ } }
+            const hex = document.querySelector('.total-hex');
+            if (hex) flashEl(hex);
+            const chip = document.querySelector(`[data-strip-key="${key}"]`);
+            if (chip) flashEl(chip);
+        }
+
+        function renderStrip() {
+            $('#stripRow').innerHTML = visibleRecent().map((key) => {
+                const f = FIELD_BY_KEY[key];
+                const active = drawerKey === key;
+                return `<button class="strip-chip${active ? ' active' : ''}${isFinal(key) ? ' done' : ''}" data-strip-key="${key}" aria-pressed="${active}">
+                    <span class="sc-emoji" aria-hidden="true">${f.emoji}</span>
+                    <span class="sc-label">${esc(f.short || f.label)}</span>
+                    <span class="sc-total">${fieldTotal(f, state.fields[f.key])}</span>
+                </button>`;
+            }).join('');
+        }
+
+        function renderDrawer() {
+            const el = $('#quickPad');
+            const backdrop = $('#qpBackdrop');
+            const f = FIELD_BY_KEY[drawerKey];
+            if (!f || !fieldOn(f)) {
+                el.hidden = true;
+                backdrop.hidden = true;
+                return;
+            }
+            const v = state.fields[f.key];
+            const inner = f.kind === 'count' ? stepperHtml(f) : tallyPadHtml(f);
+            el.innerHTML = `
+                <div class="qp-head">
+                    ${hexChip(f.emoji, f.cssVar)}
+                    <span class="qp-title">${esc(f.label)}</span>
+                    <span class="qp-total">${fieldTotal(f, v)}</span>
+                    ${f.finalize ? `<button class="final-btn${isFinal(f.key) ? ' on' : ''}" data-action="toggle-final" aria-pressed="${isFinal(f.key)}" title="${isFinal(f.key) ? 'Final aufheben' : 'Final markieren (voll gezählt)'}">✓</button>` : ''}
+                    <button class="qp-close" data-action="qp-close" aria-label="Schließen">×</button>
+                </div>
+                <div class="pad" data-field="${f.key}">${inner}</div>`;
+            el.hidden = false;
+            backdrop.hidden = false;
+        }
+
+        function closeDrawer() {
+            drawerKey = null;
+            renderDrawer();
+            renderStrip();
+        }
+
+        function updateTotals() {
+            const total = sumAll();
+            $('#totalNum').textContent = total;
+            $('#crossNum').textContent = `${crossesFor(total)} ✕`;
+            $('#crossNum').title = `${crossesFor(total)} Kreuze auf dem Kampagnenpfad`;
+            $('#customSubtotal').textContent = sumCustom();
+            document.querySelectorAll('[data-section-total]').forEach((el) => {
+                el.textContent = sumSection(SECTIONS[num(el.dataset.sectionTotal)]);
+            });
+            renderStrip();
+        }
+
+        function renderAll() {
+            renderKicker();
+            renderTracker();
+            renderSections();
+            renderCustom();
+            updateTotals();
+        }
+
+        // ── Auftrags-Aktionen ────────────────────────────────────
+        function completeTask(t) {
+            state.fields[t.type] = [...state.fields[t.type], t.value];
+            state.openTasks = state.openTasks.filter((x) => x.id !== t.id);
+            state.completedTasks.push({ id: t.id, type: t.type, value: t.value });
+            flashKeys = [t.type];
+            promoteRecent(t.type);
+            saveState();
+            renderAll();
+            pulseTotals(t.type);
+        }
+
+        function uncompleteTask(id) {
+            const t = state.completedTasks.find((x) => x.id === id);
+            if (!t || state.openTasks.length >= taskLimit()) return;
+            const arr = state.fields[t.type];
+            const i = arr.lastIndexOf(t.value);
+            if (i >= 0) state.fields[t.type] = [...arr.slice(0, i), ...arr.slice(i + 1)];
+            state.completedTasks = state.completedTasks.filter((x) => x.id !== id);
+            state.openTasks.push({ id: t.id, type: t.type, value: t.value });
+            saveState();
+            renderAll();
+        }
+
+        function failTask(t) {
+            state.openTasks = state.openTasks.filter((x) => x.id !== t.id);
+            state.failedTasks.push({ id: t.id, type: t.type, value: t.value });
+            saveState();
+            renderAll();
+        }
+
+        function unfailTask(id) {
+            const t = state.failedTasks.find((x) => x.id === id);
+            if (!t || state.openTasks.length >= taskLimit()) return;
+            state.failedTasks = state.failedTasks.filter((x) => x.id !== id);
+            state.openTasks.push({ ...t });
+            saveState();
+            renderAll();
+        }
+
+        function addOpenTask(value) {
+            if (!pickType || value <= 0 || state.openTasks.length >= taskLimit()) return;
+            state.openTasks.push({ id: uid(), type: pickType, value });
+            pickType = null;
+            saveState();
+            renderTracker();
+        }
+
+        // ── Event-Handling ───────────────────────────────────────
+        $('#trackerSection').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const card = btn.closest('[data-task-id]');
+            const taskId = (card || btn).dataset.taskId;
+            const task = state.openTasks.find((t) => t.id === taskId);
+
+            switch (action) {
+                case 'pick-type':
+                    pickType = pickType === btn.dataset.type ? null : btn.dataset.type;
+                    renderTracker();
+                    break;
+                case 'add-task':
+                    addOpenTask(num(btn.dataset.value));
+                    break;
+                case 'custom-add': {
+                    const input = $('[data-role="custom-value"]', $('#trackerSection'));
+                    addOpenTask(num(input && input.value));
+                    break;
+                }
+                case 'complete':
+                    if (task) completeTask(task);
+                    break;
+                case 'fail':
+                    if (task) failTask(task);
+                    break;
+                case 'remove':
+                    state.openTasks = state.openTasks.filter((t) => t.id !== taskId);
+                    saveState();
+                    renderTracker();
+                    break;
+                case 'uncomplete':
+                    uncompleteTask(btn.dataset.taskId);
+                    break;
+                case 'unfail':
+                    unfailTask(btn.dataset.taskId);
+                    break;
+                case 'toggle-fuji':
+                    state.fuji = !state.fuji;
+                    saveState();
+                    renderTracker();
+                    break;
+            }
+        });
+
+        $('#trackerSection').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.matches('[data-role="custom-value"]')) {
+                addOpenTask(num(e.target.value));
+            }
+        });
+
+        function toggleFinal(key) {
+            if (isFinal(key)) {
+                state.finalFields = state.finalFields.filter((k) => k !== key);
+            } else {
+                state.finalFields = [...state.finalFields, key];
+            }
+            saveState();
+            renderSections();
+            renderDrawer();
+            updateTotals();
+        }
+
+        function afterFieldChange(key) {
+            promoteRecent(key);
+            saveState();
+            if (FIELD_BY_KEY[key].supply) renderTracker();
+            renderSections();
+            renderDrawer();
+            updateTotals();
+            pulseTotals(key);
+        }
+
+        function onFieldClick(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            if (btn.dataset.action === 'qp-close') {
+                closeDrawer();
+                return;
+            }
+            if (btn.dataset.action === 'toggle-final') {
+                const block = btn.closest('[data-field]');
+                if (block) toggleFinal(block.dataset.field);
+                return;
+            }
+            const block = btn.closest('[data-field]');
+            if (!block) return;
+            const key = block.dataset.field;
+            const field = FIELD_BY_KEY[key];
+            if (isFinal(key) && !['toggle-open', 'remove-entry', 'remove-value'].includes(btn.dataset.action)) {
+                return;
+            }
+            switch (btn.dataset.action) {
+                case 'toggle-open':
+                    openKey = openKey === key ? null : key;
+                    renderSections();
+                    break;
+                case 'add-entry':
+                    state.fields[key] = [...state.fields[key], num(btn.dataset.value)];
+                    afterFieldChange(key);
+                    break;
+                case 'custom-add': {
+                    const input = $('[data-role="custom-value"]', block);
+                    const v = num(input && input.value);
+                    if (v > 0) {
+                        state.fields[key] = [...state.fields[key], v];
+                        afterFieldChange(key);
+                    }
+                    break;
+                }
+                case 'remove-entry':
+                    state.fields[key] = state.fields[key].filter((_, i) => i !== num(btn.dataset.index));
+                    afterFieldChange(key);
+                    break;
+                case 'remove-value': {
+                    const val = num(btn.dataset.value);
+                    const i = state.fields[key].lastIndexOf(val);
+                    if (i >= 0) state.fields[key] = [...state.fields[key].slice(0, i), ...state.fields[key].slice(i + 1)];
+                    afterFieldChange(key);
+                    break;
+                }
+                case 'step': {
+                    const next = num(state.fields[key]) + num(btn.dataset.delta);
+                    const max = field.max != null ? field.max : Infinity;
+                    state.fields[key] = Math.min(max, Math.max(0, next));
+                    afterFieldChange(key);
+                    break;
+                }
+            }
+        }
+
+        function onFieldKeydown(e) {
+            if (e.key === 'Enter' && e.target.matches('[data-role="custom-value"]')) {
+                const block = e.target.closest('[data-field]');
+                const v = num(e.target.value);
+                if (block && v > 0) {
+                    const key = block.dataset.field;
+                    state.fields[key] = [...state.fields[key], v];
+                    afterFieldChange(key);
+                    const drawerInput = $('#quickPad [data-role="custom-value"]');
+                    if (drawerInput) drawerInput.focus();
+                }
+            }
+        }
+
+        $('#sectionsRoot').addEventListener('click', onFieldClick);
+        $('#quickPad').addEventListener('click', onFieldClick);
+        $('#sectionsRoot').addEventListener('keydown', onFieldKeydown);
+        $('#quickPad').addEventListener('keydown', onFieldKeydown);
+
+        // Sonstiges
+        $('#addCustomBtn').addEventListener('click', () => {
+            state.custom.push({ id: uid(), label: '', points: '' });
+            saveState();
+            renderCustom();
+        });
+
+        $('#customRows').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="del-custom"]');
+            if (!btn) return;
+            const id = btn.closest('[data-custom-id]').dataset.customId;
+            state.custom = state.custom.filter((c) => c.id !== id);
+            saveState();
+            renderCustom();
+            updateTotals();
+        });
+
+        $('#customRows').addEventListener('input', (e) => {
+            const row = e.target.closest('[data-custom-id]');
+            if (!row) return;
+            const c = state.custom.find((x) => x.id === row.dataset.customId);
+            if (!c) return;
+            if (e.target.dataset.role === 'label') c.label = e.target.value;
+            if (e.target.dataset.role === 'points') c.points = e.target.value;
+            saveState();
+            updateTotals();
+        });
+
+        // Meta
+        $('#metaPartie').addEventListener('input', (e) => {
+            state.meta.partie = e.target.value;
+            saveState();
+        });
+        $('#metaSpieler').addEventListener('input', (e) => {
+            state.meta.spieler = e.target.value;
+            saveState();
+        });
+
+        // Reset (Freischaltungen bleiben erhalten)
+        $('#resetBtn').addEventListener('click', () => {
+            if (!confirm('Blatt wirklich zurücksetzen? Alle Einträge gehen verloren (Freigespieltes bleibt).')) return;
+            state = initialState();
+            openKey = null;
+            pickType = null;
+            saveState();
+            $('#metaPartie').value = '';
+            $('#metaSpieler').value = '';
+            renderAll();
+            closeDrawer();
+        });
+
+        // Freigespielt-Dialog
+        const overlay = $('#unlockOverlay');
+        function openUnlocks() {
+            menuPop.hidden = true;
+            closeDrawer();
+            renderUnlocks();
+            overlay.hidden = false;
+        }
+        function closeUnlocks() {
+            overlay.hidden = true;
+        }
+        function setUnlocks(next) {
+            unlocks = next;
+            saveUnlocks();
+            if (pickType && !typeOn(TYPE_BY_KEY[pickType])) pickType = null;
+            renderUnlocks();
+            renderAll();
+        }
+        $('#openUnlocksBtn').addEventListener('click', openUnlocks);
+        $('#menuUnlocks').addEventListener('click', openUnlocks);
+        $('#unlockClose').addEventListener('click', closeUnlocks);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeUnlocks();
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            if (btn.dataset.action === 'unlock-all') setUnlocks([...ALL_UNLOCK_KEYS]);
+            if (btn.dataset.action === 'unlock-none' && confirm('Alle Freischaltungen entfernen?')) setUnlocks([]);
+        });
+        $('#unlockList').addEventListener('change', (e) => {
+            const key = e.target.dataset.unlock;
+            if (!key) return;
+            setUnlocks(e.target.checked ? [...unlocks, key] : unlocks.filter((k) => k !== key));
+        });
+
+        // ── Schnellzugriff-Events ────────────────────────────────
+        $('#stripRow').addEventListener('click', (e) => {
+            const chip = e.target.closest('[data-strip-key]');
+            if (!chip) return;
+            const key = chip.dataset.stripKey;
+            drawerKey = drawerKey === key ? null : key;
+            renderDrawer();
+            renderStrip();
+        });
+
+        $('#qpBackdrop').addEventListener('click', closeDrawer);
+
+        // ⋯-Menü
+        const menuPop = $('#menuPop');
+        $('#menuBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            menuPop.hidden = !menuPop.hidden;
+            $('#menuBtn').setAttribute('aria-expanded', String(!menuPop.hidden));
+        });
+        document.addEventListener('click', (e) => {
+            if (!menuPop.hidden && !e.target.closest('.menu-wrap')) menuPop.hidden = true;
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (!overlay.hidden) {
+                closeUnlocks();
+            } else if (!menuPop.hidden) {
+                menuPop.hidden = true;
+                $('#menuBtn').setAttribute('aria-expanded', 'false');
+            } else if (drawerKey) {
+                closeDrawer();
+            }
+        });
+
+        // Teilen / Kopieren
+        let copiedTimer = null;
+        function showCopied() {
+            $('#menuShare').textContent = '✓ Kopiert';
+            $('#menuCopy').textContent = '✓ Kopiert';
+            clearTimeout(copiedTimer);
+            copiedTimer = setTimeout(() => {
+                $('#menuShare').textContent = '📤 Teilen';
+                $('#menuCopy').textContent = '📋 Kopieren';
+            }, 1500);
+        }
+
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            showCopied();
+        }
+
+        $('#menuShare').addEventListener('click', async () => {
+            const text = buildExport();
+            if (navigator.share) {
+                try {
+                    await navigator.share({ text });
+                    return;
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return;
+                }
+            }
+            copyText(text);
+        });
+
+        $('#menuCopy').addEventListener('click', () => copyText(buildExport()));
+
+        // ── Init ─────────────────────────────────────────────────
+        $('#metaPartie').value = state.meta.partie;
+        $('#metaSpieler').value = state.meta.spieler;
+        renderAll();
+    </script>
+</body>
+</html>
