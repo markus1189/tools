@@ -108,7 +108,8 @@
       "title": "Dorfromantik Sakura Wertung",
       "description": "Digital score sheet for Dorfromantik: Sakura with task tracker (marker supply, Fujiyama 4-task limit), wraparound and 7-tasks, cherry blossoms, and a persistent campaign unlock list that hides locked scoring rows",
       "icon": "flower-2",
-      "dateAdded": "2026-09-24"
+      "dateAdded": "2026-09-24",
+      "dateUpdated": "2026-09-26"
     }
   ]
 }

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Digitale Wertungskarte für Dorfromantik: Sakura mit Auftrags-Tracker und Kampagnen-Freischaltungen">
-    <meta name="theme-color" content="#f97316">
+    <meta name="theme-color" content="#E884A0">
     <title>Dorfromantik Sakura Wertung</title>
 
     <style>
@@ -15,26 +15,27 @@
         }
 
         :root {
-            --bg: #0a0a0a;
-            --bg-card: #141414;
-            --bg-card-hover: #1a1a1a;
-            --bg-input: #1e1e1e;
-            --border: #2a2a2a;
+            --bg: #0f0b0d;
+            --bg-card: #181214;
+            --bg-card-hover: #1f171b;
+            --bg-input: #251c21;
+            --border: #35282e;
             --text: #e5e5e5;
             --text-muted: #888;
-            --accent: #f97316;
-            --accent-hover: #fb923c;
+            --accent: #E884A0;
+            --accent-hover: #F0A3B9;
             --danger: #ef4444;
             --success: #22c55e;
-            --cherry: #e58fb5;
-            --road: #b08a5e;
-            --village: #d0584a;
+            --cherry: #EC99C2;
+            --road: #8A6650;
+            --village: #C0645F;
             --track: #9d9cab;
-            --river: #4f9bd1;
+            --river: #7AC8CF;
             --flag-red: #e05a41;
             --heart: #e05a41;
             --gold: #d4a437;
-            --rice: #7fb24a;
+            --rice: #8FC369;
+            --ring: #B3A4C8;
             --hex-flat: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
             --hex-point: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
         }
@@ -429,6 +430,7 @@
             width: 34px;
             height: 30px;
             font-size: 15px;
+            background: color-mix(in srgb, var(--c, var(--accent)) 24%, var(--bg-input));
         }
 
         .row-label {
@@ -1020,6 +1022,24 @@
 
         #openUnlocksBtn { margin-bottom: 14px; }
 
+        .glyph {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+            stroke: #fff;
+            stroke-width: 1.4;
+            stroke-linejoin: round;
+            paint-order: stroke;
+            overflow: visible;
+            flex-shrink: 0;
+        }
+        .glyph.inv { fill: #fff; stroke: none; }
+        .type-btn .glyph { width: 26px; height: 26px; vertical-align: middle; }
+        .task-hex .glyph { width: 22px; height: 22px; }
+        .strip-chip .glyph { width: 17px; height: 17px; }
+        .done-chip .glyph, .failed-chip .glyph { width: 15px; height: 15px; vertical-align: -2px; stroke-width: 1; }
+        .failed-chip .glyph { opacity: 0.6; }
+
         .total-hex .x {
             font-size: 10px;
             color: var(--text-muted);
@@ -1158,24 +1178,46 @@
         ];
         const ALL_UNLOCK_KEYS = UNLOCKS.flatMap((b) => b.items.map((i) => i.key));
 
+        // SVG-Symbole nach dem offiziellen Wertungsblatt (viewBox 24×24)
+        const petals = [0, 72, 144, 216, 288].map((a) => `<ellipse cx="12" cy="6.9" rx="3.2" ry="4.3" transform="rotate(${a} 12 12)"/>`).join('');
+        const ICONS = {
+            tree: '<path d="M12 2.8c-2.3 0-4 1.6-4.2 3.5C6.1 6.8 4.8 8.4 4.8 10.3c0 1.7 1 3.1 2.5 3.7.5 1.6 2 2.7 3.7 2.7V21h2v-4.3c1.7 0 3.2-1.1 3.7-2.7 1.5-.6 2.5-2 2.5-3.7 0-1.9-1.3-3.5-3-4C15.9 4.4 14.3 2.8 12 2.8z"/>',
+            rice: '<path d="M8.2 4.6 15.8 3.4 19.4 7l-.4 12.2-13.4.6L5.4 14z"/>',
+            house: '<path d="M7.2 4.2h2.2v1.5h5.2V4.2h3l.3 7.6 1.7.4v2.6l-1.7.3v5.1H7.3v-5H5.2v-2.8l1.9-.4z"/>',
+            road: '<path d="M9.5 4.3c2.9-1.5 6.4-.4 9.4-1.1-1.3 1.7-1.6 3.5-.3 5.6 1.6 2.6 1.2 6.3.2 10.7-4.3-.9-8.6-1.7-12.9-2.4 1.4-2.2 3.7-3.7 3.5-6.4-.2-2.4-2.4-4.4.1-6.4z"/>',
+            drop: '<path d="M12 2.6c3.2 4.2 6.4 7.6 6.4 11.4a6.4 6.4 0 0 1-12.8 0c0-3.8 3.2-7.2 6.4-11.4z"/>',
+            ring: '<path d="M12 4.2 18.8 8.1v7.8L12 19.8 5.2 15.9V8.1z" style="fill:none;stroke:currentColor;stroke-width:3.4;stroke-dasharray:0 1.7 4.4 1.7"/>',
+            seven: '<path d="M4 6.5h13.5l1.3-2.3.9 2.6c.9.3 1.3 1 1.3 1.9v8.5c0 1.1-.9 2-2 2H9.5l-2.8 2.4.2-2.4H4c-1.1 0-2-.9-2-2V8.5c0-1.1.9-2 2-2z" style="fill:#fff;stroke:none"/><text x="11.3" y="16.6" text-anchor="middle" style="fill:#1a1216;stroke:none;font:800 10.5px system-ui,sans-serif">7</text>',
+            flag: '<path d="M5.4 2.5h2.2v19H5.4z"/><path d="M7.6 3.8h11.2l-3.3 4.1 3.3 4.1H7.6z"/>',
+            blossom: `${petals}<circle cx="12" cy="12" r="2.3" style="fill:#F6D36B;stroke:none"/>`,
+        };
+
+        // Symbol eines Typs/Felds: SVG (icon) oder Emoji
+        function glyph(item, inv = false) {
+            if (item.icon && ICONS[item.icon]) {
+                return `<svg class="glyph${inv ? ' inv' : ''}" viewBox="0 0 24 24" aria-hidden="true" style="color:${inv ? '#fff' : `var(${item.cssVar})`}">${ICONS[item.icon]}</svg>`;
+            }
+            return item.emoji;
+        }
+
         // Auftragstypen im Tracker. 7er-Aufträge: je 1 Plättchen mit 7er-Marker
         const TASK_TYPES = [
-            { key: 'kirsch', label: 'Kirschbaum', emoji: '🌸', cssVar: '--cherry', chips: CHIPS_46, supply: SUPPLY_46 },
-            { key: 'reis', label: 'Reis', emoji: '🌾', cssVar: '--rice', chips: CHIPS_46, supply: SUPPLY_46 },
-            { key: 'dorf', label: 'Dorf', emoji: '🏯', cssVar: '--village', chips: CHIPS_46, supply: SUPPLY_46 },
-            { key: 'strasse', label: 'Straße', emoji: '🛤️', cssVar: '--road', chips: CHIPS_46, supply: SUPPLY_46 },
-            { key: 'fluss', label: 'Fluss', emoji: '🌊', cssVar: '--river', chips: CHIPS_46, supply: SUPPLY_46 },
-            { key: 'rundum', label: 'Rundum', emoji: '🔄', cssVar: '--accent', chips: CHIPS_46, supply: SUPPLY_46, unlock: 'rundum' },
-            { key: 'sDR', label: 'Dorf & Reis', emoji: '7', cssVar: '--village', bg: 'linear-gradient(135deg, var(--village) 50%, var(--rice) 50%)', chips: [7], supply: [7], unlock: 'sDR', seven: true },
-            { key: 'sKD', label: 'Kirschbaum & Dorf', emoji: '7', cssVar: '--cherry', bg: 'linear-gradient(135deg, var(--cherry) 50%, var(--village) 50%)', chips: [7], supply: [7], unlock: 'sKD', seven: true },
-            { key: 'sRK', label: 'Reis & Kirschbaum', emoji: '7', cssVar: '--rice', bg: 'linear-gradient(135deg, var(--rice) 50%, var(--cherry) 50%)', chips: [7], supply: [7], unlock: 'sRK', seven: true },
+            { key: 'kirsch', label: 'Kirschbaum', emoji: '🌸', icon: 'tree', cssVar: '--cherry', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'reis', label: 'Reis', emoji: '🌾', icon: 'rice', cssVar: '--rice', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'dorf', label: 'Dorf', emoji: '🏠', icon: 'house', cssVar: '--village', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'strasse', label: 'Straße', emoji: '🟫', icon: 'road', cssVar: '--road', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'fluss', label: 'Fluss', emoji: '💧', icon: 'drop', cssVar: '--river', chips: CHIPS_46, supply: SUPPLY_46 },
+            { key: 'rundum', label: 'Rundum', emoji: '⭕', icon: 'ring', cssVar: '--ring', chips: CHIPS_46, supply: SUPPLY_46, unlock: 'rundum' },
+            { key: 'sDR', label: 'Dorf & Reis', emoji: '7️⃣', icon: 'seven', cssVar: '--village', bg: 'linear-gradient(135deg, var(--village) 50%, var(--rice) 50%)', chips: [7], supply: [7], unlock: 'sDR', seven: true },
+            { key: 'sKD', label: 'Kirschbaum & Dorf', emoji: '7️⃣', icon: 'seven', cssVar: '--cherry', bg: 'linear-gradient(135deg, var(--cherry) 50%, var(--village) 50%)', chips: [7], supply: [7], unlock: 'sKD', seven: true },
+            { key: 'sRK', label: 'Reis & Kirschbaum', emoji: '7️⃣', icon: 'seven', cssVar: '--rice', bg: 'linear-gradient(135deg, var(--rice) 50%, var(--cherry) 50%)', chips: [7], supply: [7], unlock: 'sRK', seven: true },
         ];
         const TYPE_BY_KEY = Object.fromEntries(TASK_TYPES.map((t) => [t.key, t]));
 
         const F = (key, label, emoji, cssVar, kind, extra = {}) => ({ key, label, emoji, cssVar, kind, ...extra });
         // count: Anzahl eingeben, Punkte = Anzahl × mult (optional gedeckelt auf max)
         const C = (key, label, emoji, cssVar, extra = {}) => F(key, label, emoji, cssVar, 'count', extra);
-        const taskField = (t) => F(t.key, t.label, t.seven ? '7️⃣' : t.emoji, t.cssVar, 'tally', { chips: t.chips, supply: t.supply, unlock: t.unlock, short: t.seven ? `7 ${t.label}` : t.label });
+        const taskField = (t) => F(t.key, t.label, t.emoji, t.cssVar, 'tally', { icon: t.icon, chips: t.chips, supply: t.supply, unlock: t.unlock, short: t.seven ? `7 ${t.label}` : t.label });
 
         const SECTIONS = [
             {
@@ -1188,8 +1230,8 @@
                 hint: 'Bonus erst am Spielende zählen: an längster Straße +2, am längsten Fluss +2 (an beiden +4)',
                 fields: [
                     taskField(TASK_TYPES[5]),
-                    C('rundumStrasse', 'An längster Straße', '🛤️', '--road', { mult: 2, max: 6, sub: '+2 je erfülltem Rundumauftrag', short: 'Rund·Str', unlock: 'rundum' }),
-                    C('rundumFluss', 'Am längsten Fluss', '🌊', '--river', { mult: 2, max: 6, sub: '+2 je erfülltem Rundumauftrag', short: 'Rund·Fluss', unlock: 'rundum' }),
+                    C('rundumStrasse', 'An längster Straße', '🟫', '--road', { icon: 'road', mult: 2, max: 6, sub: '+2 je erfülltem Rundumauftrag', short: 'Rund·Str', unlock: 'rundum' }),
+                    C('rundumFluss', 'Am längsten Fluss', '💧', '--river', { icon: 'drop', mult: 2, max: 6, sub: '+2 je erfülltem Rundumauftrag', short: 'Rund·Fluss', unlock: 'rundum' }),
                 ],
             },
             {
@@ -1201,44 +1243,44 @@
                 title: 'Fahnen',
                 hint: 'Nur abgeschlossene Gebiete: Plättchenzahl des Gebiets eintragen (Bunte Fahne zählt zur gewählten Farbe)',
                 fields: [
-                    F('fRosa', 'Rosa Fahnen', '🚩', '--cherry', 'tally', { chips: [4, 6, 8, 10], short: 'Rosa' }),
-                    F('fGruen', 'Grüne Fahnen', '🚩', '--rice', 'tally', { chips: [4, 6, 8, 10], short: 'Grün' }),
-                    F('fRot', 'Rote Fahnen', '🚩', '--village', 'tally', { chips: [4, 6, 8, 10], short: 'Rot' }),
+                    F('fRosa', 'Rosa Fahnen', '🚩', '--cherry', 'tally', { icon: 'flag', chips: [4, 6, 8, 10], short: 'Rosa' }),
+                    F('fGruen', 'Grüne Fahnen', '🚩', '--rice', 'tally', { icon: 'flag', chips: [4, 6, 8, 10], short: 'Grün' }),
+                    F('fRot', 'Rote Fahnen', '🚩', '--village', 'tally', { icon: 'flag', chips: [4, 6, 8, 10], short: 'Rot' }),
                 ],
             },
             {
                 title: 'Längen',
                 hint: 'Je Plättchen +1',
                 fields: [
-                    C('langStrasse', 'Längste Straße', '📏', '--road', { short: 'Straße' }),
-                    C('langFluss', 'Längster Fluss', '📏', '--river', { short: 'Fluss' }),
+                    C('langStrasse', 'Längste Straße', '🟫', '--road', { icon: 'road', short: 'Straße' }),
+                    C('langFluss', 'Längster Fluss', '💧', '--river', { icon: 'drop', short: 'Fluss' }),
                 ],
             },
             {
                 title: 'Kirschblüten',
                 hint: 'Gesammelte Blüten-Plättchen (1/2/5) eintragen – max. 50 Punkte, zählen auch wenn ihr sie ausgebt',
                 fields: [
-                    F('blueten', 'Kirschblüten', '🌸', '--cherry', 'tally', { chips: [1, 2, 5], max: 50, sub: 'max. 50', short: 'Blüten', unlock: 'blueten' }),
+                    F('blueten', 'Kirschblüten', '🌸', '--cherry', 'tally', { icon: 'blossom', chips: [1, 2, 5], max: 50, sub: 'max. 50', short: 'Blüten', unlock: 'blueten' }),
                 ],
             },
             {
                 title: 'Freigespielt',
                 hint: 'Anzahl eintragen – Punkte werden berechnet',
                 fields: [
-                    C('tempel', 'Tempel', '⛩️', '--village', { mult: 6, max: 3, sub: '6 je Tempel mit 6 passenden Kanten', unlock: 'tempel' }),
+                    C('tempel', 'Tempel', '🏯', '--village', { mult: 6, max: 3, sub: '6 je Tempel mit 6 passenden Kanten', unlock: 'tempel' }),
                     C('quellen', 'Heiße Quellen', '♨️', '--river', { mult: 3, sub: '3 je abgeschlossener Quelle', short: 'Quellen', unlock: 'quellen' }),
-                    C('quellenRundum', 'Rundum an Quelle', '♨️', '--accent', { mult: 3, max: 6, sub: '3 je erf. Rundumauftrag an ≥1 abgeschl. Quelle (einmal)', short: 'Quell·Rund', unlock: 'quellen' }),
+                    C('quellenRundum', 'Rundum an Quelle', '♨️', '--ring', { mult: 3, max: 6, sub: '3 je erf. Rundumauftrag an ≥1 abgeschl. Quelle (einmal)', short: 'Quell·Rund', unlock: 'quellen' }),
                     C('bruecken', 'Brücken', '🌉', '--river', { mult: 5, max: 3, sub: '5 je Brücke am längsten Fluss', unlock: 'bruecken' }),
-                    C('tore', 'Tore', '⛩', '--road', { mult: 5, max: 3, sub: '5 je Tor an der längsten Straße', unlock: 'tore' }),
+                    C('tore', 'Tore', '⛩️', '--village', { mult: 5, max: 3, sub: '5 je Tor an der längsten Straße', unlock: 'tore' }),
                     C('einsiedler', 'Einsiedler', '🧘', '--rice', { mult: 3, max: 6, sub: '3 je Kante ohne Nachbarplättchen', unlock: 'einsiedler' }),
                     C('sternwarte', 'Sternwarte', '🔭', '--cherry', { mult: 3, sub: '3 je abgeschl. Fahnengebiet – nur wenn selbst in einem', unlock: 'sternwarte' }),
                     C('kartograph', 'Kartograph', '🗺️', '--rice', { mult: 2, sub: '2 je erfülltem Auftragsplättchen in Blickrichtung', unlock: 'kartograph' }),
                     C('sumo', 'Sumoringer', '🤼', '--village', { mult: 1, max: 6, sub: '1 je passende Dorfkante', unlock: 'sumo' }),
-                    C('moos', 'Moossammlerin', '🌸', '--cherry', { mult: 1, max: 6, sub: '1 je passende Kirschbaumkante', short: 'Moos', unlock: 'moos' }),
-                    C('reisb', 'Reisbäuerin', '🌾', '--rice', { mult: 1, max: 6, sub: '1 je passende Reiskante', unlock: 'reisb' }),
-                    C('schiff', 'Schiff & Anlegestelle', '⛵', '--river', { mult: 1, sub: 'im selben Fluss: 1 je Flussplättchen dazwischen', short: 'Schiff', unlock: 'schiff' }),
+                    C('moos', 'Moossammlerin', '🌿', '--cherry', { mult: 1, max: 6, sub: '1 je passende Kirschbaumkante', short: 'Moos', unlock: 'moos' }),
+                    C('reisb', 'Reisbäuerin', '👩‍🌾', '--rice', { mult: 1, max: 6, sub: '1 je passende Reiskante', unlock: 'reisb' }),
+                    C('schiff', 'Schiff & Anlegestelle', '🛶', '--river', { mult: 1, sub: 'im selben Fluss: 1 je Flussplättchen dazwischen', short: 'Schiff', unlock: 'schiff' }),
                     C('ochsen', 'Ochsenkarren & Handelsposten', '🐂', '--road', { mult: 1, sub: 'auf derselben Straße: 1 je Straßenplättchen dazwischen', short: 'Ochsen', unlock: 'ochsen' }),
-                    C('poet', 'Poet', '📜', '--rice', { mult: 3, max: 6, sub: '3 je angrenzende Wiesenkante', unlock: 'poet' }),
+                    C('poet', 'Poet', '🖌️', '--rice', { mult: 3, max: 6, sub: '3 je angrenzende Wiesenkante', unlock: 'poet' }),
                 ],
             },
         ];
@@ -1436,7 +1478,7 @@
                     if (num(c.points)) lines.push(`  🎁 ${c.label || 'Feld'}: ${num(c.points)}`);
                 });
             }
-            const fmt = (t) => `${TYPE_BY_KEY[t.type].seven ? '7️⃣' : TYPE_BY_KEY[t.type].emoji}${t.value}`;
+            const fmt = (t) => `${TYPE_BY_KEY[t.type].emoji}${t.value}`;
             if (state.completedTasks.length > 0) {
                 lines.push(`Erledigt (${state.completedTasks.length}): ${state.completedTasks.map(fmt).join(' · ')}`);
             }
@@ -1455,9 +1497,11 @@
         const cssColor = (v) => `var(${v})`;
         const typeBg = (t) => t.bg || cssColor(t.cssVar);
 
-        function hexChip(emoji, cssVar) {
-            return `<span class="hex-chip" aria-hidden="true" style="background:${cssColor(cssVar)}">${emoji}</span>`;
+        function hexChip(f) {
+            return `<span class="hex-chip" aria-hidden="true" style="--c:${cssColor(f.cssVar)}">${glyph(f)}</span>`;
         }
+        // Lesbare Textfarbe auf dunklem Grund (Straßenbraun ist sonst zu dunkel)
+        const textColor = (cssVar) => `color-mix(in srgb, ${cssColor(cssVar)} 70%, #fff)`;
 
         function valueInputHtml() {
             return `
@@ -1487,7 +1531,7 @@
                     html += `
                         <div class="task-card" style="border-color:${cssColor(typ.cssVar)}" data-task-id="${t.id}">
                             <span class="task-hex" style="background:${typeBg(typ)}" title="${esc(typ.label)}">
-                                <span class="task-emoji">${typ.seven ? '' : typ.emoji}</span>
+                                <span class="task-emoji">${typ.seven ? '' : glyph(typ, true)}</span>
                                 <span class="task-num">${t.value}</span>
                             </span>
                             <div class="task-actions">
@@ -1500,14 +1544,13 @@
                 html += '</div>';
             }
 
-            const chipLabel = (typ) => (typ.seven ? `7 ${typ.label}` : typ.emoji);
             if (state.completedTasks.length > 0) {
                 html += `<div class="done-row"><span class="done-label">Erledigt (${state.completedTasks.length}):</span>`;
                 state.completedTasks.forEach((t) => {
                     const typ = TYPE_BY_KEY[t.type];
-                    html += `<button class="done-chip" style="border-color:${cssColor(typ.cssVar)};color:${cssColor(typ.cssVar)}"
+                    html += `<button class="done-chip" style="border-color:${cssColor(typ.cssVar)};color:${textColor(typ.cssVar)}"
                         data-action="uncomplete" data-task-id="${t.id}" title="Zurückholen (Punkte werden entfernt)">
-                        ${typ.seven ? esc(typ.label) : `${typ.emoji} ${t.value}`} ×</button>`;
+                        ${typ.seven ? `${glyph(typ)} ${esc(typ.label)}` : `${glyph(typ)} ${t.value}`} ×</button>`;
                 });
                 html += '</div>';
             }
@@ -1517,7 +1560,7 @@
                 state.failedTasks.forEach((t) => {
                     const typ = TYPE_BY_KEY[t.type];
                     html += `<button class="failed-chip" data-action="unfail" data-task-id="${t.id}" title="Zurückholen">
-                        ${typ.seven ? esc(typ.label) : `${typ.emoji} ${t.value}`} ×</button>`;
+                        ${typ.seven ? `${glyph(typ)} ${esc(typ.label)}` : `${glyph(typ)} ${t.value}`} ×</button>`;
                 });
                 html += '</div>';
             }
@@ -1532,7 +1575,7 @@
                         ? `background:${typeBg(t)};border-color:${cssColor(t.cssVar)}`
                         : t.seven ? `background:${typeBg(t)};border-color:transparent;opacity:0.75` : `border-color:${cssColor(t.cssVar)}`;
                     html += `<button class="type-btn${t.seven ? ' seven' : ''}" style="${style}" data-action="pick-type" data-type="${t.key}"
-                        aria-pressed="${sel}" title="${esc(t.label)}"${empty ? ' disabled' : ''}>${t.seven ? '7' : t.emoji}</button>`;
+                        aria-pressed="${sel}" title="${esc(t.label)}"${empty ? ' disabled' : ''}>${t.seven ? '7' : glyph(t, sel)}</button>`;
                 });
                 html += '</div>';
                 if (pickType) {
@@ -1629,7 +1672,7 @@
                             <div class="field-block${flash}${final ? ' final' : ''}" data-field="${f.key}">
                                 <div class="row">
                                     <button class="row-btn" data-action="toggle-open" aria-expanded="${open}">
-                                        ${hexChip(f.emoji, f.cssVar)}
+                                        ${hexChip(f)}
                                         <span class="row-label">${esc(f.label)}${subHtml}</span>
                                         <span class="row-total">${fieldTotal(f, v)}</span>
                                         <span class="chev">${open ? '▾' : '▸'}</span>
@@ -1645,7 +1688,7 @@
                         html += `
                             <div class="field-block${flash}" data-field="${f.key}">
                                 <div class="row">
-                                    ${hexChip(f.emoji, f.cssVar)}
+                                    ${hexChip(f)}
                                     <span class="row-label">${esc(f.label)}${subHtml}</span>
                                     ${pts}
                                     ${stepperHtml(f)}
@@ -1715,7 +1758,7 @@
                 const f = FIELD_BY_KEY[key];
                 const active = drawerKey === key;
                 return `<button class="strip-chip${active ? ' active' : ''}${isFinal(key) ? ' done' : ''}" data-strip-key="${key}" aria-pressed="${active}">
-                    <span class="sc-emoji" aria-hidden="true">${f.emoji}</span>
+                    <span class="sc-emoji" aria-hidden="true">${glyph(f)}</span>
                     <span class="sc-label">${esc(f.short || f.label)}</span>
                     <span class="sc-total">${fieldTotal(f, state.fields[f.key])}</span>
                 </button>`;
@@ -1735,7 +1778,7 @@
             const inner = f.kind === 'count' ? stepperHtml(f) : tallyPadHtml(f);
             el.innerHTML = `
                 <div class="qp-head">
-                    ${hexChip(f.emoji, f.cssVar)}
+                    ${hexChip(f)}
                     <span class="qp-title">${esc(f.label)}</span>
                     <span class="qp-total">${fieldTotal(f, v)}</span>
                     ${f.finalize ? `<button class="final-btn${isFinal(f.key) ? ' on' : ''}" data-action="toggle-final" aria-pressed="${isFinal(f.key)}" title="${isFinal(f.key) ? 'Final aufheben' : 'Final markieren (voll gezählt)'}">✓</button>` : ''}
