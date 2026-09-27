@@ -168,20 +168,32 @@
         /* Task tracker */
         .task-grid {
             display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 6px;
+            margin: 8px 0 10px;
         }
 
         .task-card {
             flex: 1;
             border: 1.5px solid;
             border-radius: 10px;
-            padding: 10px 6px 8px;
+            padding: 6px;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 8px;
+            gap: 5px;
+            min-width: 0;
             background: var(--bg-card-hover);
+        }
+
+        .task-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .task-top .done-btn {
+            flex: 1;
+            min-width: 0;
+            font-size: 18px;
+            padding: 8px 0;
         }
 
         .task-card.doubled {
@@ -201,8 +213,9 @@
         }
 
         .task-hex {
-            width: 58px;
-            height: 64px;
+            flex: none;
+            width: 36px;
+            height: 40px;
             clip-path: var(--hex-point);
             display: flex;
             flex-direction: column;
@@ -211,10 +224,10 @@
             color: #0a0a0a;
         }
 
-        .task-emoji { font-size: 18px; line-height: 1; }
+        .task-emoji { font-size: 12px; line-height: 1; }
 
         .task-num {
-            font-size: 20px;
+            font-size: 15px;
             font-weight: 700;
             line-height: 1.1;
         }
@@ -233,10 +246,10 @@
 
         .task-actions {
             display: flex;
-            flex-direction: column;
             gap: 4px;
-            width: 100%;
         }
+        .task-actions .fail-btn { flex: 1; font-size: 13px; }
+        .task-actions .drop-btn { flex: none; width: 34px; font-size: 14px; text-decoration: none; }
 
         .done-btn {
             border: none;
@@ -365,7 +378,7 @@
             display: grid;
             grid-template-columns: minmax(0, 1fr) repeat(var(--cols), auto) auto;
             column-gap: 10px;
-            row-gap: 5px;
+            row-gap: 4px;
             align-items: center;
         }
 
@@ -391,7 +404,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .sg-label .glyph { width: 18px; height: 18px; flex: none; stroke-width: 1; }
+        .sg-label .glyph { width: 16px; height: 16px; flex: none; stroke-width: 1; }
 
         .sg-cell {
             display: flex;
@@ -399,9 +412,32 @@
             justify-content: center;
         }
 
+        .sg-seven {
+            grid-column: span var(--cols);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .sd.seven.hidden { border-color: transparent; background: linear-gradient(var(--bg-card), var(--bg-card)) padding-box, var(--g) border-box; }
+        .sd.seven.done { background: var(--g); }
+
+        .supply-info {
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            margin-left: 6px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .supply-info[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+
         .sg-left {
             text-align: center;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 800;
         }
 
@@ -409,13 +445,13 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 20px;
-            height: 20px;
+            width: 17px;
+            height: 17px;
             padding: 0;
             border-radius: 50%;
             border: 2px solid var(--c, var(--text-muted));
             background: transparent;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 800;
             line-height: 1;
         }
@@ -1143,7 +1179,7 @@
         }
         .glyph.inv { fill: #fff; stroke: none; }
         .type-btn .glyph { width: 26px; height: 26px; vertical-align: middle; }
-        .task-hex .glyph { width: 22px; height: 22px; }
+        .task-hex .glyph { width: 14px; height: 14px; }
         .strip-chip .glyph { width: 17px; height: 17px; }
         .done-chip .glyph, .failed-chip .glyph { width: 15px; height: 15px; vertical-align: -2px; stroke-width: 1; }
         .failed-chip .glyph { opacity: 0.6; }
@@ -1619,14 +1655,13 @@
 
         // Vorrats-Raster: je Typ eine Zeile, je Markerwert eine Spalte, je Marker ein Punkt
         // (erledigt / offen / gescheitert / noch verdeckt)
+        let showLegend = false;
         function supplyGridHtml() {
             const types = TASK_TYPES.filter(typeOn);
-            const cols = [...new Set(types.flatMap((t) => t.supply))].sort((a, b) => a - b);
             const extras = [];
             let hiddenTotal = 0;
-            let rows = '';
 
-            types.forEach((typ) => {
+            const lanes = types.map((typ) => {
                 const slots = {};
                 typ.supply.forEach((v) => (slots[v] = slots[v] || []).push(null));
                 const place = (v, cell) => {
@@ -1648,34 +1683,53 @@
                 state.failedTasks.filter((t) => t.type === typ.key).forEach((t) => {
                     if (!place(t.value, { kind: 'failed', task: t })) extras.push({ kind: 'failed', task: t });
                 });
-
                 const hidden = Object.values(slots).flat().filter((c) => c === null).length;
                 hiddenTotal += hidden;
-                const dot = (c, v) => {
-                    if (c === null) return `<span class="sd hidden" title="${v}er noch verdeckt"></span>`;
-                    if (c.kind === 'done') return `<button class="sd done" data-action="uncomplete" data-task-id="${c.task.id}" title="${v}er erledigt – tippen zum Zurückholen (Punkte werden entfernt)"></button>`;
-                    if (c.kind === 'manual') return `<span class="sd done" title="${v}er manuell in der Wertung eingetragen"></span>`;
-                    if (c.kind === 'open') return `<span class="sd open" title="${v}er liegt offen aus"></span>`;
-                    return `<button class="sd failed" data-action="unfail" data-task-id="${c.task.id}" title="${v}er gescheitert – tippen zum Zurückholen">✗</button>`;
-                };
-                rows += `<div class="supply-row${hidden === 0 ? ' empty' : ''}" style="--c:${cssColor(typ.cssVar)}">
-                    <span class="sg-label">${glyph(typ)}<span>${esc(typ.label.replace('Kirschbaum &', 'Kirsch &').replace('& Kirschbaum', '& Kirsch'))}</span></span>
-                    ${cols.map((v) => `<span class="sg-cell">${(slots[v] || []).map((c) => dot(c, v)).join('')}</span>`).join('')}
-                    <span class="sg-left" style="color:${textColor(typ.cssVar)}">${hidden || '–'}</span>
-                </div>`;
+                return { typ, slots, hidden };
             });
+
+            const dot = (typ, c, v) => {
+                const name = typ.seven ? esc(typ.label) : `${v}er`;
+                const cls = typ.seven ? ' seven' : '';
+                const style = typ.seven ? ` style="--c:${cssColor(typ.cssVar)};--g:${typ.bg}"` : '';
+                if (c === null) return `<span class="sd hidden${cls}"${style} title="${name} noch verdeckt"></span>`;
+                if (c.kind === 'done') return `<button class="sd done${cls}"${style} data-action="uncomplete" data-task-id="${c.task.id}" title="${name} erledigt – tippen zum Zurückholen (Punkte werden entfernt)"></button>`;
+                if (c.kind === 'manual') return `<span class="sd done${cls}"${style} title="${name} manuell in der Wertung eingetragen"></span>`;
+                if (c.kind === 'open') return `<span class="sd open${cls}"${style} title="${name} liegt offen aus"></span>`;
+                return `<button class="sd failed${cls}"${style} data-action="unfail" data-task-id="${c.task.id}" title="${name} gescheitert – tippen zum Zurückholen">✗</button>`;
+            };
+
+            const normal = lanes.filter((l) => !l.typ.seven);
+            const sevens = lanes.filter((l) => l.typ.seven);
+            const cols = [...new Set(normal.flatMap((l) => l.typ.supply))].sort((a, b) => a - b);
+            let rows = normal.map(({ typ, slots, hidden }) => `
+                <div class="supply-row${hidden === 0 ? ' empty' : ''}" style="--c:${cssColor(typ.cssVar)}">
+                    <span class="sg-label">${glyph(typ)}<span>${esc(typ.label)}</span></span>
+                    ${cols.map((v) => `<span class="sg-cell">${(slots[v] || []).map((c) => dot(typ, c, v)).join('')}</span>`).join('')}
+                    <span class="sg-left" style="color:${textColor(typ.cssVar)}">${hidden || '–'}</span>
+                </div>`).join('');
+            // Die 7er-Plättchen (je 1 Marker) teilen sich eine Zeile
+            if (sevens.length > 0) {
+                const hidden = sevens.reduce((a, l) => a + l.hidden, 0);
+                rows += `
+                <div class="supply-row${hidden === 0 ? ' empty' : ''}">
+                    <span class="sg-label">${glyph(sevens[0].typ)}<span>7er</span></span>
+                    <span class="sg-seven">${sevens.map(({ typ, slots }) => slots[7].map((c) => dot(typ, c, 7)).join('')).join('')}</span>
+                    <span class="sg-left">${hidden || '–'}</span>
+                </div>`;
+            }
 
             let html = `
                 <div class="supply">
                     <div class="supply-head">
-                        <span class="supply-title">Vorrat</span>
+                        <span class="supply-title">Vorrat<button class="supply-info" data-action="toggle-legend" aria-pressed="${showLegend}" title="Legende">i</button></span>
                         <span class="supply-sum"><b class="ok">✓ ${state.completedTasks.length}</b> · <b class="bad">✗ ${state.failedTasks.length}</b> · noch verdeckt <b>${hiddenTotal}</b></span>
                     </div>
                     <div class="supply-grid" style="--cols:${cols.length}">
                         <span></span>${cols.map((v) => `<span class="sg-h">${v}</span>`).join('')}<span class="sg-h">übrig</span>
                         ${rows}
                     </div>
-                    <p class="supply-legend"><span class="sd done"></span> erledigt <span class="sd open"></span> offen <span class="sd failed">✗</span> gescheitert <span class="sd hidden"></span> verdeckt · Punkt antippen = zurückholen</p>`;
+                    ${showLegend ? '<p class="supply-legend"><span class="sd done"></span> erledigt <span class="sd open"></span> offen <span class="sd failed">✗</span> gescheitert <span class="sd hidden"></span> verdeckt · Punkt antippen = zurückholen</p>' : ''}`;
 
             // Aufträge mit Werten außerhalb des Vorrats (z. B. frei eingegeben)
             if (extras.length > 0) {
@@ -1705,7 +1759,9 @@
                     ${fujiBtn}
                     <span class="subtotal">${tasks.length}/${limit}</span>
                 </div>
-                <p class="hint">Typ, dann Markerwert antippen – ✓ trägt den Auftrag automatisch in die Wertung ein.</p>`;
+                ${tasks.length + state.completedTasks.length + state.failedTasks.length === 0
+                    ? '<p class="hint">Typ, dann Markerwert antippen – ✓ trägt den Auftrag automatisch in die Wertung ein.</p>'
+                    : ''}`;
 
             if (tasks.length > 0) {
                 html += '<div class="task-grid">';
@@ -1713,14 +1769,16 @@
                     const typ = TYPE_BY_KEY[t.type];
                     html += `
                         <div class="task-card" style="border-color:${cssColor(typ.cssVar)}" data-task-id="${t.id}">
-                            <span class="task-hex" style="background:${typeBg(typ)}" title="${esc(typ.label)}">
-                                <span class="task-emoji">${typ.seven ? '' : glyph(typ, true)}</span>
-                                <span class="task-num">${t.value}</span>
-                            </span>
+                            <div class="task-top">
+                                <span class="task-hex" style="background:${typeBg(typ)}" title="${esc(typ.label)}">
+                                    <span class="task-emoji">${typ.seven ? '' : glyph(typ, true)}</span>
+                                    <span class="task-num">${t.value}</span>
+                                </span>
+                                <button class="done-btn" style="background:${cssColor(typ.cssVar)}" data-action="complete" title="erledigt" aria-label="${esc(typ.label)} ${t.value} erledigt">✓</button>
+                            </div>
                             <div class="task-actions">
-                                <button class="done-btn" style="background:${cssColor(typ.cssVar)}" data-action="complete">✓ erledigt</button>
-                                <button class="fail-btn" data-action="fail">✗ gescheitert</button>
-                                <button class="drop-btn" data-action="remove">entfernen</button>
+                                <button class="fail-btn" data-action="fail" title="gescheitert" aria-label="gescheitert">✗</button>
+                                <button class="drop-btn" data-action="remove" title="entfernen (Marker zurück in den Vorrat)" aria-label="entfernen">🗑</button>
                             </div>
                         </div>`;
                 });
@@ -2065,6 +2123,10 @@
                     break;
                 case 'unfail':
                     unfailTask(btn.dataset.taskId);
+                    break;
+                case 'toggle-legend':
+                    showLegend = !showLegend;
+                    renderTracker();
                     break;
                 case 'toggle-fuji':
                     state.fuji = !state.fuji;
