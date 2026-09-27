@@ -332,6 +332,114 @@
             text-decoration: line-through;
         }
 
+        .supply {
+            border-top: 1px dashed var(--border);
+            margin-top: 10px;
+            padding-top: 8px;
+        }
+
+        .supply-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 6px;
+        }
+
+        .supply-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .supply-sum {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .supply-sum b { color: var(--text); }
+        .supply-sum .ok { color: var(--success); }
+        .supply-sum .bad { color: var(--danger); }
+
+        .supply-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) repeat(var(--cols), auto) auto;
+            column-gap: 10px;
+            row-gap: 5px;
+            align-items: center;
+        }
+
+        .supply-row { display: contents; }
+        .supply-row.empty > * { opacity: 0.4; }
+
+        .sg-h {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .sg-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 0;
+            font-size: 12.5px;
+        }
+        .sg-label > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sg-label .glyph { width: 18px; height: 18px; flex: none; stroke-width: 1; }
+
+        .sg-cell {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .sg-left {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .sd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            border-radius: 50%;
+            border: 2px solid var(--c, var(--text-muted));
+            background: transparent;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        button.sd { cursor: pointer; }
+        .sd.done { background: var(--c, var(--text-muted)); border-color: transparent; opacity: 0.45; }
+        .sd.open { border-style: dashed; background: color-mix(in srgb, var(--c, var(--text-muted)) 25%, transparent); }
+        .sd.failed { border-color: var(--danger); color: var(--danger); opacity: 0.7; }
+        .sd.hidden { box-shadow: 0 0 6px color-mix(in srgb, var(--c, var(--text-muted)) 60%, transparent); }
+
+        .supply-legend {
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+        .supply-legend .sd {
+            width: 11px;
+            height: 11px;
+            font-size: 8px;
+            border-width: 1.5px;
+            vertical-align: -1px;
+            margin-left: 4px;
+        }
+
         .composer {
             border-top: 1px dashed var(--border);
             padding-top: 10px;
@@ -1509,6 +1617,81 @@
                 <button class="chip chip-go" data-action="custom-add">+</button>`;
         }
 
+        // Vorrats-Raster: je Typ eine Zeile, je Markerwert eine Spalte, je Marker ein Punkt
+        // (erledigt / offen / gescheitert / noch verdeckt)
+        function supplyGridHtml() {
+            const types = TASK_TYPES.filter(typeOn);
+            const cols = [...new Set(types.flatMap((t) => t.supply))].sort((a, b) => a - b);
+            const extras = [];
+            let hiddenTotal = 0;
+            let rows = '';
+
+            types.forEach((typ) => {
+                const slots = {};
+                typ.supply.forEach((v) => (slots[v] = slots[v] || []).push(null));
+                const place = (v, cell) => {
+                    const i = slots[v] ? slots[v].indexOf(null) : -1;
+                    if (i >= 0) slots[v][i] = cell;
+                    return i >= 0;
+                };
+                // Wertungseinträge ohne erledigten Auftrag = manuell eingetragen
+                const manual = {};
+                state.fields[typ.key].forEach((v) => (manual[v] = (manual[v] || 0) + 1));
+                state.completedTasks.filter((t) => t.type === typ.key).forEach((t) => {
+                    manual[t.value] = (manual[t.value] || 0) - 1;
+                    if (!place(t.value, { kind: 'done', task: t })) extras.push({ kind: 'done', task: t });
+                });
+                Object.entries(manual).forEach(([v, n]) => {
+                    for (let i = 0; i < n; i++) place(Number(v), { kind: 'manual' });
+                });
+                state.openTasks.filter((t) => t.type === typ.key).forEach((t) => place(t.value, { kind: 'open' }));
+                state.failedTasks.filter((t) => t.type === typ.key).forEach((t) => {
+                    if (!place(t.value, { kind: 'failed', task: t })) extras.push({ kind: 'failed', task: t });
+                });
+
+                const hidden = Object.values(slots).flat().filter((c) => c === null).length;
+                hiddenTotal += hidden;
+                const dot = (c, v) => {
+                    if (c === null) return `<span class="sd hidden" title="${v}er noch verdeckt"></span>`;
+                    if (c.kind === 'done') return `<button class="sd done" data-action="uncomplete" data-task-id="${c.task.id}" title="${v}er erledigt – tippen zum Zurückholen (Punkte werden entfernt)"></button>`;
+                    if (c.kind === 'manual') return `<span class="sd done" title="${v}er manuell in der Wertung eingetragen"></span>`;
+                    if (c.kind === 'open') return `<span class="sd open" title="${v}er liegt offen aus"></span>`;
+                    return `<button class="sd failed" data-action="unfail" data-task-id="${c.task.id}" title="${v}er gescheitert – tippen zum Zurückholen">✗</button>`;
+                };
+                rows += `<div class="supply-row${hidden === 0 ? ' empty' : ''}" style="--c:${cssColor(typ.cssVar)}">
+                    <span class="sg-label">${glyph(typ)}<span>${esc(typ.label.replace('Kirschbaum &', 'Kirsch &').replace('& Kirschbaum', '& Kirsch'))}</span></span>
+                    ${cols.map((v) => `<span class="sg-cell">${(slots[v] || []).map((c) => dot(c, v)).join('')}</span>`).join('')}
+                    <span class="sg-left" style="color:${textColor(typ.cssVar)}">${hidden || '–'}</span>
+                </div>`;
+            });
+
+            let html = `
+                <div class="supply">
+                    <div class="supply-head">
+                        <span class="supply-title">Vorrat</span>
+                        <span class="supply-sum"><b class="ok">✓ ${state.completedTasks.length}</b> · <b class="bad">✗ ${state.failedTasks.length}</b> · noch verdeckt <b>${hiddenTotal}</b></span>
+                    </div>
+                    <div class="supply-grid" style="--cols:${cols.length}">
+                        <span></span>${cols.map((v) => `<span class="sg-h">${v}</span>`).join('')}<span class="sg-h">übrig</span>
+                        ${rows}
+                    </div>
+                    <p class="supply-legend"><span class="sd done"></span> erledigt <span class="sd open"></span> offen <span class="sd failed">✗</span> gescheitert <span class="sd hidden"></span> verdeckt · Punkt antippen = zurückholen</p>`;
+
+            // Aufträge mit Werten außerhalb des Vorrats (z. B. frei eingegeben)
+            if (extras.length > 0) {
+                html += '<div class="done-row"><span class="done-label">Außerhalb Vorrat:</span>';
+                extras.forEach(({ kind, task: t }) => {
+                    const typ = TYPE_BY_KEY[t.type];
+                    const label = `${glyph(typ)} ${t.value}`;
+                    html += kind === 'done'
+                        ? `<button class="done-chip" style="border-color:${cssColor(typ.cssVar)};color:${textColor(typ.cssVar)}" data-action="uncomplete" data-task-id="${t.id}" title="Zurückholen (Punkte werden entfernt)">${label} ×</button>`
+                        : `<button class="failed-chip" data-action="unfail" data-task-id="${t.id}" title="Zurückholen">${label} ×</button>`;
+                });
+                html += '</div>';
+            }
+            return html + '</div>';
+        }
+
         function renderTracker() {
             const el = $('#trackerSection');
             const tasks = state.openTasks;
@@ -1544,26 +1727,7 @@
                 html += '</div>';
             }
 
-            if (state.completedTasks.length > 0) {
-                html += `<div class="done-row"><span class="done-label">Erledigt (${state.completedTasks.length}):</span>`;
-                state.completedTasks.forEach((t) => {
-                    const typ = TYPE_BY_KEY[t.type];
-                    html += `<button class="done-chip" style="border-color:${cssColor(typ.cssVar)};color:${textColor(typ.cssVar)}"
-                        data-action="uncomplete" data-task-id="${t.id}" title="Zurückholen (Punkte werden entfernt)">
-                        ${typ.seven ? `${glyph(typ)} ${esc(typ.label)}` : `${glyph(typ)} ${t.value}`} ×</button>`;
-                });
-                html += '</div>';
-            }
-
-            if (state.failedTasks.length > 0) {
-                html += '<div class="failed-row"><span class="failed-label">Gescheitert:</span>';
-                state.failedTasks.forEach((t) => {
-                    const typ = TYPE_BY_KEY[t.type];
-                    html += `<button class="failed-chip" data-action="unfail" data-task-id="${t.id}" title="Zurückholen">
-                        ${typ.seven ? `${glyph(typ)} ${esc(typ.label)}` : `${glyph(typ)} ${t.value}`} ×</button>`;
-                });
-                html += '</div>';
-            }
+            html += supplyGridHtml();
 
             if (tasks.length < limit) {
                 html += '<div class="composer"><div class="type-pick">';
