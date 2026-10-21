@@ -400,3 +400,219 @@ test('web link: commands need a connection', async () => {
     await assert.rejects(link.send(C.ack()), err => err.code === 'notConnected');
     assert.equal(BedJetWebLink.isSupported(), false);
 });
+
+// ---- Device tab diagnostics (app-device, loaded without a DOM) ----
+
+vm.runInContext(script('app-device'), ctx, { filename: 'app-device' });
+const D = ctx.BedJetDiagnostics;
+
+function memoryStorage() {
+    const map = new Map();
+    return { map, getItem: k => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, String(v)) };
+}
+
+// A sim whose statuses and sent frames feed a tracker, with a clock the test moves.
+async function trackedSim({ storage = memoryStorage(), clock = { now: Date.UTC(2026, 9, 21, 1, 0) }, shutdown = 0 } = {}) {
+    const sim = new BedJetSim({ autoTick: false });
+    sim.status.shutdown = shutdown;
+    const tracker = new D.ShutdownTracker({ storage, now: () => clock.now });
+    sim.on('raw', r => { if (r.dir === 'tx') tracker.tx(r.bytes); });
+    const entries = [];
+    sim.on('status', s => { const e = tracker.status(s); if (e) entries.push(plain(e)); });
+    await sim.connect();
+    return { sim, tracker, device: new BedJetDevice(sim, { autoAck: false }), entries, storage, clock };
+}
+
+// What the real unit does when it cuts out: standby with a reason byte, no command from anyone.
+function cutOut(sim, reason) {
+    Object.assign(sim.status, { mode: Mode.STANDBY, remainingSeconds: 0, maxRuntime: 0, shutdown: reason });
+    sim.skipAhead(0);
+}
+
+test('app-device defines BedJetDiagnostics without touching the DOM', () => {
+    assert.equal(typeof D.probe, 'function');
+    assert.equal(typeof D.ShutdownTracker, 'function');
+    assert.equal(ctx.App, undefined);
+});
+
+test('shutdown log: a stop with time left is unexpected, timer end and Off are expected', async () => {
+    const { sim, device, entries, clock, tracker } = await trackedSim();
+    await device.setMode(Mode.HEAT);
+    clock.now += 5 * 60000;
+    sim.skipAhead(5);
+    cutOut(sim, 7);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].kind, 'live');
+    assert.equal(entries[0].fromMode, Mode.HEAT);
+    assert.equal(entries[0].remainingSeconds, 55 * 60);
+    assert.equal(entries[0].shutdownReason, 7);
+    assert.equal(entries[0].expected, false);
+
+    await device.setMode(Mode.COOL);
+    await device.setRuntime(1);
+    clock.now += 60000;
+    sim.skipAhead(1);
+    assert.equal(entries.length, 2);
+    assert.equal(entries[1].fromMode, Mode.COOL);
+    assert.equal(entries[1].expected, true);
+    assert.equal(entries[1].why, 'timer');
+
+    await device.setMode(Mode.HEAT);
+    clock.now += 1000;
+    await device.setMode(Mode.STANDBY);
+    assert.equal(entries.length, 3);
+    assert.equal(entries[2].expected, true);
+    assert.equal(entries[2].why, 'off');
+
+    // Off sent long ago no longer explains a stop.
+    await device.setMode(Mode.HEAT);
+    clock.now += D.OFF_WINDOW_MS + 1000;
+    cutOut(sim, 3);
+    assert.equal(entries[3].expected, false);
+
+    // Byte 18 is the *last* shutdown reason, so it sticks until the next cut-out.
+    assert.deepEqual(plain(tracker.entries).map(e => e.shutdownReason), [3, 7, 7, 7], 'newest first');
+    assert.deepEqual(plain(D.reasonCounts(tracker.entries)), [
+        { code: 3, total: 1, unexpected: 1 },
+        { code: 7, total: 3, unexpected: 1 },
+    ]);
+});
+
+test('shutdown log: a program cut short records its step; staying in standby records nothing', async () => {
+    const { sim, device, entries } = await trackedSim();
+    sim.slots[0] = { name: 'Night', steps: [step(Mode.COOL, 5, 44, 2, 0), step(Mode.WAIT, 19, 80, 1, 0)] };
+    await device.startProgram(0, { date: new Date(2026, 9, 21, 22, 0) });
+    sim.skipAhead(125);
+    cutOut(sim, 9);
+    sim.skipAhead(1);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].fromMode, Mode.WAIT);
+    assert.equal(entries[0].programStep, 2);
+    assert.equal(entries[0].expected, false);
+});
+
+test('shutdown log: stop while away is found on reconnect', async () => {
+    const storage = memoryStorage();
+    const clock = { now: Date.UTC(2026, 9, 21, 0, 0) };
+    const first = await trackedSim({ storage, clock });
+    await first.device.setMode(Mode.HEAT);
+    assert.equal(first.sim.status.remainingSeconds, 3600);
+    await first.sim.disconnect();
+    first.tracker.disconnected();
+
+    // The app comes back 10 minutes later (new page load, same storage); the unit is in standby.
+    clock.now += 10 * 60000;
+    const second = await trackedSim({ storage, clock, shutdown: 4 });
+    assert.equal(second.entries.length, 1);
+    const entry = second.entries[0];
+    assert.equal(entry.kind, 'away');
+    assert.equal(entry.expected, false);
+    assert.equal(entry.fromMode, Mode.HEAT);
+    assert.equal(entry.remainingSeconds, 3600);
+    assert.equal(entry.awaySeconds, 600);
+    assert.equal(entry.shutdownReason, 4);
+    assert.equal(plain(JSON.parse(storage.getItem('bedjet-bluetooth-control_shutdowns')))[0].kind, 'away');
+
+    const last = plain(first.tracker.last);
+    const standby = C.parseStatus(second.sim.packet());
+    const at = minutes => ({ time: last.time + minutes * 60000 });
+    assert.equal(D.detectAwayStop(last, standby, at(59.5)), null, 'timer had (nearly) run out anyway');
+    assert.equal(D.detectAwayStop({ ...last, offAt: last.time + 500 }, standby, at(10)), null, 'Off was sent before leaving');
+    assert.ok(D.detectAwayStop({ ...last, offAt: last.time - 3600000 }, standby, at(10)), 'an old Off does not count');
+    assert.equal(D.detectAwayStop(last, { ...standby, mode: Mode.COOL }, at(10)), null, 'still running');
+});
+
+test('shutdown log: capped at 50 and persisted', () => {
+    const storage = memoryStorage();
+    let now = Date.UTC(2026, 9, 21);
+    const tracker = new D.ShutdownTracker({ storage, now: () => now });
+    const running = { mode: Mode.HEAT, remainingSeconds: 1800, shutdownReason: 0, extra: null };
+    const standby = { mode: Mode.STANDBY, remainingSeconds: 0, shutdownReason: 2, extra: null };
+    tracker.status(standby);
+    for (let i = 0; i < 60; i++) {
+        now += 1000;
+        tracker.status(running);
+        tracker.status(standby);
+    }
+    assert.equal(tracker.entries.length, D.SHUTDOWN_CAP);
+    const reloaded = new D.ShutdownTracker({ storage });
+    assert.equal(reloaded.entries.length, D.SHUTDOWN_CAP);
+    assert.equal(reloaded.entries[0].time, new Date(now).toISOString());
+});
+
+const NAME_BLOCK = [...Array.from('M1', ch => ch.charCodeAt(0)), ...new Array(14).fill(0), 0x01, ...new Array(31).fill(0)];
+function payloadFor(id) {
+    if (id === 0x01 || id === 0x04) return NAME_BLOCK;
+    if (id === 0x00 || id === 0x20) return [...Array.from(id ? 'V1.20' : 'BEDJET', ch => ch.charCodeAt(0)), 0];
+    return [0, ...new Array(40).fill(0)];
+}
+
+test('probe over the web link: only 41 queries are written, sources and retries are recorded', async () => {
+    const lastQuery = writes => {
+        const [op, id, tag] = writes.at(-1).split(' ').map(h => parseInt(h, 16));
+        assert.equal(op, 0x41);
+        return { id, tag, attempts: writes.filter(w => w === writes.at(-1)).length };
+    };
+    const { link, writes } = fakeLink({
+        reply: w => {
+            const { id, tag, attempts } = lastQuery(w);
+            if ([0x01, 0x04, 0x0f].includes(id) || (id === 0x07 && attempts < 3)) return [0x04, 0x09, 0xaa];
+            return [id, tag, ...payloadFor(id)];
+        },
+        replyAlt: w => {
+            const { id, tag } = lastQuery(w);
+            return [0x01, 0x04, 0x20].includes(id) ? [id, tag, ...payloadFor(id)] : [0x00, 0x00];
+        },
+    });
+    const result = plain(await D.probe(link));
+    assert.ok(writes.length > 0);
+    assert.ok(writes.every(w => /^41 [0-9a-f]{2} [0-9a-f]{2}$/.test(w)), writes.join(' | '));
+
+    const byId = Object.fromEntries(result.results.map(r => [r.id, r]));
+    assert.deepEqual(Object.keys(byId).map(Number), [0x00, 0x01, 0x04, 0x07, 0x0b, 0x0f, 0x20].sort((a, b) => a - b));
+    assert.equal(byId[0x00].source, '2005');
+    assert.equal(byId[0x00].value, 'BEDJET');
+    assert.equal(byId[0x01].source, '2006');
+    assert.deepEqual(byId[0x01].value, ['M1', null, '']);
+    assert.equal(byId[0x20].value, 'V1.20');
+    assert.equal(byId[0x07].source, '2005');
+    assert.equal(byId[0x07].attempts, 3);
+    assert.deepEqual(byId[0x07].value, { totalSteps: 0, stepsInFragment: 0 });
+    assert.equal(byId[0x0f].source, null);
+    assert.equal(byId[0x0f].attempts, 8);
+    assert.ok(byId[0x0f].error);
+    assert.equal(result.compare.chars['2005'].matches, true);
+    assert.equal(result.compare.chars['2006'].matches, true);
+    assert.equal(result.summary.answered, 6);
+    assert.equal(result.summary.failed, 1);
+    assert.equal(result.summary.maxAttempts, 8);
+    assert.deepEqual(result.summary.compareHolding, ['2005', '2006']);
+    assert.match(result.summary.verdict, /2005 \(\d×\) and 2006 \(\d×\)/);
+});
+
+test('probe over the simulator never calls send and only queries', async () => {
+    const sim = new BedJetSim({ autoTick: false, slots: [{ name: 'Night', steps: [step(Mode.COOL, 5, 44, 2, 0)] }, null, null] });
+    await sim.connect();
+    const sent = [];
+    sim.on('raw', r => { if (r.dir === 'tx') sent.push(C.hex(r.bytes)); });
+    const send = sim.send.bind(sim);
+    let sendCalls = 0;
+    sim.send = bytes => { sendCalls += 1; return send(bytes); };
+    const result = plain(await D.probe(sim));
+    assert.equal(sendCalls, 0);
+    assert.equal(sent.length, D.PROBE_QUERIES.length);
+    assert.ok(sent.every(w => w.startsWith('41 ')), sent.join(' | '));
+    assert.ok(result.results.every(r => r.source === 'sim' && r.attempts === 1));
+    assert.deepEqual(result.results.find(r => r.id === 7).value, { totalSteps: 1, stepsInFragment: 1 });
+    assert.ok(result.compare.skipped);
+    assert.equal(result.summary.verdict, 'Every answered query came from sim.');
+});
+
+test('probe summary of an empty or failed run', () => {
+    assert.equal(D.summarizeProbe({ results: [] }).verdict, 'No query was answered.');
+    const s = plain(D.summarizeProbe({
+        results: [{ source: '2006', attempts: 1 }, { source: null, attempts: 8 }],
+        compare: { chars: { '2005': { matches: false }, '2006': { matches: true } } },
+    }));
+    assert.equal(s.verdict, 'Every answered query came from 2006. 1 unanswered. 1 needed retries (max 8 attempts). Read after one query, only 2006 held the reply.');
+});

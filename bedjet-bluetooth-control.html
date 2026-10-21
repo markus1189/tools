@@ -681,6 +681,67 @@
         /* ==== END tab:programs ==== */
 
         /* ==== BEGIN tab:device ==== */
+        .dev-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+        .dev-head .card-title { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dev-hint { font-size: 12px; line-height: 1.45; color: var(--muted); margin: 10px 0; }
+        .dev-hint strong { color: var(--dim); }
+        .dev-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .dev-actions .btn { flex: 1; }
+        .dev-hint.first, .dev-actions.first { margin-top: 0; }
+        .dev-hint.last { margin-bottom: 0; }
+        .dev-confirm-text { font-size: 14px; line-height: 1.5; color: var(--dim); }
+        .dev-bad { color: var(--error); }
+        .dev-good { color: var(--success); }
+        .dev-card-flush { padding: 0; overflow: hidden; }
+        .dev-card-flush .list { border: none; border-radius: 0; }
+        .dev-settings .switch-row + .switch-row { border-top: 1px solid var(--border); padding-top: 6px; margin-top: 6px; }
+
+        .dev-mem-slot { min-width: 28px; font-weight: 700; color: var(--accent); }
+        .dev-mem-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .dev-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 13px; color: var(--dim); }
+        .dev-summary .dev-count { margin-right: 4px; }
+        .dev-entries { max-height: 420px; overflow-y: auto; }
+        .dev-entry { align-items: flex-start; }
+        .dev-entry.unexpected { box-shadow: inset 3px 0 0 var(--error); }
+        .dev-entry-time { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .dev-meta { margin-top: 3px; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+        .dev-meta.muted { color: var(--muted); }
+
+        .dev-verdict { padding: 10px 12px; margin: 12px 0 10px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: 13px; line-height: 1.45; }
+        .dev-hex {
+            margin-top: 4px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px;
+            color: var(--muted);
+            overflow-wrap: anywhere;
+        }
+        .dev-value { margin-top: 3px; font-size: 13px; overflow-wrap: anywhere; }
+        .dev-probe-row { align-items: flex-start; }
+        .dev-probe-badges { display: flex; gap: 6px; flex-shrink: 0; }
+        .dev-subtitle { margin: 14px 0 6px; font-size: 12px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
+        .dev-subtitle .mono { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+        .dev-packet-filter { flex-wrap: wrap; margin-bottom: 10px; }
+        .dev-packet-filter button { flex: 0 1 auto; }
+        .dev-packets {
+            max-height: 300px;
+            overflow: auto;
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: #0b0b0b;
+            color: #d4d4d4;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .dev-packets:empty::before { content: 'No packets yet.'; color: var(--muted); }
+        .dev-packets .tx { color: #fdba74; }
+        .dev-packets .rx { color: #93c5fd; }
+        .dev-packets .t { color: #858585; }
         /* ==== END tab:device ==== */
     </style>
 </head>
@@ -885,7 +946,104 @@
         <!-- ==== BEGIN tab:device ==== -->
         <section id="tab-device" class="tab-panel" data-tab="device" hidden>
             <h2 class="section-title">Device</h2>
-            <div class="card muted">Coming soon.</div>
+            <div class="card">
+                <div class="dev-head">
+                    <div class="card-title" id="devName">BedJet</div>
+                    <span class="badge" id="devLinkBadge">Not connected</span>
+                </div>
+                <dl class="kv">
+                    <dt>Firmware</dt><dd id="devFirmware">--</dd>
+                    <dt>Bio replies from</dt><dd id="devReplySource">--</dd>
+                    <dt>Dual zone</dt><dd id="devDualZone">--</dd>
+                    <dt>Units set up</dt><dd id="devUnitsSetUp">--</dd>
+                    <dt>Status flags (byte 27)</dt><dd class="mono" id="devFlags">--</dd>
+                    <dt>Clock last set by this app</dt><dd id="devClockSynced">never</dd>
+                </dl>
+                <p class="dev-hint">Whether the unit answers bio queries on <strong>2005</strong> (official app) or <strong>2006</strong> (Lull) is still open. The probe below records which one did.</p>
+                <button class="btn btn-outline btn-block requires-link" id="devSyncClock" type="button">Set clock now</button>
+            </div>
+
+            <h2 class="section-title">Unit settings</h2>
+            <div class="card dev-settings requires-link">
+                <label class="switch-row"><span>LED ring<span class="hint" id="devLedHint">&nbsp;</span></span><input type="checkbox" class="switch" id="devLed"></label>
+                <label class="switch-row"><span>Beeps<span class="hint" id="devBeepsHint">&nbsp;</span></span><input type="checkbox" class="switch" id="devBeeps"></label>
+            </div>
+
+            <h2 class="section-title">Memories</h2>
+            <div class="card dev-card-flush requires-link">
+                <div class="list" id="devMemories"></div>
+            </div>
+            <p class="dev-hint" id="devMemoryHint"></p>
+            <button class="btn btn-ghost btn-block requires-link" id="devRenameDevice" type="button">Rename this BedJet…</button>
+
+            <h2 class="section-title">Shutdown log</h2>
+            <div class="card">
+                <p class="dev-hint first">Every switch to standby. <strong>Unexpected</strong>: more than a minute was left and Off wasn't pressed in this app (the unit's own remote counts as unexpected). The reason byte is undocumented; the count per code shows patterns.</p>
+                <div class="dev-summary" id="devStopSummary"></div>
+                <div class="list dev-entries" id="devStops"></div>
+                <div class="dev-actions">
+                    <button class="btn btn-sm btn-outline" id="devStopsExport" type="button">💾 Export JSON</button>
+                    <button class="btn btn-sm btn-ghost" id="devStopsClear" type="button">🗑️ Clear</button>
+                    <button class="btn btn-sm btn-ghost requires-link" id="devSimulateStop" type="button" hidden>Simulate cut-out</button>
+                </div>
+            </div>
+
+            <h2 class="section-title">Protocol probe</h2>
+            <div class="card">
+                <p class="dev-hint first">Read-only: sends only bio queries (<span class="mono">41 id tag</span>) and records which characteristic answers and what this firmware returns, to settle 2005 vs 2006 and spot firmware differences.</p>
+                <div class="dev-actions first">
+                    <button class="btn btn-primary requires-link" id="devProbeRun" type="button">Run probe</button>
+                    <button class="btn btn-outline" id="devProbeDownload" type="button" disabled>💾 JSON</button>
+                </div>
+                <div id="devProbeResults"></div>
+            </div>
+
+            <h2 class="section-title">Packets</h2>
+            <div class="card">
+                <div class="segmented dev-packet-filter" id="devPacketFilter"></div>
+                <div class="dev-actions first">
+                    <button class="btn btn-sm btn-outline" id="devPacketsPause" type="button">⏸ Pause</button>
+                    <button class="btn btn-sm btn-outline" id="devPacketsCopy" type="button">📋 Copy</button>
+                    <button class="btn btn-sm btn-outline" id="devPacketsDownload" type="button">💾 Download</button>
+                </div>
+                <div class="dev-packets" id="devPackets"></div>
+                <p class="dev-hint last"><span id="devPacketsMeta"></span> App events and errors are in the <a href="#debugSection" id="devOpenDebug">debug log</a>.</p>
+            </div>
+
+            <div class="sheet" id="devConfirmSheet" aria-hidden="true">
+                <div class="sheet-panel" role="dialog" aria-labelledby="devConfirmTitle">
+                    <div class="sheet-header">
+                        <div class="sheet-title" id="devConfirmTitle"></div>
+                        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+                    </div>
+                    <p class="dev-confirm-text" id="devConfirmText"></p>
+                    <div class="sheet-actions">
+                        <button class="btn" type="button" data-close-sheet>Cancel</button>
+                        <button class="btn btn-primary" type="button" id="devConfirmOk"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sheet" id="devRenameSheet" aria-hidden="true">
+                <div class="sheet-panel" role="dialog" aria-labelledby="devRenameTitle">
+                    <div class="sheet-header">
+                        <div class="sheet-title" id="devRenameTitle">Rename</div>
+                        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+                    </div>
+                    <label class="field">
+                        <span>Name <span id="devRenameCount" class="tabular"></span></span>
+                        <input class="input" id="devRenameInput" type="text" maxlength="15" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    </label>
+                    <p class="dev-hint">Up to 15 plain ASCII characters; anything else is dropped.</p>
+                    <div class="banner banner-warn" id="devRenameWarning" hidden>
+                        <span class="banner-text">The BedJet will advertise the new name. Reconnecting to the saved device may need choosing it again in the picker, and a name not starting with “BedJet” only shows with “Show all Bluetooth devices” in settings.</span>
+                    </div>
+                    <div class="sheet-actions">
+                        <button class="btn" type="button" data-close-sheet>Cancel</button>
+                        <button class="btn btn-primary" type="button" id="devRenameOk">Rename</button>
+                    </div>
+                </div>
+            </div>
         </section>
         <!-- ==== END tab:device ==== -->
 
@@ -3133,9 +3291,871 @@
     // clockTimeAllowed, longestStepMinutes, defaultStep, TEMP_RANGES). Read App.device at call time: demo mode swaps it.
     </script>
     <script id="app-device">
-    // Device tab. Available: App (state: link, status, deviceName, firmware, replySource, unit, demo), App.device
-    // (BedJetDevice: deviceName, firmware, memoryNames, setLED, setMuted, saveMemory, recallMemory, rename,
-    // syncClock) and BedJetCodec (parseStatus fields incl. status.extra, NameParam). Read App.device at call time.
+    (function () {
+        'use strict';
+        const C = globalThis.BedJetCodec;
+        const { Mode, Query } = C;
+
+        // ---- Diagnostics: pure logic, also loaded by the node tests (no DOM) ----
+
+        /** A stop with at most this much time left is the timer running out. */
+        const EXPECTED_REMAINING_S = 60;
+        /** An Off/Stop sent by this app explains a stop seen within this window. */
+        const OFF_WINDOW_MS = 15000;
+        const SHUTDOWN_CAP = 50;
+        const STORAGE_PREFIX = 'bedjet-bluetooth-control';
+
+        const isRunningMode = mode => mode != null && mode !== Mode.STANDBY;
+        const isOffPress = bytes => {
+            const b = C.toBytes(bytes);
+            return b.length >= 2 && b[0] === 0x01 && b[1] === C.Button.OFF;
+        };
+        const isClockSet = bytes => {
+            const b = C.toBytes(bytes);
+            return b.length >= 3 && b[0] === 0x08;
+        };
+        const iso = time => new Date(time).toISOString();
+
+        function snapshot(status, time, offAt = null) {
+            return {
+                time,
+                mode: status.mode,
+                remainingSeconds: status.remainingSeconds,
+                programStep: status.extra?.programStep ?? null,
+                shutdownReason: status.shutdownReason,
+                offAt,
+            };
+        }
+
+        function stopEntry(kind, before, after, time) {
+            return {
+                time: iso(time),
+                kind,
+                fromMode: before.mode,
+                programStep: before.programStep ?? null,
+                remainingSeconds: before.remainingSeconds,
+                shutdownReason: after.shutdownReason,
+            };
+        }
+
+        /** `prev`: snapshot of the previous status on this connection; `next`: the status just received. */
+        function detectStop(prev, next, { time = Date.now(), offAt = null } = {}) {
+            if (!prev || !next || !isRunningMode(prev.mode) || next.mode !== Mode.STANDBY) return null;
+            const offPressed = offAt != null && time - offAt >= 0 && time - offAt <= OFF_WINDOW_MS;
+            const why = offPressed ? 'off' : prev.remainingSeconds <= EXPECTED_REMAINING_S ? 'timer' : null;
+            return { ...stopEntry('live', prev, next, time), expected: why !== null, why };
+        }
+
+        /** `last`: snapshot stored before the app let go of the unit; `current`: first status after reconnecting. */
+        function detectAwayStop(last, current, { time = Date.now() } = {}) {
+            if (!last || !current || !isRunningMode(last.mode) || current.mode !== Mode.STANDBY) return null;
+            // Off was sent, but the page was hidden before the standby status arrived.
+            if (last.offAt != null && last.offAt >= last.time - OFF_WINDOW_MS) return null;
+            const awaySeconds = Math.max(0, Math.round((time - last.time) / 1000));
+            if (last.remainingSeconds - awaySeconds <= EXPECTED_REMAINING_S) return null;
+            return { ...stopEntry('away', last, current, time), lastSeen: iso(last.time), awaySeconds, expected: false, why: null };
+        }
+
+        const addEntry = (entries, entry, cap = SHUTDOWN_CAP) => [entry, ...(entries || [])].slice(0, cap);
+
+        function reasonCounts(entries) {
+            const byCode = new Map();
+            for (const e of entries || []) {
+                const row = byCode.get(e.shutdownReason) || { code: e.shutdownReason, total: 0, unexpected: 0 };
+                row.total += 1;
+                if (!e.expected) row.unexpected += 1;
+                byCode.set(e.shutdownReason, row);
+            }
+            return [...byCode.values()].sort((a, b) => a.code - b.code);
+        }
+
+        /** Feeds statuses and sent frames into the shutdown log; storage is localStorage or a stand-in. */
+        class ShutdownTracker {
+            constructor({ storage = null, now = () => Date.now(), cap = SHUTDOWN_CAP,
+                logKey = `${STORAGE_PREFIX}_shutdowns`, lastKey = `${STORAGE_PREFIX}_last_status` } = {}) {
+                Object.assign(this, { storage, now, cap, logKey, lastKey });
+                const entries = this._read(logKey);
+                this.entries = Array.isArray(entries) ? entries.slice(0, cap) : [];
+                this.last = this._read(lastKey);
+                this.prev = null;
+                this.offAt = null;
+            }
+
+            tx(bytes) {
+                if (!isOffPress(bytes)) return;
+                this.offAt = this.now();
+                if (this.last) {
+                    this.last = { ...this.last, offAt: this.offAt };
+                    this._write(this.lastKey, this.last);
+                }
+            }
+
+            /** Returns the new log entry when this status completes one. */
+            status(status) {
+                const time = this.now();
+                const entry = this.prev
+                    ? detectStop(this.prev, status, { time, offAt: this.offAt })
+                    : detectAwayStop(this.last, status, { time });
+                this.prev = this.last = snapshot(status, time, this.offAt);
+                this._write(this.lastKey, this.last);
+                if (entry) {
+                    this.entries = addEntry(this.entries, entry, this.cap);
+                    this._write(this.logKey, this.entries);
+                }
+                return entry;
+            }
+
+            /** The next status is then compared with the stored one, as after time away. */
+            disconnected() { this.prev = null; }
+
+            clear() {
+                this.entries = [];
+                this._write(this.logKey, this.entries);
+            }
+
+            _read(key) {
+                try { return JSON.parse(this.storage?.getItem(key) || 'null'); } catch { return null; }
+            }
+
+            _write(key, value) {
+                try { this.storage?.setItem(key, JSON.stringify(value)); } catch { /* storage full or unavailable */ }
+            }
+        }
+
+        // ---- Protocol probe ----
+
+        const PROBE_QUERIES = Object.freeze([
+            { id: Query.DEVICE_NAME, label: 'Device name' },
+            { id: Query.MEMORY_NAMES, label: 'Memory names' },
+            { id: Query.PROGRAM_NAMES, label: 'Program names' },
+            { id: Query.FIRMWARE, label: 'Firmware' },
+            ...[0, 1, 2].map(slot => ({ id: Query.fragment(slot, 0), label: `Program ${slot + 1}, fragment 0` })),
+        ]);
+        const idHex = id => `0x${id.toString(16).padStart(2, '0')}`;
+
+        function decodeReply(id, payload) {
+            if (id === Query.DEVICE_NAME || id === Query.FIRMWARE) return C.parseText(payload);
+            if (id === Query.MEMORY_NAMES || id === Query.PROGRAM_NAMES) return C.parseNames(payload).slice(0, 3);
+            const fragment = C.parseFragment(payload, 0);
+            return fragment ? { totalSteps: fragment.total, stepsInFragment: fragment.steps.length } : 'unparseable';
+        }
+
+        // BedJetWebLink has no public read of 2005/2006 outside a query. Going through its queue and _read keeps
+        // the reads serialised with other GATT work and logged as raw packets. Null for the simulator.
+        function replyReader(link) {
+            if (!link?._chars || typeof link._read !== 'function' || typeof link._serial !== 'function') return null;
+            return () => link._serial(async () => {
+                const out = {};
+                for (const [label, ch] of [['2005', link._chars?.reply], ['2006', link._chars?.replyAlt]]) {
+                    if (!ch) {
+                        out[label] = { missing: true };
+                        continue;
+                    }
+                    try {
+                        out[label] = { bytes: Array.from(await link._read(ch, label)) };
+                    } catch (err) {
+                        out[label] = { error: err.message };
+                    }
+                }
+                return out;
+            });
+        }
+
+        function summarizeProbe({ results = [], compare = null } = {}) {
+            const sources = {};
+            let answered = 0, failed = 0, retried = 0, maxAttempts = 0;
+            for (const r of results) {
+                if (r.source) {
+                    answered += 1;
+                    sources[r.source] = (sources[r.source] || 0) + 1;
+                } else {
+                    failed += 1;
+                }
+                if (r.attempts > 1) retried += 1;
+                maxAttempts = Math.max(maxAttempts, r.attempts || 0);
+            }
+            const names = Object.keys(sources).sort();
+            const holding = compare?.chars
+                ? Object.entries(compare.chars).filter(([, c]) => c.matches).map(([label]) => label).sort()
+                : null;
+            const parts = [
+                !answered ? 'No query was answered.'
+                    : names.length === 1 ? `Every answered query came from ${names[0]}.`
+                        : `Answers came from ${names.map(n => `${n} (${sources[n]}×)`).join(' and ')}.`,
+            ];
+            if (failed) parts.push(`${failed} unanswered.`);
+            if (retried) parts.push(`${retried} needed retries (max ${maxAttempts} attempts).`);
+            if (holding) {
+                parts.push(holding.length === 2 ? 'Read after one query, both 2005 and 2006 held the reply.'
+                    : holding.length === 1 ? `Read after one query, only ${holding[0]} held the reply.`
+                        : 'Read after one query, neither 2005 nor 2006 held the reply.');
+            }
+            return { answered, failed, retried, maxAttempts, sources, compareHolding: holding, verdict: parts.join(' ') };
+        }
+
+        /** Runs the read-only probe over any link. Writes nothing but `41 id tag` (through link.query). */
+        async function probe(link, { readReplies = replyReader(link), onProgress = () => {}, now = () => Date.now() } = {}) {
+            const packets = [];
+            const off = link.on('raw', ({ dir, char, bytes }) => packets.push({ dir, char, bytes: Array.from(C.toBytes(bytes)) }));
+            const startedAt = now();
+
+            async function ask(id) {
+                const start = packets.length;
+                const t0 = now();
+                let payload = null, error = null, code = null;
+                try {
+                    payload = Array.from(C.toBytes(await link.query(id)));
+                } catch (err) {
+                    error = err.message;
+                    code = err.code || null;
+                }
+                const mine = packets.slice(start);
+                const sent = mine.filter(p => p.dir === 'tx' && p.bytes[0] === 0x41 && p.bytes[1] === id);
+                const tags = new Set(sent.map(p => p.bytes[2]));
+                // A stale reply from an earlier query can carry the same id and payload, but not one of our tags.
+                const answer = payload && mine.find(p => p.dir === 'rx' && p.bytes[0] === id && tags.has(p.bytes[1])
+                    && p.bytes.length === payload.length + 2 && payload.every((v, k) => p.bytes[k + 2] === v));
+                const tag = answer ? answer.bytes[1] : sent[0]?.bytes[2] ?? null;
+                return {
+                    tag,
+                    attempts: sent.filter(p => p.bytes[2] === tag).length,
+                    source: answer ? answer.char : null,
+                    payload,
+                    error,
+                    code,
+                    ms: now() - t0,
+                };
+            }
+
+            const results = [];
+            let compare = null;
+            let lost = false;
+            const steps = PROBE_QUERIES.length + 1;
+            try {
+                for (const [i, q] of PROBE_QUERIES.entries()) {
+                    onProgress(i, steps);
+                    const r = await ask(q.id);
+                    results.push({
+                        id: q.id, idHex: idHex(q.id), label: q.label,
+                        source: r.source, attempts: r.attempts, tag: r.tag, ms: r.ms,
+                        payloadHex: r.payload ? C.hex(r.payload) : null,
+                        value: r.payload ? decodeReply(q.id, r.payload) : null,
+                        error: r.error,
+                    });
+                    if (r.code === 'notConnected') {
+                        lost = true;
+                        break;
+                    }
+                }
+                onProgress(steps - 1, steps);
+                if (!readReplies) {
+                    compare = { skipped: 'No 2005/2006 characteristics on this link (simulator).' };
+                } else if (lost) {
+                    compare = { skipped: 'Connection lost.' };
+                } else {
+                    const r = await ask(Query.FIRMWARE);
+                    const reads = await readReplies();
+                    const chars = {};
+                    for (const [label, read] of Object.entries(reads)) {
+                        chars[label] = read.bytes
+                            ? { hex: C.hex(read.bytes), matches: read.bytes[0] === Query.FIRMWARE && read.bytes[1] === r.tag }
+                            : { ...read, matches: false };
+                    }
+                    compare = { id: Query.FIRMWARE, idHex: idHex(Query.FIRMWARE), tag: r.tag, answeredBy: r.source, chars };
+                }
+            } finally {
+                off();
+            }
+            const result = {
+                time: iso(startedAt),
+                link: link.constructor?.name || 'link',
+                replySource: link.replySource ?? null,
+                results,
+                compare,
+            };
+            result.summary = summarizeProbe(result);
+            return result;
+        }
+
+        const D = globalThis.BedJetDiagnostics = Object.freeze({
+            EXPECTED_REMAINING_S, OFF_WINDOW_MS, SHUTDOWN_CAP, PROBE_QUERIES,
+            isRunningMode, isOffPress, isClockSet, snapshot, detectStop, detectAwayStop, addEntry, reasonCounts,
+            ShutdownTracker, decodeReply, replyReader, summarizeProbe, probe,
+        });
+
+        if (typeof document === 'undefined') return;
+
+        // ---- UI ----
+
+        const KEYS = { clock: `${STORAGE_PREFIX}_clock_set_at` };
+        const PACKET_CAP = 300;
+        const PACKETS_SHOWN = 150;
+        const PROBE_PACKETS = 200;
+        const $ = id => document.getElementById(id);
+        const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+        function memoryStorage() {
+            const map = new Map();
+            return { getItem: k => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, String(v)), removeItem: k => map.delete(k) };
+        }
+        const realStorage = (() => { try { return localStorage; } catch { return null; } })();
+
+        const ui = {
+            link: null,
+            unbind: [],
+            tracker: null,
+            // Demo stops and clock times stay in memory so they never mix with the real unit's log.
+            demoStorage: memoryStorage(),
+            packets: [],
+            frozen: null,
+            filter: 'all',
+            packetTimer: null,
+            hold: { led: null, beeps: null },
+            memoryNames: null,
+            memoryLink: null,
+            probe: null,
+            probeLink: null,
+            probing: null,
+        };
+
+        const storage = () => (App.state.demo ? ui.demoStorage : realStorage);
+
+        const pad = (n, w = 2) => String(n).padStart(w, '0');
+        const clockText = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        function whenText(time) {
+            const d = new Date(time);
+            if (Number.isNaN(d.getTime())) return '--';
+            const today = new Date();
+            if (d.toDateString() === today.toDateString()) return `Today ${clockText(d)}`;
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${clockText(d)}`;
+            return `${d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} ${clockText(d)}`;
+        }
+        const left = seconds => (seconds >= 60 ? App.formatDuration(Math.round(seconds / 60)) : `${seconds} s`);
+
+        function download(name, text, type = 'application/json') {
+            const url = URL.createObjectURL(new Blob([text], { type }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.append(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+        const stamp = () => new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch {
+                const area = document.createElement('textarea');
+                area.value = text;
+                area.style.position = 'fixed';
+                area.style.left = '-9999px';
+                document.body.append(area);
+                area.select();
+                document.execCommand('copy');
+                area.remove();
+            }
+        }
+
+        // ---- link binding ----
+
+        function bindLink(link) {
+            ui.unbind.forEach(off => off());
+            ui.unbind = [];
+            ui.link = link;
+            ui.memoryLink = null;
+            ui.memoryNames = null;
+            ui.hold.led = ui.hold.beeps = null;
+            ui.tracker = new D.ShutdownTracker({ storage: storage() });
+            if (link) {
+                ui.unbind.push(
+                    link.on('raw', onRaw),
+                    link.on('status', onStatus),
+                    link.on('state', state => { if (state !== 'ready') ui.tracker.disconnected(); }),
+                );
+            }
+            renderAll();
+        }
+
+        function onRaw({ dir, char, bytes }) {
+            const b = C.toBytes(bytes);
+            if (dir === 'tx') {
+                ui.tracker?.tx(b);
+                if (D.isClockSet(b)) {
+                    try { storage()?.setItem(KEYS.clock, String(Date.now())); } catch { /* unavailable */ }
+                    renderDevice();
+                }
+            }
+            ui.packets.push({ t: Date.now(), dir, char, hex: C.hex(b) });
+            if (ui.packets.length > PACKET_CAP) ui.packets.splice(0, ui.packets.length - PACKET_CAP);
+            if (!ui.frozen && App.state.tab === 'device' && !ui.packetTimer) {
+                ui.packetTimer = setTimeout(() => { ui.packetTimer = null; renderPackets(); }, 250);
+            }
+        }
+
+        function onStatus(status) {
+            const entry = ui.tracker?.status(status);
+            if (!entry) return;
+            const what = entry.kind === 'away' ? 'Stopped while the app was away'
+                : entry.expected ? 'Stopped as expected' : 'Unexpected stop';
+            App.log(`${what}: from ${App.modeLabel(entry.fromMode)}, ${left(entry.remainingSeconds)} left, reason byte ${entry.shutdownReason}`,
+                entry.expected ? 'info' : 'warn');
+            renderStops();
+        }
+
+        // ---- device card and settings ----
+
+        const REPLY_SOURCE = { '2005': '2005 (official app)', '2006': '2006 (Lull)', sim: 'Simulator' };
+        const yesNo = value => (value == null ? '--' : value ? 'Yes' : 'No');
+
+        function renderDevice() {
+            const s = App.state;
+            const st = s.status;
+            const extra = st?.extra;
+            const ready = s.link === 'ready';
+            $('devName').textContent = s.deviceName || s.savedDevice?.name || (s.demo ? 'Demo BedJet' : 'BedJet');
+            const badge = $('devLinkBadge');
+            badge.textContent = ready ? 'Connected' : s.link === 'connecting' ? 'Connecting…' : 'Not connected';
+            badge.className = `badge ${ready ? 'success' : s.link === 'connecting' ? 'accent' : ''}`;
+            $('devFirmware').textContent = s.firmware || (ready ? 'reading…' : '--');
+            const source = App.link?.replySource ?? s.replySource;
+            $('devReplySource').textContent = REPLY_SOURCE[source] || source || (ready ? 'not yet seen' : '--');
+            $('devDualZone').textContent = yesNo(st?.dualZone);
+            $('devUnitsSetUp').textContent = yesNo(extra?.unitsSetUp);
+            $('devFlags').textContent = extra ? `0x${extra.flags.toString(16).padStart(2, '0')}` : '--';
+            let clockAt = null;
+            try { clockAt = Number(storage()?.getItem(KEYS.clock)) || null; } catch { /* unavailable */ }
+            $('devClockSynced').textContent = clockAt ? whenText(clockAt) : 'never';
+            renderSettings();
+            renderSaveState();
+        }
+
+        // After a confirmed change the flags in the status lag behind; show ours until the unit agrees.
+        function shownFlag(key, reported) {
+            const hold = ui.hold[key];
+            if (hold && (hold.value === reported || Date.now() > hold.until)) ui.hold[key] = null;
+            return ui.hold[key] ? ui.hold[key].value : reported;
+        }
+
+        function renderSettings() {
+            const extra = App.state.status?.extra;
+            const known = !!extra && App.state.link === 'ready';
+            const led = $('devLed');
+            const beeps = $('devBeeps');
+            led.disabled = beeps.disabled = !known;
+            led.checked = known && shownFlag('led', extra.ledEnabled);
+            beeps.checked = known && shownFlag('beeps', !extra.beepsMuted);
+            const waiting = App.state.link === 'ready' ? "Waiting for the unit's flags…" : 'Connect to change';
+            $('devLedHint').textContent = known ? (led.checked ? 'Lit' : 'Dark, for sleeping') : waiting;
+            $('devBeepsHint').textContent = known ? (beeps.checked ? 'Unit beeps on every change' : 'Muted') : waiting;
+        }
+
+        async function toggleFlag(key, value) {
+            ui.hold[key] = { value, until: Infinity };
+            renderSettings();
+            App.log(key === 'led' ? `LED ring → ${value ? 'on' : 'off'}` : `Beeps → ${value ? 'on' : 'muted'}`, 'info');
+            try {
+                await (key === 'led' ? App.device.setLED(value) : App.device.setMuted(!value));
+                ui.hold[key] = { value, until: Date.now() + 6000 };
+                App.haptic('success');
+            } catch (err) {
+                ui.hold[key] = null;
+                App.fail(err);
+            }
+            renderSettings();
+        }
+
+        // ---- memories and names ----
+
+        async function loadMemoryNames(force = false) {
+            const link = App.link;
+            if (!link || (!force && ui.memoryLink === link)) return;
+            ui.memoryLink = link;
+            try {
+                const names = await App.device.memoryNames();
+                if (link === App.link) ui.memoryNames = names;
+            } catch (err) {
+                ui.memoryLink = null;
+                App.log(`Could not read memory names: ${err.message}`, 'warn');
+            }
+            renderMemories();
+        }
+
+        const canSave = () => !!App.state.status && App.state.status.mode !== Mode.STANDBY;
+
+        function renderSaveState() {
+            const ok = canSave();
+            document.querySelectorAll('[data-dev-save]').forEach(btn => { btn.disabled = !ok; });
+            $('devMemoryHint').textContent = ok || !App.state.status
+                ? "Save stores the unit's current mode, temperature and fan in that memory, replacing what was there."
+                : 'Turn the unit on in the mode you want to keep, then save it to a memory.';
+        }
+
+        function renderMemories() {
+            const names = ui.memoryNames;
+            $('devMemories').innerHTML = [1, 2, 3].map(n => {
+                const name = names?.[n - 1];
+                const label = names == null ? '<span class="muted">…</span>'
+                    : name ? esc(name) : '<span class="muted">No name</span>';
+                return `<div class="list-row">
+                    <span class="dev-mem-slot">M${n}</span>
+                    <span class="grow dev-mem-name">${label}</span>
+                    <button class="btn btn-sm btn-ghost" type="button" data-dev-rename="${n}">Rename</button>
+                    <button class="btn btn-sm btn-outline" type="button" data-dev-save="${n}"${canSave() ? '' : ' disabled'}>Save here</button>
+                </div>`;
+            }).join('');
+            renderSaveState();
+        }
+
+        function describeCurrent(st) {
+            if (!st) return 'the current settings';
+            const temp = C.usesTemperature(st.mode) ? ` · ${App.formatTemp(st.targetTemp)}` : '';
+            return `${App.modeLabel(st.mode)}${temp} · fan ${st.fanPercent} %`;
+        }
+
+        let confirmResolve = null;
+        function confirmSheet({ title, text, ok, danger = false }) {
+            confirmResolve?.(false);
+            $('devConfirmTitle').textContent = title;
+            $('devConfirmText').textContent = text;
+            $('devConfirmOk').textContent = ok;
+            $('devConfirmOk').className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+            App.openSheet('devConfirmSheet');
+            return new Promise(resolve => { confirmResolve = resolve; });
+        }
+
+        async function saveMemory(n) {
+            const st = App.state.status;
+            const name = ui.memoryNames?.[n - 1];
+            const ok = await confirmSheet({
+                title: `Save to M${n}?`,
+                text: `M${n}${name ? ` (“${name}”)` : ''} will be overwritten with ${describeCurrent(st)}.`,
+                ok: `Overwrite M${n}`,
+            });
+            if (!ok) return;
+            App.log(`Save current settings to M${n}`, 'info');
+            await App.run(() => App.device.saveMemory(n), { success: `Saved to M${n}.` });
+        }
+
+        let renaming = null;
+        function openRename(param) {
+            renaming = param;
+            const isDevice = param === C.NameParam.DEVICE;
+            const current = isDevice ? App.state.deviceName : ui.memoryNames?.[param - 1];
+            $('devRenameTitle').textContent = isDevice ? 'Rename this BedJet' : `Rename M${param}`;
+            $('devRenameWarning').hidden = !isDevice;
+            $('devRenameOk').textContent = isDevice ? 'Rename BedJet' : 'Rename';
+            $('devRenameOk').className = `btn ${isDevice ? 'btn-danger' : 'btn-primary'}`;
+            $('devRenameInput').value = C.sanitizeName(current || '');
+            updateRenameCount();
+            App.openSheet('devRenameSheet');
+            setTimeout(() => $('devRenameInput').focus(), 250);
+        }
+
+        function updateRenameCount() {
+            const input = $('devRenameInput');
+            const clean = C.sanitizeName(input.value);
+            if (clean !== input.value) input.value = clean;
+            $('devRenameCount').textContent = `${clean.length}/${C.Limits.nameLength}`;
+            $('devRenameOk').disabled = !clean.trim();
+        }
+
+        async function submitRename() {
+            const param = renaming;
+            const name = C.sanitizeName($('devRenameInput').value).trim();
+            if (param == null || !name) return;
+            App.closeSheet('devRenameSheet');
+            const isDevice = param === C.NameParam.DEVICE;
+            const what = isDevice ? 'BedJet' : `M${param}`;
+            App.log(`Rename ${what} → “${name}” (param ${param})`, 'info');
+            const stored = await App.run(async () => {
+                await App.device.rename(param, name);
+                if (isDevice) return App.device.deviceName();
+                const names = await App.device.memoryNames();
+                ui.memoryNames = names;
+                return names[param - 1];
+            });
+            if (stored === undefined) return;
+            if (isDevice && stored) App.set({ deviceName: stored });
+            renderMemories();
+            if (stored === name) App.toast(`${what} renamed to “${name}”.`, 'success', 2500);
+            else App.toast(`Sent, but the unit still reports “${stored ?? ''}”.`, 'info');
+        }
+
+        // ---- shutdown log ----
+
+        const WHY = { timer: 'Timer ran out', off: 'Off in this app' };
+
+        function renderStops() {
+            const entries = ui.tracker?.entries || [];
+            const unexpected = entries.filter(e => !e.expected).length;
+            const counts = D.reasonCounts(entries);
+            $('devStopSummary').innerHTML = entries.length
+                ? `<span class="dev-count">${entries.length} stop${entries.length === 1 ? '' : 's'} · <strong class="${unexpected ? 'dev-bad' : 'dev-good'}">${unexpected} unexpected</strong></span>`
+                    + counts.map(c => `<span class="badge ${c.unexpected ? 'error' : ''}" title="${c.unexpected} unexpected">reason ${esc(c.code)} · ${c.total}×</span>`).join('')
+                : '';
+            $('devStops').hidden = !entries.length;
+            $('devStops').innerHTML = entries.map(e => {
+                const badge = e.kind === 'away' ? '<span class="badge error">Stopped while away</span>'
+                    : e.expected ? `<span class="badge success">${esc(WHY[e.why] || 'Expected')}</span>`
+                        : '<span class="badge error">Unexpected</span>';
+                const step = e.programStep ? ` · program step ${e.programStep}` : '';
+                const away = e.kind === 'away'
+                    ? `<div class="dev-meta muted">Last seen ${esc(whenText(e.lastSeen))}, away ${esc(left(e.awaySeconds))}</div>` : '';
+                return `<div class="list-row dev-entry${e.expected ? '' : ' unexpected'}">
+                    <div class="grow">
+                        <div class="row between"><span class="dev-entry-time">${esc(whenText(e.time))}</span>${badge}</div>
+                        <div class="dev-meta">From ${esc(App.modeLabel(e.fromMode))}${step} · ${esc(left(e.remainingSeconds))} left · reason ${esc(e.shutdownReason)}</div>
+                        ${away}
+                    </div>
+                </div>`;
+            }).join('');
+            if (!entries.length) {
+                $('devStopSummary').innerHTML = '<span class="muted">No stops recorded yet.</span>';
+            }
+            $('devStopsExport').disabled = $('devStopsClear').disabled = !entries.length;
+            $('devSimulateStop').hidden = !App.state.demo;
+        }
+
+        function exportStops() {
+            const entries = ui.tracker?.entries || [];
+            const s = App.state;
+            const data = {
+                exported: new Date().toISOString(),
+                demo: s.demo,
+                device: { name: s.deviceName, firmware: s.firmware, replySource: App.link?.replySource ?? s.replySource },
+                note: 'remainingSeconds is the time left in the last status before the stop; shutdownReason is status byte 18 of the standby status.',
+                reasonCounts: D.reasonCounts(entries),
+                entries,
+            };
+            download(`jetcommand-shutdowns-${stamp()}.json`, JSON.stringify(data, null, 2));
+        }
+
+        async function clearStops() {
+            const ok = await confirmSheet({ title: 'Clear the shutdown log?', text: 'All recorded stops are deleted from this phone.', ok: 'Clear log', danger: true });
+            if (!ok) return;
+            ui.tracker?.clear();
+            renderStops();
+        }
+
+        // The simulator never stops on its own early; this fakes the unit cutting out with a reason byte.
+        async function simulateStop() {
+            const sim = App.link;
+            if (!(sim instanceof BedJetSim) || sim.state !== 'ready') return;
+            if (sim.status.mode === Mode.STANDBY) await App.run(() => App.device.setMode(Mode.HEAT));
+            sim.skipAhead(7);
+            sim._run = null;
+            Object.assign(sim.status, { step: 0, mode: Mode.STANDBY, remainingSeconds: 0, maxRuntime: 0, shutdown: ui.tracker.entries.filter(e => !e.expected).length % 2 ? 7 : 3 });
+            sim.skipAhead(0);
+        }
+
+        // ---- probe ----
+
+        async function runProbe() {
+            if (ui.probing) return;
+            const link = App.link;
+            if (!link || link.state !== 'ready') return;
+            ui.probing = { step: 0, steps: D.PROBE_QUERIES.length + 1 };
+            renderProbe();
+            App.log('Probe: bio queries 0x00, 0x01, 0x04, 0x20 and fragment 0 of each slot', 'info');
+            const result = await App.run(() => D.probe(link, {
+                onProgress: (step, steps) => { ui.probing = { step, steps }; renderProbe(); },
+            }));
+            ui.probing = null;
+            if (result) {
+                ui.probe = result;
+                ui.probeLink = link;
+                ui.probePackets = ui.packets.slice(-PROBE_PACKETS);
+                if (link === App.link) App.set({ replySource: link.replySource });
+                App.log(`Probe: ${result.summary.verdict}`, result.summary.failed ? 'warn' : 'success');
+            }
+            renderProbe();
+            renderDevice();
+        }
+
+        function valueText(value) {
+            if (value == null) return '';
+            if (Array.isArray(value)) return value.map((v, i) => `${i + 1}: ${v == null ? '(never saved)' : v === '' ? '(empty)' : `“${v}”`}`).join(' · ');
+            if (typeof value === 'object') return `${value.totalSteps} step${value.totalSteps === 1 ? '' : 's'} in program, ${value.stepsInFragment} in this fragment`;
+            return `“${value}”`;
+        }
+
+        function renderProbe() {
+            const run = $('devProbeRun');
+            run.disabled = !!ui.probing;
+            run.textContent = ui.probing ? `Probing… ${ui.probing.step + 1}/${ui.probing.steps}` : ui.probe ? 'Run again' : 'Run probe';
+            $('devProbeDownload').disabled = !ui.probe;
+            const p = ui.probe;
+            if (!p) {
+                $('devProbeResults').innerHTML = '';
+                return;
+            }
+            const rows = p.results.map(r => {
+                const source = r.source ? `<span class="badge ${r.source === '2006' ? 'accent' : 'success'}">${esc(r.source)}</span>`
+                    : '<span class="badge error">no reply</span>';
+                const attempts = `<span class="badge ${r.attempts > 1 ? 'accent' : ''}">${r.attempts} ${r.attempts === 1 ? 'try' : 'tries'}</span>`;
+                return `<div class="list-row dev-probe-row">
+                    <div class="grow">
+                        <div class="row between"><span>${esc(r.label)} <span class="muted mono small">${esc(r.idHex)}</span></span>
+                            <span class="dev-probe-badges">${attempts}${source}</span></div>
+                        <div class="dev-value">${r.error ? `<span class="dev-bad">${esc(r.attempts ? `No matching reply after ${r.attempts} ${r.attempts === 1 ? 'try' : 'tries'}` : r.error)}</span>` : esc(valueText(r.value))}</div>
+                        ${r.payloadHex ? `<div class="dev-hex">${esc(r.payloadHex)}</div>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+            let compare = '';
+            if (p.compare?.chars) {
+                compare = `<div class="dev-subtitle">2005 vs 2006 after one query <span class="mono">(${esc(p.compare.idHex)}, tag ${esc(p.compare.tag)})</span></div>
+                    <div class="list">${Object.entries(p.compare.chars).map(([label, c]) => `<div class="list-row dev-probe-row">
+                        <div class="grow">
+                            <div class="row between"><span class="mono">${esc(label)}</span>
+                                <span class="badge ${c.matches ? 'success' : ''}">${c.matches ? 'holds the reply' : c.missing ? 'not present' : c.error ? 'read failed' : 'other contents'}</span></div>
+                            ${c.hex != null ? `<div class="dev-hex">${esc(c.hex || '(empty)')}</div>` : c.error ? `<div class="dev-hex">${esc(c.error)}</div>` : ''}
+                        </div>
+                    </div>`).join('')}</div>`;
+            } else if (p.compare?.skipped) {
+                compare = `<p class="dev-hint">2005 vs 2006: ${esc(p.compare.skipped)}</p>`;
+            }
+            const stale = ui.probeLink !== App.link ? ' <span class="muted">(from an earlier connection)</span>' : '';
+            $('devProbeResults').innerHTML = `<div class="dev-verdict">${esc(p.summary.verdict)}${stale}<div class="dev-meta muted">${esc(whenText(p.time))} · ${esc(p.link)}</div></div>
+                <div class="list">${rows}</div>${compare}`;
+        }
+
+        function downloadProbe() {
+            if (!ui.probe) return;
+            const s = App.state;
+            const data = {
+                ...ui.probe,
+                device: { name: s.deviceName, firmware: s.firmware, demo: s.demo },
+                userAgent: navigator.userAgent,
+                packets: (ui.probePackets || []).map(p => ({ time: new Date(p.t).toISOString(), dir: p.dir, char: p.char, hex: p.hex })),
+            };
+            download(`jetcommand-probe-${stamp()}.json`, JSON.stringify(data, null, 2));
+        }
+
+        // ---- packets ----
+
+        const packetTime = t => {
+            const d = new Date(t);
+            return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+        };
+        const packetLine = p => `${packetTime(p.t)} ${p.dir === 'tx' ? '►' : '◄'} ${p.char} ${p.hex}`;
+        const visiblePackets = () => (ui.frozen || ui.packets).filter(p => ui.filter === 'all' || p.char === ui.filter);
+
+        function renderPackets() {
+            const source = ui.frozen || ui.packets;
+            const chars = [...new Set([...source.map(p => p.char), ...(ui.filter === 'all' ? [] : [ui.filter])])].sort();
+            const filter = $('devPacketFilter');
+            const options = ['all', ...chars];
+            if (filter.dataset.options !== options.join() || filter.dataset.active !== ui.filter) {
+                filter.innerHTML = options.map(c => `<button type="button" data-dev-filter="${esc(c)}" class="${c === ui.filter ? 'active' : ''}">${c === 'all' ? 'All' : esc(c)}</button>`).join('');
+                filter.dataset.options = options.join();
+                filter.dataset.active = ui.filter;
+            }
+            const shown = visiblePackets().slice(-PACKETS_SHOWN);
+            const el = $('devPackets');
+            const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+            el.innerHTML = shown.map(p => `<div><span class="t">${packetTime(p.t)}</span> <span class="${p.dir}">${p.dir === 'tx' ? '►' : '◄'} ${esc(p.char)}</span> ${p.hex}</div>`).join('');
+            if (atBottom || !renderPackets.done) el.scrollTop = el.scrollHeight;
+            renderPackets.done = true;
+            const total = visiblePackets().length;
+            $('devPacketsMeta').textContent = `${ui.frozen ? 'Paused · ' : ''}${total > shown.length ? `Last ${shown.length} of ${total}` : `${total}`} packet${total === 1 ? '' : 's'} (kept in memory, last ${PACKET_CAP}).`;
+            $('devPacketsPause').textContent = ui.frozen ? '▶ Resume' : '⏸ Pause';
+        }
+
+        // ---- wiring ----
+
+        function renderAll() {
+            renderDevice();
+            renderMemories();
+            renderStops();
+            renderProbe();
+            renderPackets();
+        }
+
+        App.subscribe((s, changed) => {
+            if (App.link !== ui.link) bindLink(App.link);
+            if ('link' in changed) {
+                if (s.link === 'ready') loadMemoryNames();
+                else ui.hold.led = ui.hold.beeps = null;
+            }
+            if ('status' in changed || 'link' in changed || 'deviceName' in changed || 'firmware' in changed
+                || 'replySource' in changed || 'savedDevice' in changed || 'demo' in changed) renderDevice();
+            if ('unit' in changed || 'demo' in changed) renderStops();
+            if ('link' in changed) renderProbe();
+            if ('tab' in changed && s.tab === 'device') renderPackets();
+        });
+
+        $('devSyncClock').addEventListener('click', () => {
+            const now = new Date();
+            App.log(`Set unit clock → ${clockText(now)}`, 'info');
+            App.run(() => App.device.syncClock(now), { success: `Clock set to ${clockText(now)}.` });
+        });
+        $('devLed').addEventListener('change', e => toggleFlag('led', e.target.checked));
+        $('devBeeps').addEventListener('change', e => toggleFlag('beeps', e.target.checked));
+        $('devMemories').addEventListener('click', e => {
+            const save = e.target.closest('[data-dev-save]');
+            const rename = e.target.closest('[data-dev-rename]');
+            if (save) saveMemory(Number(save.dataset.devSave));
+            else if (rename) openRename(C.NameParam.memory(Number(rename.dataset.devRename)));
+        });
+        $('devRenameDevice').addEventListener('click', () => openRename(C.NameParam.DEVICE));
+        $('devRenameInput').addEventListener('input', updateRenameCount);
+        $('devRenameInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('devRenameOk').disabled) submitRename(); });
+        $('devRenameOk').addEventListener('click', submitRename);
+        $('devConfirmOk').addEventListener('click', () => {
+            const resolve = confirmResolve;
+            confirmResolve = null;
+            App.closeSheet('devConfirmSheet');
+            resolve?.(true);
+        });
+        $('devConfirmSheet').addEventListener('sheetclose', () => {
+            const resolve = confirmResolve;
+            confirmResolve = null;
+            resolve?.(false);
+        });
+        $('devStopsExport').addEventListener('click', exportStops);
+        $('devStopsClear').addEventListener('click', clearStops);
+        $('devSimulateStop').addEventListener('click', simulateStop);
+        $('devProbeRun').addEventListener('click', runProbe);
+        $('devProbeDownload').addEventListener('click', downloadProbe);
+        $('devPacketFilter').addEventListener('click', e => {
+            const btn = e.target.closest('[data-dev-filter]');
+            if (!btn) return;
+            ui.filter = btn.dataset.devFilter;
+            renderPackets();
+        });
+        $('devPacketsPause').addEventListener('click', () => {
+            ui.frozen = ui.frozen ? null : ui.packets.slice();
+            renderPackets();
+        });
+        $('devPacketsCopy').addEventListener('click', async () => {
+            const lines = visiblePackets().map(packetLine);
+            if (!lines.length) return App.toast('No packets to copy.', 'info', 2000);
+            await copyText(lines.join('\n'));
+            App.toast(`${lines.length} packets copied.`, 'success', 2000);
+        });
+        $('devPacketsDownload').addEventListener('click', () => {
+            const lines = visiblePackets().map(packetLine);
+            if (!lines.length) return App.toast('No packets to download.', 'info', 2000);
+            download(`jetcommand-packets-${stamp()}.txt`, `${lines.join('\n')}\n`, 'text/plain');
+        });
+        $('devOpenDebug').addEventListener('click', e => {
+            e.preventDefault();
+            $('debugSection').classList.remove('collapsed');
+            $('debugSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        // Deep link: bedjet-bluetooth-control.html#device opens this tab.
+        const followHash = () => { if (location.hash === '#device') App.switchTab('device'); };
+        window.addEventListener('hashchange', followHash);
+        document.addEventListener('DOMContentLoaded', followHash);
+        renderAll();
+    })();
     </script>
 </body>
 </html>
