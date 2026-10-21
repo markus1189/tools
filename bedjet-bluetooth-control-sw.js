@@ -1,7 +1,7 @@
 // BedJet Bluetooth Control - Service Worker
-// Version: 1.0.0
+// Version: 2.0.0
 
-const CACHE_NAME = 'jetcommand-v1';
+const CACHE_NAME = 'jetcommand-v2';
 const urlsToCache = [
   './bedjet-bluetooth-control.html',
   './bedjet-bluetooth-control.manifest.json'

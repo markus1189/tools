@@ -1,5 +1,5 @@
 {
-  description = "Development shell with taskwarrior";
+  description = "Development shell with taskwarrior and node (for tool tests)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
@@ -12,7 +12,7 @@
         let pkgs = nixpkgs.legacyPackages.${system};
         in {
           default = pkgs.mkShell {
-            packages = [ pkgs.taskwarrior3 ];
+            packages = [ pkgs.taskwarrior3 pkgs.nodejs ];
           };
         });
     };

@@ -68,10 +68,10 @@
     {
       "id": "bedjet-bluetooth-control",
       "title": "JetCommand",
-      "description": "Control your BedJet climate comfort system via Bluetooth LE with real-time status monitoring",
+      "description": "Control your BedJet V3 over Bluetooth LE: modes, temperature, fan, timer, memories and on-device programs, with a built-in demo",
       "icon": "bluetooth",
       "dateAdded": "2025-12-29",
-      "dateUpdated": "2026-01-05"
+      "dateUpdated": "2026-10-21"
     },
     {
       "id": "gzip-compressor",
