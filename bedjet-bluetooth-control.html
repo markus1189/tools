@@ -685,6 +685,8 @@
         .pg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 2px 10px; }
         .pg-head .section-title { margin: 0; }
         .pg-head:first-child { margin-top: 4px; }
+        .pg-head-btns { display: flex; gap: 6px; }
+        .pg-head-btns .btn-ghost { padding: 6px 8px; }
         .pg-note { font-size: 12px; color: var(--muted); margin: -4px 2px 10px; line-height: 1.4; }
         .pg-refresh { width: 34px; height: 34px; background: var(--surface-2); }
         .pg-refresh svg { width: 16px; height: 16px; }
@@ -1097,7 +1099,12 @@
 
             <div class="pg-head">
                 <h2 class="section-title">Schedules</h2>
-                <button class="btn btn-sm btn-outline" id="pgNew" type="button">+ New</button>
+                <div class="pg-head-btns">
+                    <button class="btn btn-sm btn-ghost" id="pgExport" type="button">Export</button>
+                    <button class="btn btn-sm btn-ghost" id="pgImport" type="button">Import</button>
+                    <button class="btn btn-sm btn-outline" id="pgNew" type="button">+ New</button>
+                </div>
+                <input type="file" id="pgImportFile" accept="application/json,.json" hidden>
             </div>
             <p class="pg-note">Kept on this phone. Edit them any time, then save one to a BedJet slot.</p>
             <div id="pgLibrary"></div>
@@ -1175,6 +1182,22 @@
                         <div class="pg-progress-text" id="pgSlotProgressText"></div>
                     </div>
                     <div class="list" id="pgSlotList" style="margin-top: 12px"></div>
+                </div>
+            </div>
+
+            <div class="sheet" id="pgImportSheet" aria-hidden="true">
+                <div class="sheet-panel" role="dialog" aria-labelledby="pgImportTitle">
+                    <div class="sheet-header">
+                        <div class="sheet-title" id="pgImportTitle">Import schedules</div>
+                        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+                    </div>
+                    <p class="pg-confirm-text" id="pgImportText"></p>
+                    <label class="switch-row" id="pgImportSlotsRow"><span id="pgImportSlotsLabel"></span><input type="checkbox" class="switch" id="pgImportSlots"></label>
+                    <p class="pg-confirm-text small" id="pgImportNotes"></p>
+                    <div class="sheet-actions">
+                        <button class="btn" type="button" data-close-sheet>Cancel</button>
+                        <button class="btn btn-primary" type="button" id="pgImportOk">Import</button>
+                    </div>
                 </div>
             </div>
 
@@ -2839,7 +2862,7 @@
         const C = globalThis.BedJetCodec;
         const TOOL = 'bedjet-bluetooth-control';
         // No build step: bump by hand on every release, together with CACHE_NAME in the service worker.
-        const VERSION = '2026-10-21 22:20';
+        const VERSION = '2026-10-21 22:27';
         const KEYS = {
             debug: `${TOOL}_debug_logging_enabled`,
             statusLog: `${TOOL}_status_logging_enabled`,
@@ -2886,6 +2909,7 @@
 
         const App = globalThis.App = {
             codec: C,
+            version: VERSION,
             prefs,
             /** Replaced on demo toggle: always read App.device / App.link at call time. */
             device: null,
@@ -3830,12 +3854,134 @@
                     .map(s => ({
                         id: String(s.id || newId()),
                         name: C.sanitizeName(s.name),
-                        steps: s.steps.slice(0, Limits.stepsPerProgram).map(C.normalizeStep),
+                        // Over-long programs are kept for validateProgram to flag, not cut on every load.
+                        steps: s.steps.map(C.normalizeStep),
                         start: parseHM(s.start) == null ? null : formatHM(parseHM(s.start)),
                     }));
             } catch {
                 return null;
             }
+        }
+
+        // ---- Backup file ----
+
+        const BACKUP_FORMAT = 1;
+        const STEP_FIELDS = ['mode', 'fan', 'temp', 'hours', 'minutes'];
+
+        /** The export object; deviceSlots (the three programs read from the unit, null = empty) only when known. */
+        function buildBackup(library, { deviceSlots = null, appVersion = null, now = new Date() } = {}) {
+            const backup = {
+                app: 'jetcommand', kind: 'schedules', format: BACKUP_FORMAT,
+                exported: now.toISOString(), appVersion,
+                schedules: library.map(s => ({ name: s.name, start: s.start ?? null, steps: s.steps.map(C.normalizeStep) })),
+            };
+            if (deviceSlots) backup.deviceSlots = deviceSlots.map(p => (p ? { name: p.name, steps: p.steps.map(C.normalizeStep) } : null));
+            return backup;
+        }
+
+        // Only the shape is checked: values the unit would refuse stay as they are, so the library shows "Needs a fix"
+        // instead of an import that quietly changed the program. A step field that isn't a number has no faithful
+        // value, so it rejects the whole file.
+        function readSchedule(raw, label, notes) {
+            if (!raw || typeof raw !== 'object' || !Array.isArray(raw.steps)) throw new Error(`${label} has no list of steps.`);
+            const name = C.sanitizeName(raw.name);
+            if (name !== String(raw.name ?? '')) notes.shortened++;
+            const steps = raw.steps.map((step, i) => {
+                if (!step || typeof step !== 'object') throw new Error(`${label}, step ${i + 1} is not a step.`);
+                for (const field of STEP_FIELDS) {
+                    const v = step[field];
+                    const numeric = typeof v === 'number' || (typeof v === 'string' && v.trim() !== '');
+                    if (!numeric || !Number.isFinite(Number(v))) throw new Error(`${label}, step ${i + 1}: ${field} is not a number.`);
+                }
+                return C.normalizeStep(step);
+            });
+            const start = parseHM(raw.start ?? raw.startTime);
+            return { name, steps, start: start == null ? null : formatHM(start) };
+        }
+
+        /**
+         * A backup file or a bare array of schedules → {schedules, deviceSlots, empty, shortened}; throws an Error whose
+         * message can be shown as is. Schedules without steps can't live in the library: they are counted in `empty`.
+         */
+        function parseBackup(text) {
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                throw new Error('This file is not a JetCommand backup (not valid JSON).');
+            }
+            let list, slots = null;
+            if (Array.isArray(data)) {
+                list = data;
+            } else if (data && typeof data === 'object' && data.app === 'jetcommand') {
+                if (data.kind !== 'schedules') {
+                    throw new Error(`This JetCommand file holds ${typeof data.kind === 'string' ? `“${data.kind.slice(0, 30)}”` : 'something else'}, not schedules.`);
+                }
+                const format = Number(data.format);
+                if (!Number.isInteger(format) || format < 1) throw new Error('This backup has no valid format number.');
+                if (format > BACKUP_FORMAT) throw new Error(`This backup was made by a newer JetCommand (format ${format}). Update the app first.`);
+                if (!Array.isArray(data.schedules)) throw new Error('This backup has no list of schedules.');
+                list = data.schedules;
+                if (data.deviceSlots != null) {
+                    if (!Array.isArray(data.deviceSlots) || data.deviceSlots.length > 3) throw new Error('The BedJet programs in this backup are not readable.');
+                    slots = data.deviceSlots;
+                }
+            } else {
+                throw new Error('This file is not a JetCommand backup.');
+            }
+            const notes = { shortened: 0 };
+            let empty = 0;
+            const schedules = [];
+            list.forEach((raw, i) => {
+                const s = readSchedule(raw, `Schedule ${i + 1}`, notes);
+                if (s.steps.length) schedules.push(s);
+                else empty++;
+            });
+            const deviceSlots = slots && slots.map((raw, i) => {
+                if (raw == null) return null;
+                const s = readSchedule(raw, `BedJet slot ${i + 1}`, notes);
+                return s.steps.length ? { name: s.name, steps: s.steps } : null;
+            });
+            if (!schedules.length && !deviceSlots?.some(Boolean)) {
+                throw new Error(empty ? 'The schedules in this file have no steps.' : 'This file holds no schedules.');
+            }
+            return { schedules, deviceSlots, empty, shortened: notes.shortened };
+        }
+
+        const sameSteps = (a, b) => JSON.stringify(a.map(C.normalizeStep)) === JSON.stringify(b.map(C.normalizeStep));
+
+        /** `base N`, the base cut so the whole fits the unit's name length. */
+        function variantName(base, n) {
+            const suffix = base ? ` ${n}` : String(n);
+            return `${base.slice(0, Limits.nameLength - suffix.length).trimEnd()}${suffix}`;
+        }
+        const isVariantOf = (name, base) => {
+            if (name === base) return true;
+            const n = Number(/(\d+)$/.exec(name)?.[1]);
+            return n >= 2 && variantName(base, n) === name;
+        };
+
+        /**
+         * Appends `incoming` to `existing` and never changes or removes an existing entry. Same steps under the same
+         * name, or under a name an earlier import gave it on a clash, is a duplicate; a clash gets the next free `name N`.
+         */
+        function mergeSchedules(existing, incoming) {
+            const library = [...existing];
+            const added = [], skipped = [], renamed = [];
+            for (const s of incoming) {
+                const name = C.sanitizeName(s.name);
+                if (library.some(x => sameSteps(x.steps, s.steps) && isVariantOf(x.name, name))) {
+                    skipped.push(name);
+                    continue;
+                }
+                let unique = name;
+                for (let n = 2; library.some(x => x.name === unique); n++) unique = variantName(name, n);
+                if (unique !== name) renamed.push({ from: name, to: unique });
+                const entry = { id: newId(), name: unique, steps: s.steps.map(C.normalizeStep), start: s.start ?? null };
+                library.push(entry);
+                added.push(entry);
+            }
+            return { library, added, skipped, renamed };
         }
 
         // ---- Night curve ----
@@ -3934,6 +4080,7 @@
             minuteOfDay, formatHM, parseHM, dateAt,
             timeline, endTime, runPosition, coerceStep, heatLimit,
             templates, expandTemplate, seedLibrary, parseLibrary,
+            buildBackup, parseBackup, mergeSchedules,
             curveModel, curveSVG, esc,
         });
 
@@ -4276,6 +4423,103 @@
                 }
             }
         });
+
+        // ---- Backup: export and import ----
+
+        const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+        async function exportLibrary() {
+            // The last slots read on this page, even after a disconnect: the file then also backs up the unit.
+            const deviceSlots = ui.slots;
+            if (!ui.library.length && !deviceSlots?.some(Boolean)) {
+                App.toast('No schedules to export.', 'info', 2500);
+                return;
+            }
+            const name = `jetcommand-schedules-${App.fileStamp()}.json`;
+            const text = `${JSON.stringify(buildBackup(ui.library, { deviceSlots, appVersion: App.version }), null, 2)}\n`;
+            const what = `${plural(ui.library.length, 'schedule')}${deviceSlots ? ' and the BedJet’s 3 slots' : ''}`;
+            const download = () => {
+                App.download(name, text, 'application/json');
+                App.toast(`Exported ${what}.`, 'success', 2500);
+            };
+            const file = new File([text], name, { type: 'application/json' });
+            let canShare = false;
+            try { canShare = !!navigator.canShare?.({ files: [file] }); } catch { /* treated as no file sharing */ }
+            if (!canShare) return download();
+            const answer = await askConfirm({
+                title: 'Export schedules',
+                text: `${what} in one file. Share it to keep it in Drive or send it somewhere, or download it to this phone.`,
+                ok: 'Share…', alt: 'Download', danger: false,
+            });
+            if (answer === 'alt') return download();
+            if (answer !== 'ok') return;
+            try {
+                await navigator.share({ files: [file], title: name });
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                App.log(`Share failed: ${err.message}`, 'warn');
+                App.toast(`Couldn't share the file (${err.message}). Use Download instead.`, 'error');
+            }
+        }
+
+        /** The parsed file waiting in the import sheet. */
+        let pendingImport = null;
+
+        const slotSchedules = slots => (slots || []).flatMap((p, i) => (p ? [{ name: p.name || `BedJet slot ${i + 1}`, steps: p.steps, start: null }] : []));
+        const importIncoming = () => [
+            ...pendingImport.schedules,
+            ...($('pgImportSlots').checked ? slotSchedules(pendingImport.deviceSlots) : []),
+        ];
+
+        function renderImport() {
+            const slots = slotSchedules(pendingImport.deviceSlots);
+            const incoming = importIncoming();
+            const merge = mergeSchedules(ui.library, incoming);
+            $('pgImportText').textContent = `${plural(incoming.length, 'schedule')} found (${merge.added.length} new, ${merge.skipped.length} already in your library).`;
+            $('pgImportSlotsRow').hidden = !slots.length;
+            $('pgImportSlotsLabel').innerHTML = `Also add the BedJet’s programs<span class="hint">${esc(slots.map(s => s.name).join(', '))}, read from the unit when this backup was made</span>`;
+            const notes = [];
+            for (const r of merge.renamed) notes.push(`“${r.from}” is added as “${r.to}”: that name is taken by a different schedule.`);
+            const invalid = merge.added.filter(libraryInvalid).length;
+            if (invalid) notes.push(`${plural(invalid, 'schedule')} will need a fix before going to the BedJet.`);
+            if (pendingImport.empty) notes.push(`${plural(pendingImport.empty, 'schedule')} without steps left out.`);
+            if (pendingImport.shortened) notes.push(`${plural(pendingImport.shortened, 'name')} cut to 15 plain characters, as the BedJet requires.`);
+            $('pgImportNotes').textContent = notes.join(' ');
+            $('pgImportNotes').hidden = !notes.length;
+            $('pgImportOk').disabled = !merge.added.length;
+            $('pgImportOk').textContent = merge.added.length ? `Import ${merge.added.length}` : 'Nothing new';
+        }
+
+        $('pgExport').addEventListener('click', exportLibrary);
+        $('pgImport').addEventListener('click', () => $('pgImportFile').click());
+        $('pgImportFile').addEventListener('change', async e => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            try {
+                pendingImport = parseBackup(await file.text());
+            } catch (err) {
+                App.log(`Import of ${file.name} refused: ${err.message}`, 'warn');
+                App.toast(err.message, 'error');
+                return;
+            }
+            $('pgImportSlots').checked = false;
+            renderImport();
+            App.openSheet('pgImportSheet');
+        });
+        $('pgImportSlots').addEventListener('change', renderImport);
+        $('pgImportOk').addEventListener('click', () => {
+            const merge = mergeSchedules(ui.library, importIncoming());
+            ui.library = merge.library;
+            persistLibrary();
+            renderLibrary();
+            App.closeSheet('pgImportSheet');
+            const renamed = merge.renamed.length ? ` (${merge.renamed.length} renamed)` : '';
+            const skipped = merge.skipped.length ? `, skipped ${plural(merge.skipped.length, 'duplicate')}` : '';
+            App.log(`Imported ${merge.added.length} schedules, skipped ${merge.skipped.length}`, 'info');
+            App.toast(`Imported ${plural(merge.added.length, 'schedule')}${renamed}${skipped}.`, 'success', 3500);
+        });
+        $('pgImportSheet').addEventListener('sheetclose', () => { pendingImport = null; });
 
         // ---- Templates ----
 

@@ -867,3 +867,114 @@ test('web link: real unit, truncated 2005 vs full 2006 reply', async () => {
     const fragment2005 = C.fromHex('05 01 09 4c 00 05 01 07 3c 00 14 05 04 36 01 00 03 04 32 84');
     assert.equal(C.parseFragment(fragment2005, 0), null, '5 steps cannot fit in a 22-byte read');
 });
+
+// ---- Programs: schedule backup ----
+
+const library = () => [
+    { id: 'a', name: 'Cool drift', steps: [step(Mode.COOL, 11, 44, 0, 45), step(Mode.COOL, 5, 44, 5, 0)], start: null },
+    { id: 'b', name: 'Until 6:30', steps: [step(Mode.TURBO, 19, 86, 0, 5), step(Mode.COOL, 4, 44, 6, 30, true)], start: '22:30' },
+];
+const slotsRead = () => [{ name: 'Cool night', steps: [step(Mode.COOL, 7, 40, 6, 30)] }, null, null];
+const strip = list => plain(list.map(s => ({ name: s.name, start: s.start ?? null, steps: s.steps })));
+
+test('backup: export round trip, with and without the BedJet slots', () => {
+    const backup = P.buildBackup(library(), { appVersion: '2026-10-21 23:00', now: new Date('2026-10-21T21:00:00Z') });
+    assert.equal(backup.app, 'jetcommand');
+    assert.equal(backup.kind, 'schedules');
+    assert.equal(backup.format, 1);
+    assert.equal(backup.exported, '2026-10-21T21:00:00.000Z');
+    assert.equal(backup.appVersion, '2026-10-21 23:00');
+    assert.equal('deviceSlots' in backup, false, 'slots only when they were read');
+    const back = P.parseBackup(JSON.stringify(backup));
+    assert.deepEqual(strip(back.schedules), strip(library()));
+    assert.equal(back.deviceSlots, null);
+    assert.equal(back.empty, 0);
+
+    const withSlots = P.parseBackup(JSON.stringify(P.buildBackup(library(), { deviceSlots: slotsRead() })));
+    assert.deepEqual(plain(withSlots.deviceSlots), plain(slotsRead()));
+});
+
+test('backup: a bare array of schedules is accepted, startTime too', () => {
+    const parsed = P.parseBackup(JSON.stringify([{ name: 'Old', startTime: '7:05', steps: [{ mode: '4', fan: 5, temp: 40, hours: 1, minutes: 0 }] }]));
+    assert.deepEqual(plain(parsed.schedules), [{ name: 'Old', start: '07:05', steps: [step(Mode.COOL, 5, 40, 1, 0)] }]);
+    assert.equal(parsed.deviceSlots, null);
+});
+
+test('backup: garbage and other files are refused with a message', () => {
+    const refuses = (text, pattern) => assert.throws(() => P.parseBackup(text), e => pattern.test(e.message), text);
+    refuses('{oops', /not valid JSON/);
+    refuses('"hello"', /not a JetCommand backup/);
+    refuses('null', /not a JetCommand backup/);
+    refuses(JSON.stringify({ schedules: [] }), /not a JetCommand backup/);
+    refuses(JSON.stringify({ app: 'jetcommand', kind: 'shutdowns', format: 1, schedules: [] }), /“shutdowns”, not schedules/);
+    refuses(JSON.stringify({ app: 'jetcommand', kind: 'schedules', format: 2, schedules: [] }), /newer JetCommand/);
+    refuses(JSON.stringify({ app: 'jetcommand', kind: 'schedules', format: 1 }), /no list of schedules/);
+    refuses(JSON.stringify({ app: 'jetcommand', kind: 'schedules', format: 1, schedules: [] }), /holds no schedules/);
+    refuses(JSON.stringify([{ name: 'x' }]), /Schedule 1 has no list of steps/);
+    refuses(JSON.stringify([{ name: 'x', steps: [{ mode: 4, fan: 'lots', temp: 40, hours: 1, minutes: 0 }] }]), /Schedule 1, step 1: fan is not a number/);
+    refuses(JSON.stringify([{ name: 'x', steps: [{ mode: 4, fan: null, temp: 40, hours: 1, minutes: 0 }] }]), /fan is not a number/);
+});
+
+test('backup: empty schedules are counted, long names cut and counted', () => {
+    const parsed = P.parseBackup(JSON.stringify([
+        { name: 'Nothing', steps: [] },
+        { name: 'A name that is far too long', steps: [step(Mode.COOL, 5, 40, 1, 0)] },
+    ]));
+    assert.equal(parsed.empty, 1);
+    assert.equal(parsed.shortened, 1);
+    assert.deepEqual(plain(parsed.schedules.map(s => s.name)), ['A name that is ']);
+});
+
+test('backup: merge skips duplicates, renames clashes within 15 chars, never touches existing entries', () => {
+    const existing = library();
+    const before = plain(existing);
+    const incoming = [
+        { name: 'Cool drift', steps: library()[0].steps, start: null },
+        { name: 'Cool drift', steps: [step(Mode.COOL, 3, 40, 2, 0)], start: null },
+        { name: 'New one', steps: [step(Mode.HEAT, 5, 60, 1, 0)], start: '23:00' },
+    ];
+    const m = P.mergeSchedules(existing, incoming);
+    assert.deepEqual(plain(existing), before, 'existing list untouched');
+    assert.deepEqual(plain(m.library.slice(0, 2)), before, 'existing entries kept first, unchanged');
+    assert.deepEqual(plain(m.skipped), ['Cool drift']);
+    assert.deepEqual(plain(m.added.map(s => s.name)), ['Cool drift 2', 'New one']);
+    assert.deepEqual(plain(m.renamed), [{ from: 'Cool drift', to: 'Cool drift 2' }]);
+    assert.equal(m.added[1].start, '23:00');
+    assert.equal(new Set(m.library.map(s => s.id)).size, m.library.length, 'fresh ids');
+
+    // The same file again: everything is a duplicate, including the renamed copy.
+    const again = P.mergeSchedules(m.library, incoming);
+    assert.equal(again.added.length, 0);
+    assert.equal(again.skipped.length, 3);
+
+    // A full 15-character name gives up its tail for the suffix.
+    const long = 'Neutral <26 +WC';
+    const clash = P.mergeSchedules([{ id: 'x', name: long, steps: [step(Mode.COOL, 5, 40, 1, 0)] }, { id: 'y', name: 'Neutral <26 + 2', steps: [step(Mode.COOL, 6, 40, 1, 0)] }],
+        [{ name: long, steps: [step(Mode.COOL, 9, 40, 1, 0)] }]);
+    assert.equal(clash.added[0].name, 'Neutral <26 + 3');
+    for (const s of clash.library) assert.ok(s.name.length <= 15 && PC.sanitizeName(s.name) === s.name, s.name);
+});
+
+test('backup: a program the unit would refuse is imported unchanged and flagged', () => {
+    const bad = [{ name: 'Too hot', steps: [step(Mode.HEAT, 19, 80, 6, 0), step(Mode.COOL, 5, 120, 1, 0)] }];
+    const parsed = P.parseBackup(JSON.stringify(bad));
+    assert.deepEqual(plain(parsed.schedules[0].steps), bad[0].steps, 'no clamping on import');
+    const m = P.mergeSchedules([], parsed.schedules);
+    assert.equal(m.added.length, 1);
+    const errors = PC.validateProgram(m.added[0].steps, at(22, 30));
+    assert.deepEqual(plain(errors.map(e => e.index)), [0, 1]);
+    // And it survives the library's own load, which used to cut programs over 32 steps.
+    const long = Array.from({ length: 33 }, () => step(Mode.COOL, 5, 40, 0, 10));
+    const stored = P.parseLibrary(JSON.stringify([{ id: 'l', name: 'Long', steps: long }]));
+    assert.equal(stored[0].steps.length, 33);
+    assert.ok(PC.validateProgram(stored[0].steps, at(22, 30)).some(e => e.index === -1));
+});
+
+test('backup: device slots are parsed with empty slots kept as null', () => {
+    const file = P.buildBackup([], { deviceSlots: [null, { name: '', steps: [step(Mode.COOL, 5, 40, 1, 0)] }, { name: 'Empty', steps: [] }] });
+    const parsed = P.parseBackup(JSON.stringify(file));
+    assert.deepEqual(parsed.schedules.length, 0, 'slots alone are enough to import');
+    assert.deepEqual(plain(parsed.deviceSlots), [null, { name: '', steps: [step(Mode.COOL, 5, 40, 1, 0)] }, null]);
+    assert.throws(() => P.parseBackup(JSON.stringify({ ...file, deviceSlots: [null, null, null, null] })), /not readable/);
+    assert.throws(() => P.parseBackup(JSON.stringify({ ...file, deviceSlots: [null, null, null] })), /holds no schedules/);
+});
