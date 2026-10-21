@@ -616,3 +616,125 @@ test('probe summary of an empty or failed run', () => {
     }));
     assert.equal(s.verdict, 'Every answered query came from 2006. 1 unanswered. 1 needed retries (max 8 attempts). Read after one query, only 2006 held the reply.');
 });
+
+// ---- Programs tab: pure helpers ----
+
+function loadPrograms() {
+    const touched = [];
+    const context = { console, setTimeout, clearTimeout, setInterval, clearInterval };
+    for (const name of ['navigator', 'document', 'window', 'localStorage', 'App']) {
+        Object.defineProperty(context, name, { get() { touched.push(name); return undefined; }, configurable: true });
+    }
+    vm.createContext(context);
+    for (const id of ['bedjet-codec', 'bedjet-sim', 'bedjet-link']) vm.runInContext(script(id), context, { filename: id });
+    touched.length = 0;
+    vm.runInContext(script('app-programs'), context, { filename: 'app-programs' });
+    assert.deepEqual(touched.filter(n => n !== 'document' && n !== 'App'), [], 'app-programs touched browser globals at load time');
+    return context;
+}
+
+const pctx = loadPrograms();
+const P = pctx.BedJetPrograms;
+const PC = pctx.BedJetCodec;
+const at = (h, m) => new Date(2026, 9, 21, h, m);
+
+test('programs: timeline and end time, clock-time steps across midnight', () => {
+    const steps = [step(Mode.COOL, 5, 40, 1, 0), step(Mode.WAIT, 19, 80, 1, 30, true), step(Mode.COOL, 3, 40, 2, 0)];
+    const tl = P.timeline(steps, 22 * 60);
+    assert.deepEqual(plain(tl.segments.map(s => [s.start, s.end])), [[0, 60], [60, 210], [210, 330]]);
+    assert.deepEqual(plain(P.endTime(steps, 22 * 60)), { total: 330, minute: 3 * 60 + 30, days: 1 });
+    assert.deepEqual(plain(P.endTime([step(Mode.COOL, 5, 40, 2, 0)], 9 * 60)), { total: 120, minute: 11 * 60, days: 0 });
+    // Same program planned for 14:00: "until 01:30" now lasts 10.5 h.
+    assert.equal(P.timeline(steps, 14 * 60).segments[1].minutes, 630);
+    assert.equal(P.formatHM(1500), '01:00');
+    assert.equal(P.parseHM('22:30'), 1350);
+    assert.equal(P.parseHM('24:00'), null);
+});
+
+test('programs: run position follows the status step and time left', () => {
+    const steps = [step(Mode.TURBO, 19, 86, 0, 10), step(Mode.COOL, 5, 40, 1, 0)];
+    assert.deepEqual(plain(P.runPosition(steps, 0, 2, 15 * 60)), { index: 1, elapsed: 55 });
+    assert.deepEqual(plain(P.runPosition(steps, 0, 1, 99999)), { index: 0, elapsed: 0 });
+});
+
+test('programs: coerceStep clamps like the official editor', () => {
+    const c = s => plain(P.coerceStep(s));
+    assert.deepEqual(c(step(Mode.HEAT, 19, 40, 6, 0)), step(Mode.HEAT, 19, 80, 1, 0), 'heat: out of range → max, then the cut-off');
+    assert.deepEqual(c(step(Mode.COOL, 5, 80, 3, 0)), step(Mode.COOL, 5, 38, 3, 0), 'cool: out of range → min');
+    assert.deepEqual(c(step(Mode.TURBO, 19, 40, 1, 0)), step(Mode.TURBO, 19, 86, 0, 10));
+    assert.deepEqual(c(step(Mode.TURBO, 19, 86, 0, 0)), step(Mode.TURBO, 19, 86, 0, 1));
+    assert.deepEqual(c(step(Mode.WAIT, 4, 40, 2, 0)), step(Mode.WAIT, 4, 80, 2, 0));
+    assert.deepEqual(c(step(Mode.HEAT, 5, 60, 6, 0, true)), step(Mode.HEAT, 5, 60, 6, 0), 'heat has no clock time');
+    assert.deepEqual(c(step(Mode.COOL, 5, 40, 12, 0)), step(Mode.COOL, 5, 40, 11, 59));
+    assert.deepEqual(c(step(Mode.STANDBY, 5, 80, 1, 0)).mode, Mode.WAIT);
+    assert.equal(P.heatLimit(step(Mode.HEAT, 19, 75, 1, 0)), 120);
+    assert.equal(P.heatLimit(step(Mode.HEAT, 19, 50, 1, 0)), null);
+});
+
+test('programs: template options Sleep + Wake and Cloud Sheet', () => {
+    const base = P.expandTemplate('neutral-15');
+    assert.equal(base.name, 'Neutral <26');
+    assert.deepEqual(plain(base.steps.map(s => [s.mode, PC.fanPercent(s.fan), s.temp, s.hours * 60 + s.minutes])),
+        [[Mode.TURBO, 100, 86, 5], [Mode.TURBO, 50, 86, 4], [Mode.WAIT, 50, 80, 10], [Mode.COOL, 40, 40, 20], [Mode.COOL, 25, 40, 390]]);
+    const wake = P.expandTemplate('neutral-15', { sleepWake: true });
+    assert.equal(wake.steps.length, 8);
+    assert.deepEqual(plain(wake.steps.slice(5).map(s => [s.mode, PC.fanPercent(s.fan), s.temp, s.minutes])),
+        [[Mode.HEAT, 35, 70, 10], [Mode.HEAT, 40, 76, 10], [Mode.HEAT, 45, 80, 10]]);
+    const both = P.expandTemplate('neutral-15', { sleepWake: true, cloudSheet: true });
+    assert.equal(both.name, 'Neutral <26 +WC');
+    assert.deepEqual(plain(both.steps.map(s => PC.fanPercent(s.fan))), [100, 60, 60, 50, 35, 45, 50, 55]);
+    assert.throws(() => P.expandTemplate('nope'));
+});
+
+function allTemplatePrograms() {
+    const out = [];
+    for (const t of P.templates()) {
+        const variants = t.kind === 'official'
+            ? [{}, { sleepWake: true }, { cloudSheet: true }, { sleepWake: true, cloudSheet: true }] : [{}];
+        for (const opts of variants) out.push(P.expandTemplate(t.id, opts));
+    }
+    return out;
+}
+
+test('programs: every template is valid and survives store + read back on the sim', async () => {
+    const programs = allTemplatePrograms();
+    assert.equal(programs.length, 6 * 4 + 4);
+    const sim = new pctx.BedJetSim({ autoTick: false });
+    await sim.connect();
+    const device = new pctx.BedJetDevice(sim);
+    for (const program of programs) {
+        assert.ok(program.name.length >= 1 && program.name.length <= 15, program.name);
+        assert.equal(PC.sanitizeName(program.name), program.name);
+        assert.deepEqual(plain(PC.validateProgram(program.steps, at(22, 30))), [], program.name);
+        await device.store(program, 1, { now: at(22, 30) });
+        const back = (await device.storedPrograms())[1];
+        assert.deepEqual(plain(back), plain({ name: program.name, steps: program.steps }), program.name);
+    }
+    const seeded = P.seedLibrary();
+    assert.ok(seeded.length >= 3);
+    for (const s of seeded) assert.deepEqual(plain(PC.validateProgram(s.steps, s.start ? at(...s.start.split(':').map(Number)) : at(22, 30))), [], s.name);
+});
+
+test('programs: library parsing', () => {
+    assert.equal(P.parseLibrary(null).length, P.seedLibrary().length);
+    assert.equal(P.parseLibrary('{oops'), null);
+    const list = P.parseLibrary(JSON.stringify([{ id: 'a', name: 'Långt namn som är för långt', steps: [step(Mode.COOL, 5, 40, 1, 0)], start: '7:05' }, { name: 'empty', steps: [] }]));
+    assert.equal(list.length, 1);
+    assert.equal(list[0].name, 'Lngt namn som r');
+    assert.equal(list[0].start, '07:05');
+});
+
+test('programs: curve points', () => {
+    const steps = [step(Mode.COOL, 9, 40, 1, 0), step(Mode.WAIT, 19, 80, 1, 0), step(Mode.HEAT, 9, 70, 1, 0)];
+    const m = P.curveModel(steps, 23 * 60, { width: 304, height: 100, padX: 2, padTop: 0, padBottom: 0 });
+    assert.deepEqual(plain(m.segments.map(s => [s.x0, s.x1])), [[2, 102], [102, 202], [202, 302]]);
+    assert.equal(m.segments[1].y, null, 'wait is a gap');
+    assert.equal(m.tempPaths.length, 2);
+    assert.equal(m.fanPaths.length, 2);
+    assert.ok(m.segments[2].y < m.segments[0].y, 'warmer is higher');
+    assert.deepEqual(plain(m.ticks.map(t => t.label)), ['23:00', '00:00', '01:00', '02:00']);
+    const svg = P.curveSVG(steps, 23 * 60, { highlight: 2, marker: 150, label: '<x>' });
+    assert.match(svg, /^<svg class="pg-curve"/);
+    assert.match(svg, /aria-label="&lt;x&gt;"/);
+    assert.match(svg, /<circle/);
+});

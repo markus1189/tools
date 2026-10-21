@@ -678,6 +678,150 @@
         /* ==== END tab:remote ==== */
 
         /* ==== BEGIN tab:programs ==== */
+        .pg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 2px 10px; }
+        .pg-head .section-title { margin: 0; }
+        .pg-head:first-child { margin-top: 4px; }
+        .pg-note { font-size: 12px; color: var(--muted); margin: -4px 2px 10px; line-height: 1.4; }
+        .pg-refresh { width: 34px; height: 34px; background: var(--surface-2); }
+        .pg-refresh svg { width: 16px; height: 16px; }
+        .pg-refresh.spinning svg { animation: pg-spin 1s linear infinite; }
+        @keyframes pg-spin { to { transform: rotate(360deg); } }
+
+        .pg-card { padding: 12px 14px; }
+        .pg-card.running { border-color: var(--success); box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25); }
+        .pg-card.empty-slot { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-style: dashed; color: var(--muted); font-size: 14px; }
+        .pg-card-top { display: flex; align-items: flex-start; gap: 10px; }
+        .pg-slot-no {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--surface-3);
+            color: var(--dim);
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .pg-card.running .pg-slot-no { background: var(--success); color: #fff; }
+        .pg-name { font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pg-meta { font-size: 12px; color: var(--dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .pg-live { font-size: 13px; color: var(--success); margin-top: 6px; font-variant-numeric: tabular-nums; }
+        .pg-live:empty { display: none; }
+        .pg-curve-box { margin-top: 8px; }
+        .pg-curve { display: block; width: 100%; height: auto; overflow: visible; }
+        .pg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .pg-actions .btn { flex: 1 1 auto; }
+        .pg-actions .pg-danger { color: var(--error); }
+        .pg-tap { cursor: pointer; }
+        .pg-banner { margin-bottom: 12px; }
+
+        /* Editor: a full-height sheet whose body scrolls between a fixed header and footer. */
+        #pgEditorSheet .sheet-panel {
+            display: flex;
+            flex-direction: column;
+            max-width: 560px;
+            height: 100%;
+            max-height: 100dvh;
+            padding: 0;
+            border-radius: 0;
+            border-top: none;
+        }
+        .pg-ed-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .pg-ed-header .sheet-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pg-ed-body { flex: 1; overflow-y: auto; padding: 14px 14px 24px; -webkit-overflow-scrolling: touch; }
+        .pg-ed-footer {
+            padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .pg-ed-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pg-ed-buttons .pg-wide { grid-column: 1 / -1; }
+        .pg-ed-buttons .btn { padding-left: 8px; padding-right: 8px; }
+        .pg-footnote { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+        .pg-footnote:empty { display: none; }
+        .pg-footnote.error { color: var(--error); }
+
+        .pg-name-row { display: flex; align-items: flex-end; gap: 10px; }
+        .pg-count { font-size: 11px; color: var(--muted); padding-bottom: 14px; font-variant-numeric: tabular-nums; }
+        .pg-start { display: flex; align-items: flex-end; gap: 8px; margin-top: 12px; }
+        .pg-start .field { flex: 1; }
+        .pg-start .chip { min-height: 44px; }
+        .pg-summary { font-size: 13px; color: var(--dim); margin-top: 8px; font-variant-numeric: tabular-nums; }
+        .pg-summary strong { color: var(--text); }
+        .pg-curve-card { margin-top: 12px; padding: 10px 10px 6px; }
+        .pg-errors { margin-top: 10px; }
+        .pg-errors:empty { display: none; }
+
+        .pg-steps { display: flex; flex-direction: column; gap: 8px; }
+        .pg-step { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); overflow: hidden; }
+        .pg-step.open { border-color: var(--accent); }
+        .pg-step.invalid { border-color: var(--error); }
+        .pg-step.current { box-shadow: inset 3px 0 0 var(--success); }
+        .pg-step-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 52px;
+            padding: 8px 12px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+        }
+        .pg-dot {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .pg-step-title { font-size: 15px; font-weight: 600; }
+        .pg-step-detail { font-size: 12px; color: var(--dim); }
+        .pg-step-time { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .pg-step-time .pg-at { display: block; font-size: 11px; color: var(--muted); }
+        .pg-step-error { padding: 0 12px 8px 50px; color: var(--error); font-size: 12px; }
+        .pg-step-error:empty { display: none; }
+        .pg-step-body { padding: 4px 12px 12px; border-top: 1px solid var(--border); }
+        .pg-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0 12px; }
+        .pg-modes .chip { min-height: 38px; padding: 6px 4px; }
+        .pg-control { margin-bottom: 12px; }
+        .pg-control-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+        .pg-control-label span:last-child { color: var(--text); font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }
+        .pg-fixed { font-size: 13px; color: var(--muted); }
+        .pg-duration { display: flex; align-items: center; gap: 8px; }
+        .pg-duration .input { width: 76px; text-align: center; }
+        .pg-duration select.input { width: auto; }
+        .pg-duration .segmented { flex-shrink: 0; }
+        .pg-hint { font-size: 12px; color: var(--warn); margin-top: 6px; }
+        .pg-hint:empty { display: none; }
+        .pg-step-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+        .pg-step-actions .btn { flex: 1 1 auto; padding-left: 8px; padding-right: 8px; }
+        .pg-step-actions .pg-danger { color: var(--error); }
+
+        .pg-progress { margin: 4px 0 12px; }
+        .pg-progress-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+        .pg-progress-bar span { display: block; height: 100%; background: var(--accent); transition: width 0.2s ease; }
+        .pg-progress-text { font-size: 12px; color: var(--dim); margin-top: 6px; }
+        .pg-choice { display: flex; align-items: center; gap: 10px; text-align: left; }
+        .pg-choice .grow > div:first-child { font-weight: 600; }
+        .pg-tpl-opts { padding: 4px 2px 10px; }
+        .pg-confirm-text { color: var(--dim); font-size: 14px; line-height: 1.5; }
+        #pgConfirmSheet .sheet-actions { flex-wrap: wrap; }
+        #pgConfirmSheet .sheet-actions .btn { flex: 1 1 40%; }
         /* ==== END tab:programs ==== */
 
         /* ==== BEGIN tab:device ==== */
@@ -938,8 +1082,111 @@
 
         <!-- ==== BEGIN tab:programs ==== -->
         <section id="tab-programs" class="tab-panel" data-tab="programs" hidden>
-            <h2 class="section-title">Programs</h2>
-            <div class="card muted">Coming soon.</div>
+            <div class="pg-head">
+                <h2 class="section-title">On the BedJet</h2>
+                <button class="icon-btn pg-refresh requires-link" id="pgRefresh" type="button" aria-label="Read programs again">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+                </button>
+            </div>
+            <div id="pgElsewhere"></div>
+            <div id="pgSlots"></div>
+
+            <div class="pg-head">
+                <h2 class="section-title">Schedules</h2>
+                <button class="btn btn-sm btn-outline" id="pgNew" type="button">+ New</button>
+            </div>
+            <p class="pg-note">Kept on this phone. Edit them any time, then save one to a BedJet slot.</p>
+            <div id="pgLibrary"></div>
+
+            <div class="sheet" id="pgEditorSheet" aria-hidden="true">
+                <div class="sheet-panel" role="dialog" aria-labelledby="pgEdTitle">
+                    <div class="pg-ed-header">
+                        <div class="sheet-title" id="pgEdTitle">Edit schedule</div>
+                        <button class="sheet-close" id="pgEdClose" type="button" aria-label="Close">×</button>
+                    </div>
+                    <div class="pg-ed-body" id="pgEdBody">
+                        <div class="pg-name-row">
+                            <label class="field grow">
+                                <span>Name</span>
+                                <input class="input" id="pgEdName" type="text" maxlength="15" autocomplete="off" spellcheck="false">
+                            </label>
+                            <span class="pg-count" id="pgEdNameCount">0/15</span>
+                        </div>
+                        <div class="pg-start">
+                            <label class="field">
+                                <span>Starts at</span>
+                                <input class="input" id="pgEdStart" type="time">
+                            </label>
+                            <button class="chip" type="button" data-pg-start="now">Now</button>
+                            <button class="chip" type="button" data-pg-start="22:30">22:30</button>
+                        </div>
+                        <div class="pg-summary" id="pgEdSummary"></div>
+                        <div class="card pg-curve-card" id="pgEdCurve"></div>
+                        <div class="pg-errors" id="pgEdErrors"></div>
+                        <div class="pg-head">
+                            <h2 class="section-title">Steps</h2>
+                            <span class="small muted tabular" id="pgEdStepCount"></span>
+                        </div>
+                        <div class="pg-steps" id="pgSteps"></div>
+                        <button class="btn btn-outline btn-block" id="pgAddStep" type="button" style="margin-top: 12px">+ Add step</button>
+                    </div>
+                    <div class="pg-ed-footer">
+                        <div class="pg-footnote" id="pgEdFootnote"></div>
+                        <div class="pg-ed-buttons">
+                            <button class="btn pg-wide" id="pgEdSaveLocal" type="button">Save to schedules</button>
+                            <button class="btn btn-outline requires-link" id="pgEdSaveDevice" type="button">Save to BedJet</button>
+                            <button class="btn btn-primary requires-link" id="pgEdSaveRun" type="button">Save &amp; run</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sheet" id="pgTemplateSheet" aria-hidden="true">
+                <div class="sheet-panel" role="dialog" aria-labelledby="pgTplTitle">
+                    <div class="sheet-header">
+                        <div class="sheet-title" id="pgTplTitle">New schedule</div>
+                        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+                    </div>
+                    <div class="list" id="pgTplBlank"></div>
+                    <h3 class="section-title">BedJet suggestions</h3>
+                    <div class="pg-tpl-opts">
+                        <label class="switch-row"><span>Sleep + Wake<span class="hint">Adds 30 min of rising heat at the end</span></span><input type="checkbox" class="switch" id="pgTplWake"></label>
+                        <label class="switch-row"><span>Cloud Sheet<span class="hint">10 % more fan on every step</span></span><input type="checkbox" class="switch" id="pgTplCloud"></label>
+                    </div>
+                    <div class="list" id="pgTplOfficial"></div>
+                    <h3 class="section-title">Nights</h3>
+                    <div class="list" id="pgTplNights"></div>
+                </div>
+            </div>
+
+            <div class="sheet" id="pgSlotSheet" aria-hidden="true">
+                <div class="sheet-panel" role="dialog" aria-labelledby="pgSlotTitle">
+                    <div class="sheet-header">
+                        <div class="sheet-title" id="pgSlotTitle">Save to BedJet</div>
+                        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+                    </div>
+                    <p class="pg-confirm-text" id="pgSlotIntro"></p>
+                    <div class="pg-progress" id="pgSlotProgress" hidden>
+                        <div class="pg-progress-bar"><span id="pgSlotProgressBar"></span></div>
+                        <div class="pg-progress-text" id="pgSlotProgressText"></div>
+                    </div>
+                    <div class="list" id="pgSlotList" style="margin-top: 12px"></div>
+                </div>
+            </div>
+
+            <div class="sheet" id="pgConfirmSheet" aria-hidden="true">
+                <div class="sheet-panel" role="alertdialog" aria-labelledby="pgConfirmTitle">
+                    <div class="sheet-header">
+                        <div class="sheet-title" id="pgConfirmTitle"></div>
+                    </div>
+                    <p class="pg-confirm-text" id="pgConfirmText"></p>
+                    <div class="sheet-actions">
+                        <button class="btn" type="button" id="pgConfirmCancel">Cancel</button>
+                        <button class="btn" type="button" id="pgConfirmAlt" hidden></button>
+                        <button class="btn btn-danger" type="button" id="pgConfirmOk"></button>
+                    </div>
+                </div>
+            </div>
         </section>
         <!-- ==== END tab:programs ==== -->
 
@@ -3285,10 +3532,1127 @@
     })();
     </script>
     <script id="app-programs">
-    // Programs tab. Available: App (state store: App.state, App.subscribe, App.set, App.run, App.toast,
-    // App.openSheet/closeSheet, App.formatTemp/formatDuration), App.device (BedJetDevice: storedPrograms,
-    // programSteps, store, startProgram, deleteProgram, rename) and BedJetCodec (validateProgram,
-    // clockTimeAllowed, longestStepMinutes, defaultStep, TEMP_RANGES). Read App.device at call time: demo mode swaps it.
+    (function () {
+        'use strict';
+        const C = globalThis.BedJetCodec;
+        const { Mode, Limits } = C;
+        const TOOL = 'bedjet-bluetooth-control';
+        const DAY = 1440;
+
+        // ---- Pure helpers, exposed as BedJetPrograms for the node tests: nothing above the DOM guard touches the page ----
+
+        const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+        const mod = (v, n) => ((v % n) + n) % n;
+        const pad2 = n => String(n).padStart(2, '0');
+        const round1 = v => Math.round(v * 10) / 10;
+
+        const minuteOfDay = date => date.getHours() * 60 + date.getMinutes();
+        const formatHM = minute => {
+            const m = mod(Math.round(minute), DAY);
+            return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+        };
+        function parseHM(text) {
+            const match = /^(\d{1,2}):(\d{2})/.exec(String(text ?? ''));
+            if (!match) return null;
+            const h = Number(match[1]), m = Number(match[2]);
+            return h < 24 && m < 60 ? h * 60 + m : null;
+        }
+        function dateAt(minute, base = new Date()) {
+            const date = new Date(base);
+            date.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
+            return date;
+        }
+
+        const EDITOR_MODES = Object.freeze([Mode.COOL, Mode.HEAT, Mode.EXT_HEAT, Mode.DRY, Mode.TURBO, Mode.WAIT]);
+        const MODE_COLORS = Object.freeze({
+            [Mode.STANDBY]: '#6b7280', [Mode.HEAT]: '#f97316', [Mode.TURBO]: '#ef4444', [Mode.EXT_HEAT]: '#fbbf24',
+            [Mode.COOL]: '#3b82f6', [Mode.DRY]: '#94a3b8', [Mode.WAIT]: '#8b5cf6',
+        });
+
+        // Minutes are counted from the start; a clock-time step lasts until its HH:MM next comes round, as on the unit.
+        function timeline(steps, startMinute) {
+            let t = 0;
+            const segments = steps.map((raw, index) => {
+                const step = C.normalizeStep(raw);
+                const minutes = step.clock
+                    ? mod(step.hours * 60 + step.minutes - (startMinute + t), DAY)
+                    : Math.max(0, step.hours * 60 + step.minutes);
+                const segment = { index, step, start: t, end: t + minutes, minutes };
+                t += minutes;
+                return segment;
+            });
+            return { start: startMinute, total: t, segments };
+        }
+
+        function endTime(steps, startMinute) {
+            const total = timeline(steps, startMinute).total;
+            const end = startMinute + total;
+            return { total, minute: mod(end, DAY), days: Math.floor(end / DAY) };
+        }
+
+        /** Where a running program is: step index and minutes since its start, from the status step and time left. */
+        function runPosition(steps, startMinute, programStep, remainingSeconds) {
+            const segments = timeline(steps, startMinute).segments;
+            const seg = segments[clamp(programStep - 1, 0, segments.length - 1)];
+            if (!seg) return { index: -1, elapsed: 0 };
+            return { index: seg.index, elapsed: clamp(seg.end - (remainingSeconds || 0) / 60, seg.start, seg.end) };
+        }
+
+        // OFF BiorhythmAdapter.validateSpecifiedStep with JetCommand's limits: an out-of-range temperature goes to the
+        // mode's maximum for Heat and its minimum otherwise; durations are cut to what the unit accepts.
+        function coerceStep(raw) {
+            const s = C.normalizeStep(raw);
+            const int = (v, fallback) => (Number.isFinite(v) ? Math.round(v) : fallback);
+            let mode = int(s.mode, Mode.WAIT);
+            if (mode <= Mode.STANDBY || mode > Mode.WAIT) mode = Mode.WAIT;
+            const fan = clamp(int(s.fan, 19), 0, 19);
+            let temp = int(s.temp, 80);
+            let hours = Math.max(0, int(s.hours, 0));
+            let minutes = clamp(int(s.minutes, 0), 0, 59);
+            const clock = s.clock && C.clockTimeAllowed(mode);
+            const range = C.TEMP_RANGES[mode];
+            if (mode === Mode.TURBO) temp = 86;
+            else if (temp < range.min || temp > range.max) temp = mode === Mode.HEAT ? range.max : range.min;
+            if (clock) {
+                hours = Math.min(hours, 23);
+            } else {
+                const total = mode === Mode.TURBO
+                    ? (hours > 0 ? Limits.turboMaxMinutes : clamp(minutes, 1, Limits.turboMaxMinutes))
+                    : clamp(hours * 60 + minutes, 1, C.longestStepMinutes(mode, temp, fan));
+                hours = Math.floor(total / 60);
+                minutes = total % 60;
+            }
+            return { mode, fan, temp, hours, minutes, clock };
+        }
+
+        /** The heat cut-off for this step when it is shorter than the general 12 h limit, else null. */
+        function heatLimit(step) {
+            const longest = C.longestStepMinutes(step.mode, step.temp, step.fan);
+            return step.mode === Mode.HEAT && longest < Limits.maxStepMinutes ? longest : null;
+        }
+
+        // ---- Templates ----
+
+        const st = (mode, fanPercent, temp, minutes) => ({
+            mode, fan: fanPercent / 5 - 1, temp, hours: Math.floor(minutes / 60), minutes: minutes % 60, clock: false,
+        });
+        const turbo = (fan, min) => st(Mode.TURBO, fan, 86, min);
+        const pause = min => st(Mode.WAIT, 50, 80, min);
+        const cool = (fan, min, temp = 40) => st(Mode.COOL, fan, temp, min);
+        const heat = (fan, temp, min) => st(Mode.HEAT, fan, temp, min);
+        const extHeat = (fan, temp, min) => st(Mode.EXT_HEAT, fan, temp, min);
+        const coolUntil = (fan, temp, hm) => ({ ...st(Mode.COOL, fan, temp, parseHM(hm)), clock: true });
+
+        // OFF BiorhythmFragment.setPresetSequence (fan in %, as the official dialog's V2 steps × 5).
+        const OFFICIAL = Object.freeze([
+            { id: 'cold-15', name: 'Cold <26', title: 'Cold sleeper, age 15–25',
+                steps: () => [turbo(100, 5), turbo(50, 5), pause(10), cool(30, 10), heat(30, 47, 390)] },
+            { id: 'cold-26', name: 'Cold 26+', title: 'Cold sleeper, age 26+',
+                steps: () => [turbo(100, 5), turbo(50, 3), pause(10), cool(30, 10), heat(30, 49, 360)] },
+            { id: 'neutral-15', name: 'Neutral <26', title: 'Temperature neutral, age 15–25',
+                steps: () => [turbo(100, 5), turbo(50, 4), pause(10), cool(40, 20), cool(25, 390)] },
+            { id: 'neutral-26', name: 'Neutral 26+', title: 'Temperature neutral, age 26+',
+                steps: () => [turbo(100, 5), turbo(50, 3), pause(10), cool(30, 20), cool(20, 360)] },
+            { id: 'hot-15', name: 'Hot <26', title: 'Hot sleeper, age 15–25',
+                steps: () => [turbo(100, 3), turbo(30, 3), pause(10), cool(50, 20), cool(35, 390)] },
+            { id: 'hot-26', name: 'Hot 26+', title: 'Hot sleeper, age 26+',
+                steps: () => [turbo(100, 3), turbo(30, 3), pause(10), cool(45, 20), cool(30, 360)] },
+        ]);
+        const WAKE_STEPS = () => [heat(35, 70, 10), heat(40, 76, 10), heat(45, 80, 10)];
+
+        const NIGHTS = Object.freeze([
+            { id: 'cool-drift', name: 'Cool drift', title: 'Strong cooling to fall asleep, easing off, a little warmth to wake',
+                steps: () => [cool(60, 45, 44), cool(30, 300, 44), cool(15, 90, 44), heat(30, 54, 30)] },
+            { id: 'warm-cool', name: 'Warm then cool', title: 'A warm bed to get into, cool air through the night',
+                steps: () => [turbo(100, 10), heat(40, 68, 30), cool(20, 360, 44), heat(30, 58, 40)] },
+            { id: 'winter', name: 'Winter cocoon', title: 'Gentle heat all night for cold rooms',
+                steps: () => [heat(50, 72, 30), extHeat(30, 62, 210), extHeat(20, 58, 240)] },
+            { id: 'until-630', name: 'Cool until 6:30', title: 'Cools until 06:30 whenever you go to bed, then warms you up',
+                start: '22:30',
+                steps: () => [turbo(100, 5), pause(10), cool(40, 20, 44), coolUntil(25, 44, '06:30'), heat(40, 70, 15)] },
+        ]);
+
+        function templates() {
+            return [
+                ...OFFICIAL.map(t => ({ id: t.id, kind: 'official', name: t.name, title: t.title })),
+                ...NIGHTS.map(t => ({ id: t.id, kind: 'night', name: t.name, title: t.title })),
+            ];
+        }
+
+        /** {name, steps, start} for a template; Sleep + Wake and Cloud Sheet apply to the official suggestions only. */
+        function expandTemplate(id, { sleepWake = false, cloudSheet = false } = {}) {
+            const night = NIGHTS.find(t => t.id === id);
+            if (night) return { name: night.name, steps: night.steps(), start: night.start ?? null };
+            const official = OFFICIAL.find(t => t.id === id);
+            if (!official) throw new RangeError(`Unknown template ${id}`);
+            let steps = official.steps();
+            if (sleepWake) steps = [...steps, ...WAKE_STEPS()];
+            // OFF adds 2 to its 1–20 fan scale, i.e. +10 %, capped at 100 %.
+            if (cloudSheet) steps = steps.map(s => ({ ...s, fan: Math.min(19, s.fan + 2) }));
+            const flags = `${sleepWake ? 'W' : ''}${cloudSheet ? 'C' : ''}`;
+            return { name: C.sanitizeName(flags ? `${official.name} +${flags}` : official.name), steps, start: null };
+        }
+
+        // ---- Library (localStorage) ----
+
+        const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+        function seedLibrary() {
+            return NIGHTS.map(t => ({ id: `seed-${t.id}`, ...expandTemplate(t.id) }));
+        }
+
+        /** The stored library, the seed when nothing is stored, or null when the stored text is unreadable. */
+        function parseLibrary(text) {
+            if (text == null) return seedLibrary();
+            try {
+                const list = JSON.parse(text);
+                if (!Array.isArray(list)) return null;
+                return list
+                    .filter(s => s && Array.isArray(s.steps) && s.steps.length)
+                    .map(s => ({
+                        id: String(s.id || newId()),
+                        name: C.sanitizeName(s.name),
+                        steps: s.steps.slice(0, Limits.stepsPerProgram).map(C.normalizeStep),
+                        start: parseHM(s.start) == null ? null : formatHM(parseHM(s.start)),
+                    }));
+            } catch {
+                return null;
+            }
+        }
+
+        // ---- Night curve ----
+
+        // The scale fits the program's own temperatures; a minimum span keeps small differences from looking dramatic.
+        const MIN_SPAN = 16;
+
+        function curveModel(steps, startMinute, { width = 340, height = 120, padX = 4, padTop = 8, padBottom = 18 } = {}) {
+            const tl = timeline(steps, startMinute);
+            const total = Math.max(tl.total, 1);
+            const plotW = width - 2 * padX, plotH = height - padTop - padBottom;
+            const base = padTop + plotH;
+            const temps = tl.segments.filter(s => s.step.mode !== Mode.WAIT).map(s => s.step.temp);
+            let lo = temps.length ? Math.min(...temps) : 40, hi = temps.length ? Math.max(...temps) : 80;
+            if (hi - lo < MIN_SPAN) { const mid = (hi + lo) / 2; lo = mid - MIN_SPAN / 2; hi = mid + MIN_SPAN / 2; }
+            // Headroom below the line keeps the lowest step clear of the fan area.
+            lo -= (hi - lo) * 0.5;
+            hi += (hi - lo) * 0.08;
+            const x = m => round1(padX + (clamp(m, 0, total) / total) * plotW);
+            const y = t => round1(padTop + (1 - (t - lo) / (hi - lo)) * plotH);
+            const fanY = fan => round1(base - (C.fanPercent(fan) / 100) * plotH * 0.4);
+            const segments = tl.segments.map(seg => {
+                const air = seg.step.mode !== Mode.WAIT;
+                return {
+                    index: seg.index, mode: seg.step.mode, start: seg.start, end: seg.end,
+                    x0: x(seg.start), x1: x(seg.end), y: air ? y(seg.step.temp) : null, fanY: air ? fanY(seg.step.fan) : null,
+                };
+            });
+            // A wait step blows no air, so it splits the line into separate runs.
+            const runs = [];
+            let run = null;
+            for (const seg of segments) {
+                if (seg.y == null) {
+                    if (seg.x1 > seg.x0) run = null;
+                    continue;
+                }
+                if (!run) runs.push(run = []);
+                run.push(seg);
+            }
+            const tempPaths = runs.map(r => r.map((s, i) => `${i ? 'V' : `M${s.x0} `}${s.y}H${s.x1}`).join(''));
+            const fanPaths = runs.map(r => `M${r[0].x0} ${base}${r.map(s => `V${s.fanY}H${s.x1}`).join('')}V${base}Z`);
+
+            const everyHours = [1, 2, 3, 4, 6, 12].find(h => total / (h * 60) <= 6) || 24;
+            const every = everyHours * 60;
+            const ticks = [];
+            for (let m = Math.ceil(startMinute / every) * every; m <= startMinute + total; m += every) {
+                ticks.push({ x: x(m - startMinute), label: formatHM(m) });
+            }
+            return { width, height, padX, padTop, base, total, start: startMinute, segments, tempPaths, fanPaths, ticks };
+        }
+
+        function markerPoint(model, elapsed) {
+            const seg = model.segments.find(s => elapsed >= s.start && elapsed <= s.end) || model.segments.at(-1);
+            const x = round1(model.padX + (clamp(elapsed, 0, model.total) / model.total) * (model.width - 2 * model.padX));
+            return { x, y: seg?.y ?? model.base };
+        }
+
+        const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+        function curveSVG(steps, startMinute, { width = 340, height = 120, labels = true, highlight = -1, marker = null, label = '' } = {}) {
+            const m = curveModel(steps, startMinute, { width, height, padBottom: labels ? 18 : 4, padTop: labels ? 8 : 5 });
+            const out = [];
+            const band = m.segments[highlight];
+            if (band) {
+                out.push(`<rect x="${band.x0 - 1}" y="0" width="${round1(Math.max(band.x1 - band.x0, 1) + 2)}" height="${m.base}" rx="3" fill="#fff" opacity="0.08"/>`);
+            }
+            out.push(`<line x1="${m.padX}" y1="${m.base}" x2="${width - m.padX}" y2="${m.base}" stroke="#3a3a3a"/>`);
+            for (const t of m.ticks) {
+                out.push(`<line x1="${t.x}" y1="${m.base}" x2="${t.x}" y2="${m.base + (labels ? 4 : 2)}" stroke="#666"/>`);
+                if (labels && t.x > 14 && t.x < width - 14) {
+                    out.push(`<text x="${t.x}" y="${m.base + 14}" text-anchor="middle" font-size="10" fill="#888">${t.label}</text>`);
+                }
+            }
+            for (const d of m.fanPaths) out.push(`<path d="${d}" fill="#9ca3af" opacity="0.2"/>`);
+            for (const seg of m.segments) {
+                if (seg.y == null && seg.x1 > seg.x0) {
+                    out.push(`<line x1="${seg.x0}" y1="${m.base - 1}" x2="${seg.x1}" y2="${m.base - 1}" stroke="${MODE_COLORS[Mode.WAIT]}" stroke-width="2" stroke-dasharray="2 3"/>`);
+                }
+            }
+            for (const d of m.tempPaths) out.push(`<path d="${d}" fill="none" stroke="#777" stroke-width="1.5" stroke-linejoin="round"/>`);
+            const thick = labels ? 3 : 2.5;
+            for (const seg of m.segments) {
+                if (seg.y == null) continue;
+                out.push(`<path d="M${seg.x0} ${seg.y}H${seg.x1}" stroke="${MODE_COLORS[seg.mode]}" stroke-width="${thick}" stroke-linecap="round"/>`);
+            }
+            if (marker != null) {
+                const p = markerPoint(m, marker);
+                out.push(`<line x1="${p.x}" y1="0" x2="${p.x}" y2="${m.base}" stroke="#22c55e" stroke-width="1.5"/>`);
+                out.push(`<circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#22c55e" stroke="#111" stroke-width="2"/>`);
+            }
+            return `<svg class="pg-curve" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(label)}">${out.join('')}</svg>`;
+        }
+
+        globalThis.BedJetPrograms = Object.freeze({
+            EDITOR_MODES, MODE_COLORS,
+            minuteOfDay, formatHM, parseHM, dateAt,
+            timeline, endTime, runPosition, coerceStep, heatLimit,
+            templates, expandTemplate, seedLibrary, parseLibrary,
+            curveModel, curveSVG, esc,
+        });
+
+        if (typeof document === 'undefined' || !globalThis.App) return;
+
+        // ---- Programs tab UI ----
+
+        const App = globalThis.App;
+        const $ = id => document.getElementById(id);
+        const KEYS = { library: `${TOOL}_schedules`, run: `${TOOL}_program_run` };
+
+        const ui = {
+            slots: null,
+            slotsLink: null,
+            slotsLoading: false,
+            slotsError: null,
+            library: [],
+            /** {slot, name, steps, startedAt}: the program this app last started, to tell which slot is running. */
+            run: null,
+            liveKey: '',
+            ed: null,
+            picker: null,
+            busy: false,
+        };
+
+        const stepsLabel = n => `${n} ${n === 1 ? 'step' : 'steps'}`;
+        const fan = step => `${C.fanPercent(step.fan)} %`;
+        const stepMinutes = step => step.hours * 60 + step.minutes;
+
+        function readStorage(key) {
+            try { return localStorage.getItem(key); } catch { return null; }
+        }
+        function writeStorage(key, value) {
+            try {
+                if (value == null) localStorage.removeItem(key);
+                else localStorage.setItem(key, value);
+            } catch { /* private mode */ }
+        }
+
+        function loadLibrary() {
+            const text = readStorage(KEYS.library);
+            const parsed = parseLibrary(text);
+            if (parsed) return parsed;
+            App.log('Saved schedules could not be read; showing the built-in ones', 'warn');
+            return seedLibrary();
+        }
+        const persistLibrary = () => writeStorage(KEYS.library, JSON.stringify(ui.library));
+
+        function addToLibrary(program, { quiet = false } = {}) {
+            const entry = { id: newId(), name: C.sanitizeName(program.name) || 'From BedJet', steps: program.steps.map(C.normalizeStep), start: program.start ?? null };
+            ui.library.unshift(entry);
+            persistLibrary();
+            renderLibrary();
+            if (!quiet) App.toast(`Copied “${entry.name}” to your schedules.`, 'success', 2500);
+            return entry;
+        }
+
+        function loadRun() {
+            try {
+                const run = JSON.parse(readStorage(KEYS.run) || 'null');
+                return run && Number.isInteger(run.slot) && Array.isArray(run.steps) ? run : null;
+            } catch {
+                return null;
+            }
+        }
+        function remember(run) {
+            ui.run = run;
+            writeStorage(KEYS.run, JSON.stringify(run));
+            App.set({ runningProgram: run.name });
+            renderSlots();
+        }
+        function forgetRun() {
+            ui.run = null;
+            writeStorage(KEYS.run, null);
+        }
+
+        const currentSlots = () => (ui.slotsLink === App.link ? ui.slots : null);
+
+        function runningSlot() {
+            const step = App.state.status?.extra?.programStep || 0;
+            const run = ui.run;
+            if (!step || !run || App.state.link !== 'ready' || step > run.steps.length) return null;
+            const slots = currentSlots();
+            // Overwritten from another phone since this app started it: the slot no longer tells us anything.
+            if (slots && slots[run.slot]?.name !== run.name) return null;
+            return run.slot;
+        }
+
+        // ---- Confirm sheet ----
+
+        /** Resolves to 'ok', 'alt' or false. */
+        function askConfirm({ title, text, ok = 'OK', alt = null, danger = true }) {
+            return new Promise(resolve => {
+                let answer = false;
+                $('pgConfirmTitle').textContent = title;
+                $('pgConfirmText').textContent = text;
+                const okBtn = $('pgConfirmOk'), altBtn = $('pgConfirmAlt');
+                okBtn.textContent = ok;
+                okBtn.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+                altBtn.hidden = !alt;
+                altBtn.textContent = alt || '';
+                const finish = value => { answer = value; App.closeSheet('pgConfirmSheet'); };
+                okBtn.onclick = () => finish('ok');
+                altBtn.onclick = () => finish('alt');
+                $('pgConfirmCancel').onclick = () => finish(false);
+                $('pgConfirmSheet').addEventListener('sheetclose', () => resolve(answer), { once: true });
+                App.openSheet('pgConfirmSheet');
+            });
+        }
+
+        // ---- On the BedJet ----
+
+        async function loadSlots({ force = false } = {}) {
+            const link = App.link;
+            if (App.state.link !== 'ready' || ui.slotsLoading || (!force && ui.slotsLink === link && ui.slots)) return;
+            ui.slotsLoading = true;
+            ui.slotsError = null;
+            renderSlots();
+            try {
+                const slots = await App.device.storedPrograms();
+                if (link === App.link) {
+                    ui.slots = slots;
+                    ui.slotsLink = link;
+                    App.log(`Programs: ${slots.map((p, i) => `${i + 1}=${p ? `${p.name} (${p.steps.length})` : 'empty'}`).join(', ')}`, 'info');
+                }
+            } catch (err) {
+                if (link === App.link) {
+                    ui.slotsError = err;
+                    App.log(`Could not read programs: ${err.message}`, 'warn');
+                }
+            } finally {
+                ui.slotsLoading = false;
+                renderSlots();
+                renderPicker();
+            }
+        }
+
+        function infoCard(text, extra = '') {
+            return `<div class="card pg-card empty-slot"><span class="grow">${text}</span>${extra}</div>`;
+        }
+
+        function slotCard(program, slot) {
+            const running = runningSlot() === slot;
+            const start = running ? minuteOfDay(new Date(ui.run.startedAt)) : minuteOfDay(new Date());
+            const end = endTime(program.steps, start);
+            const name = program.name || 'Unnamed';
+            const meta = `${stepsLabel(program.steps.length)} · ${App.formatDuration(end.total)} · ends ${formatHM(end.minute)}${running ? '' : ' if started now'}`;
+            return `<div class="card pg-card${running ? ' running' : ''}">
+                <div class="pg-card-top">
+                    <span class="pg-slot-no">${slot + 1}</span>
+                    <div class="grow"><div class="pg-name">${esc(name)}</div><div class="pg-meta">${meta}</div></div>
+                    ${running ? '<span class="badge success">Running</span>' : ''}
+                </div>
+                <div class="pg-curve-box" data-slot-curve="${slot}">${curveSVG(program.steps, start, { height: 56, labels: false, label: `${name}: night curve` })}</div>
+                <div class="pg-live" data-slot-live="${slot}"></div>
+                <div class="pg-actions">
+                    ${running
+                        ? `<button class="btn btn-sm btn-danger requires-link" type="button" data-slot-act="stop" data-slot="${slot}">Stop</button>`
+                        : `<button class="btn btn-sm btn-primary requires-link" type="button" data-slot-act="run" data-slot="${slot}">Run</button>`}
+                    <button class="btn btn-sm" type="button" data-slot-act="edit" data-slot="${slot}">Edit</button>
+                    <button class="btn btn-sm" type="button" data-slot-act="copy" data-slot="${slot}">Copy to phone</button>
+                    <button class="btn btn-sm btn-ghost pg-danger requires-link" type="button" data-slot-act="delete" data-slot="${slot}">Delete</button>
+                </div>
+            </div>`;
+        }
+
+        function renderSlots() {
+            const el = $('pgSlots');
+            const ready = App.state.link === 'ready';
+            const slots = currentSlots();
+            $('pgRefresh').classList.toggle('spinning', ui.slotsLoading);
+            renderElsewhere();
+            if (!slots) {
+                el.innerHTML = ui.slotsError && !ui.slotsLoading
+                    ? infoCard(`Couldn't read the programs: ${esc(ui.slotsError.message)}`,
+                        '<button class="btn btn-sm btn-outline requires-link" type="button" data-slot-act="reload">Retry</button>')
+                    : ready || ui.slotsLoading ? infoCard('Reading the programs stored on your BedJet…')
+                        : infoCard('Connect your BedJet to see the three programs stored on it. Your schedules below work without it.');
+                return;
+            }
+            el.innerHTML = slots.map((program, slot) => (program
+                ? slotCard(program, slot)
+                : `<div class="card pg-card empty-slot"><span class="pg-slot-no">${slot + 1}</span><span class="grow">Empty slot</span></div>`)).join('');
+            updateLive();
+        }
+
+        function renderElsewhere() {
+            const step = App.state.status?.extra?.programStep || 0;
+            const unknown = App.state.link === 'ready' && step > 0 && runningSlot() == null;
+            $('pgElsewhere').innerHTML = unknown
+                ? `<div class="banner banner-info pg-banner"><span class="banner-text">Step ${step} of a program is running. It was started from the BedJet's remote or another phone, so it isn't marked below.</span></div>`
+                : '';
+        }
+
+        function updateLive() {
+            const slot = runningSlot();
+            if (slot == null) return;
+            const status = App.state.status;
+            const run = ui.run;
+            const start = minuteOfDay(new Date(run.startedAt));
+            const pos = runPosition(run.steps, start, status.extra.programStep, status.remainingSeconds);
+            const curve = document.querySelector(`[data-slot-curve="${slot}"]`);
+            if (curve) curve.innerHTML = curveSVG(run.steps, start, { height: 56, labels: false, highlight: pos.index, marker: pos.elapsed, label: `${run.name}: running` });
+            const live = document.querySelector(`[data-slot-live="${slot}"]`);
+            const step = run.steps[pos.index];
+            if (live && step) {
+                live.textContent = `Step ${pos.index + 1} of ${run.steps.length} · ${App.modeLabel(step.mode)} · ${App.formatClock(status.remainingSeconds)} left in this step`;
+            }
+        }
+
+        function onStatus(status) {
+            const step = status?.extra?.programStep || 0;
+            if (ui.run && step === 0 && status?.extra && status.extraFresh !== false) forgetRun();
+            const slot = runningSlot();
+            if (slot != null && App.state.runningProgram !== ui.run.name) App.set({ runningProgram: ui.run.name });
+            const key = `${step > 0}:${step}:${slot}`;
+            if (key !== ui.liveKey) {
+                ui.liveKey = key;
+                renderSlots();
+            } else {
+                updateLive();
+            }
+        }
+
+        function stepProblemFor(steps, when) {
+            const first = C.validateProgram(steps, when)[0];
+            if (!first) return null;
+            return new C.BedJetError(first.code, first.index >= 0 ? `Step ${first.index + 1}: ${first.message}` : first.message);
+        }
+
+        async function runSlot(slot, program) {
+            const problem = stepProblemFor(program.steps, new Date());
+            if (problem) {
+                App.fail(problem);
+                return false;
+            }
+            App.log(`Start program slot ${slot + 1} (${program.name})`, 'info');
+            const started = await App.run(async () => {
+                const startedAt = Date.now();
+                await App.device.startProgram(slot);
+                remember({ slot, name: program.name, steps: program.steps.map(C.normalizeStep), startedAt });
+                return true;
+            }, { success: `Started “${program.name}”.` });
+            return !!started;
+        }
+
+        async function deleteSlot(slot) {
+            const program = currentSlots()?.[slot];
+            if (!program) return;
+            const answer = await askConfirm({
+                title: `Delete “${program.name}”?`,
+                text: `Slot ${slot + 1} on your BedJet will be empty. Its ${stepsLabel(program.steps.length)} (${App.formatDuration(endTime(program.steps, minuteOfDay(new Date())).total)}) are only kept if you copy them to your phone first.`,
+                ok: 'Delete',
+                alt: 'Copy, then delete',
+            });
+            if (!answer) return;
+            if (answer === 'alt') addToLibrary(program, { quiet: true });
+            const done = await App.run(async () => {
+                await App.device.deleteProgram(slot);
+                return true;
+            }, { success: `Deleted “${program.name}”.` });
+            if (!done) return;
+            if (ui.run?.slot === slot) forgetRun();
+            ui.slots[slot] = null;
+            renderSlots();
+            loadSlots({ force: true });
+        }
+
+        $('pgSlots').addEventListener('click', e => {
+            const btn = e.target.closest('[data-slot-act]');
+            if (!btn) return;
+            const slot = Number(btn.dataset.slot);
+            const program = currentSlots()?.[slot];
+            switch (btn.dataset.slotAct) {
+                case 'reload': loadSlots({ force: true }); break;
+                case 'run': if (program) runSlot(slot, program); break;
+                case 'stop': App.run(() => App.device.stopProgram()); break;
+                case 'edit': if (program) openEditor({ name: program.name, steps: program.steps, start: null }, { kind: 'slot', slot }); break;
+                case 'copy': if (program) addToLibrary(program); break;
+                case 'delete': deleteSlot(slot); break;
+            }
+        });
+        $('pgRefresh').addEventListener('click', () => loadSlots({ force: true }));
+
+        // ---- Schedules library ----
+
+        function libraryCard(s) {
+            const start = s.start != null ? parseHM(s.start) : minuteOfDay(new Date());
+            const end = endTime(s.steps, start);
+            const invalid = C.validateProgram(s.steps, dateAt(start)).length > 0;
+            const meta = `${stepsLabel(s.steps.length)} · ${App.formatDuration(end.total)} · ${s.start ?? 'now'} → ${formatHM(end.minute)}`;
+            return `<div class="card pg-card" data-lib="${esc(s.id)}">
+                <div class="pg-card-top pg-tap" data-lib-act="edit">
+                    <div class="grow"><div class="pg-name">${esc(s.name || 'Unnamed')}</div><div class="pg-meta">${meta}</div></div>
+                    ${invalid ? '<span class="badge error">Needs a fix</span>' : ''}
+                </div>
+                <div class="pg-curve-box pg-tap" data-lib-act="edit">${curveSVG(s.steps, start, { height: 56, labels: false, label: `${s.name}: night curve` })}</div>
+                <div class="pg-actions">
+                    <button class="btn btn-sm" type="button" data-lib-act="edit">Edit</button>
+                    <button class="btn btn-sm btn-outline requires-link" type="button" data-lib-act="device">To BedJet</button>
+                    <button class="btn btn-sm" type="button" data-lib-act="dup">Duplicate</button>
+                    <button class="btn btn-sm btn-ghost pg-danger" type="button" data-lib-act="delete">Delete</button>
+                </div>
+            </div>`;
+        }
+
+        function renderLibrary() {
+            $('pgLibrary').innerHTML = ui.library.length
+                ? ui.library.map(libraryCard).join('')
+                : '<div class="card empty"><span class="empty-icon">🌙</span>No schedules yet. Tap <strong>+ New</strong> to start from a suggestion.</div>';
+        }
+
+        $('pgLibrary').addEventListener('click', async e => {
+            const btn = e.target.closest('[data-lib-act]');
+            const card = e.target.closest('[data-lib]');
+            if (!btn || !card) return;
+            const index = ui.library.findIndex(s => s.id === card.dataset.lib);
+            const s = ui.library[index];
+            if (!s) return;
+            switch (btn.dataset.libAct) {
+                case 'edit': openEditor(s, { kind: 'library', id: s.id }); break;
+                case 'device': openPicker({ program: s, run: false, sourceSlot: null, fromEditor: false }); break;
+                case 'dup': {
+                    ui.library.splice(index + 1, 0, { ...s, id: newId(), name: C.sanitizeName(`${s.name.slice(0, 10)} copy`), steps: s.steps.map(C.normalizeStep) });
+                    persistLibrary();
+                    renderLibrary();
+                    break;
+                }
+                case 'delete': {
+                    const answer = await askConfirm({
+                        title: `Delete “${s.name}”?`,
+                        text: 'It is removed from this phone. Programs already saved on your BedJet stay there.',
+                        ok: 'Delete',
+                    });
+                    if (!answer) return;
+                    ui.library = ui.library.filter(x => x.id !== s.id);
+                    persistLibrary();
+                    renderLibrary();
+                    break;
+                }
+            }
+        });
+
+        // ---- Templates ----
+
+        function renderTemplates() {
+            const opts = { sleepWake: $('pgTplWake').checked, cloudSheet: $('pgTplCloud').checked };
+            const row = (id, title, sub) => `<button class="list-row pg-choice" type="button" data-tpl="${id}">
+                <span class="grow"><div>${esc(title)}</div><div class="small muted">${esc(sub)}</div></span><span class="dim">›</span></button>`;
+            const summary = p => `${stepsLabel(p.steps.length)} · ${App.formatDuration(endTime(p.steps, 22 * 60 + 30).total)}`;
+            $('pgTplBlank').innerHTML = row('blank', 'Blank schedule', 'One cool step to build on');
+            $('pgTplOfficial').innerHTML = templates().filter(t => t.kind === 'official')
+                .map(t => row(t.id, t.title, summary(expandTemplate(t.id, opts)))).join('');
+            $('pgTplNights').innerHTML = templates().filter(t => t.kind === 'night')
+                .map(t => row(t.id, t.name, `${t.title} · ${summary(expandTemplate(t.id))}`)).join('');
+        }
+
+        $('pgNew').addEventListener('click', () => {
+            renderTemplates();
+            App.openSheet('pgTemplateSheet');
+        });
+        $('pgTplWake').addEventListener('change', renderTemplates);
+        $('pgTplCloud').addEventListener('change', renderTemplates);
+        $('pgTemplateSheet').addEventListener('click', e => {
+            const row = e.target.closest('[data-tpl]');
+            if (!row) return;
+            const id = row.dataset.tpl;
+            const program = id === 'blank'
+                ? { name: 'My night', steps: [cool(30, 240, 44)], start: null }
+                : expandTemplate(id, { sleepWake: $('pgTplWake').checked, cloudSheet: $('pgTplCloud').checked });
+            App.closeSheet('pgTemplateSheet');
+            openEditor(program, { kind: 'new' });
+        });
+
+        // ---- Editor ----
+
+        const edStart = () => (ui.ed.start != null ? parseHM(ui.ed.start) : minuteOfDay(new Date()));
+        const snapshot = ed => JSON.stringify({ name: C.sanitizeName(ed.name), steps: ed.steps.map(C.normalizeStep), start: ed.start });
+        const isDirty = () => !!ui.ed && snapshot(ui.ed) !== ui.ed.initial;
+
+        function openEditor(program, origin) {
+            ui.ed = {
+                origin,
+                name: C.sanitizeName(program.name),
+                steps: program.steps.map(s => ({ ...C.normalizeStep(s) })),
+                start: program.start ?? null,
+                open: -1,
+            };
+            ui.ed.initial = snapshot(ui.ed);
+            $('pgEdTitle').textContent = origin.kind === 'slot' ? `Slot ${origin.slot + 1} on the BedJet`
+                : origin.kind === 'library' ? 'Edit schedule' : 'New schedule';
+            $('pgEdName').value = ui.ed.name;
+            renderStart();
+            renderSteps();
+            App.openSheet('pgEditorSheet');
+            $('pgEdBody').scrollTop = 0;
+        }
+
+        async function closeEditor({ force = false } = {}) {
+            if (!ui.ed) return;
+            if (!force && isDirty()) {
+                const answer = await askConfirm({ title: 'Discard changes?', text: 'Your changes to this schedule are not saved anywhere yet.', ok: 'Discard' });
+                if (!answer) return;
+            }
+            ui.ed = null;
+            App.closeSheet('pgEditorSheet');
+        }
+
+        function renderStart() {
+            const ed = ui.ed;
+            $('pgEdStart').value = formatHM(edStart());
+            document.querySelectorAll('[data-pg-start]').forEach(chip => {
+                const value = chip.dataset.pgStart;
+                chip.classList.toggle('active', value === 'now' ? ed.start == null : ed.start === value);
+            });
+        }
+
+        function stepHead(step, i, seg, start) {
+            const minutes = stepMinutes(step);
+            const detail = step.mode === Mode.WAIT ? 'Air off'
+                : `${App.formatTemp(step.mode === Mode.TURBO ? C.TEMP_RANGES[Mode.TURBO].min : step.temp)} · fan ${fan(step)}`;
+            const time = step.clock ? `until ${formatHM(minutes)}` : App.formatDuration(minutes);
+            const at = seg ? `${formatHM(start + seg.start)}–${formatHM(start + seg.end)}` : '';
+            return `<span class="pg-dot" style="background:${MODE_COLORS[step.mode] || MODE_COLORS[0]}">${i + 1}</span>
+                <span class="grow"><span class="pg-step-title">${esc(App.modeLabel(step.mode))}</span><br><span class="pg-step-detail">${detail}</span></span>
+                <span class="pg-step-time">${time}<span class="pg-at">${at}</span></span>`;
+        }
+
+        function slider(kind, min, max, value, disabled = false) {
+            const span = max - min || 1;
+            return `<input type="range" data-ed="${kind}" min="${min}" max="${max}" step="1" value="${value}"${disabled ? ' disabled' : ''} style="--value:${((value - min) / span) * 100}%" aria-label="${kind === 'temp' ? 'Temperature' : 'Fan'}">`;
+        }
+
+        function stepBody(step) {
+            const n = ui.ed.steps.length;
+            const modes = EDITOR_MODES.map(m => `<button class="chip" type="button" data-ed="mode" data-mode="${m}" aria-pressed="${m === step.mode}">${esc(App.modeLabel(m))}</button>`).join('');
+            const range = C.tempRange(step.mode);
+            const temp = C.usesTemperature(step.mode)
+                ? `<div class="pg-control-label"><span>Temperature</span><span data-ed-label="temp">${App.formatTemp(step.temp)}</span></div>${slider('temp', range.min, range.max, clamp(step.temp, range.min, range.max))}`
+                : `<div class="pg-control-label"><span>Temperature</span><span class="pg-fixed">${step.mode === Mode.TURBO ? `Fixed at ${App.formatTemp(C.TEMP_RANGES[Mode.TURBO].min)}` : 'No air while waiting'}</span></div>`;
+            const wait = step.mode === Mode.WAIT;
+            const fanControl = `<div class="pg-control-label"><span>Fan</span><span data-ed-label="fan">${wait ? 'Off' : fan(step)}</span></div>${slider('fan', 0, 19, step.fan, wait)}`;
+            let duration;
+            if (step.clock) {
+                duration = `<input class="input" type="time" data-ed="until" value="${formatHM(stepMinutes(step))}" aria-label="Run until">`;
+            } else if (step.mode === Mode.TURBO) {
+                const options = Array.from({ length: Limits.turboMaxMinutes }, (_, k) => k + 1)
+                    .map(v => `<option value="${v}"${v === stepMinutes(step) ? ' selected' : ''}>${v} min</option>`).join('');
+                duration = `<select class="input" data-ed="turbo" aria-label="Turbo minutes">${options}</select>`;
+            } else {
+                duration = `<input class="input" type="number" data-ed="hours" min="0" max="11" inputmode="numeric" value="${step.hours}" aria-label="Hours"><span class="dim">h</span>
+                    <input class="input" type="number" data-ed="minutes" min="0" max="59" inputmode="numeric" value="${step.minutes}" aria-label="Minutes"><span class="dim">min</span>`;
+            }
+            const toggle = C.clockTimeAllowed(step.mode)
+                ? `<div class="segmented"><button type="button" data-ed="clock" data-value="0" class="${step.clock ? '' : 'active'}">For</button><button type="button" data-ed="clock" data-value="1" class="${step.clock ? 'active' : ''}">Until</button></div>`
+                : '';
+            return `<div class="pg-modes">${modes}</div>
+                <div class="pg-control">${temp}</div>
+                <div class="pg-control">${fanControl}</div>
+                <div class="pg-control">
+                    <div class="pg-control-label"><span>${step.clock ? 'Run until' : 'Duration'}</span><span></span></div>
+                    <div class="pg-duration">${toggle}${duration}</div>
+                    <div class="pg-hint" data-step-hint></div>
+                </div>
+                <div class="pg-step-actions">
+                    <button class="btn btn-sm" type="button" data-ed="up"${n < 2 ? ' disabled' : ''} aria-label="Move up">↑</button>
+                    <button class="btn btn-sm" type="button" data-ed="down"${n < 2 ? ' disabled' : ''} aria-label="Move down">↓</button>
+                    <button class="btn btn-sm" type="button" data-ed="dup"${n >= Limits.stepsPerProgram ? ' disabled' : ''}>Duplicate</button>
+                    <button class="btn btn-sm" type="button" data-ed="insert"${n >= Limits.stepsPerProgram ? ' disabled' : ''}>Insert above</button>
+                    <button class="btn btn-sm btn-ghost pg-danger" type="button" data-ed="delete"${n <= 1 ? ' disabled' : ''}>Delete</button>
+                </div>`;
+        }
+
+        function renderSteps() {
+            const ed = ui.ed;
+            $('pgSteps').innerHTML = ed.steps.map((step, i) => `<div class="pg-step${ed.open === i ? ' open' : ''}" data-index="${i}">
+                <button class="pg-step-head" type="button" data-ed="toggle" aria-expanded="${ed.open === i}"></button>
+                <div class="pg-step-error" data-step-error></div>
+                ${ed.open === i ? `<div class="pg-step-body">${stepBody(step)}</div>` : ''}
+            </div>`).join('');
+            $('pgAddStep').disabled = ed.steps.length >= Limits.stepsPerProgram;
+            refreshDerived();
+        }
+
+        function refreshDerived() {
+            const ed = ui.ed;
+            if (!ed) return;
+            const start = edStart();
+            const startDate = dateAt(start);
+            const tl = timeline(ed.steps, start);
+            const errors = C.validateProgram(ed.steps, startDate);
+            const byIndex = new Map();
+            for (const e of errors) if (e.index >= 0 && !byIndex.has(e.index)) byIndex.set(e.index, e.message);
+
+            document.querySelectorAll('#pgSteps .pg-step').forEach(el => {
+                const i = Number(el.dataset.index);
+                const step = ed.steps[i];
+                el.querySelector('.pg-step-head').innerHTML = stepHead(step, i, tl.segments[i], start);
+                el.querySelector('[data-step-error]').textContent = byIndex.get(i) || '';
+                el.classList.toggle('invalid', byIndex.has(i));
+                const hint = el.querySelector('[data-step-hint]');
+                if (hint) {
+                    const limit = heatLimit(step);
+                    hint.textContent = limit != null ? `Max ${App.formatDuration(limit)} at this temperature and fan (the BedJet's heat cut-off).`
+                        : step.mode === Mode.TURBO ? 'Turbo runs 1–10 minutes.'
+                            : step.clock ? `Ends at ${formatHM(stepMinutes(step))}: ${App.formatDuration(tl.segments[i].minutes)} after the previous step.` : '';
+                }
+                const tempLabel = el.querySelector('[data-ed-label="temp"]');
+                if (tempLabel) tempLabel.textContent = App.formatTemp(step.temp);
+                const fanLabel = el.querySelector('[data-ed-label="fan"]');
+                if (fanLabel) fanLabel.textContent = step.mode === Mode.WAIT ? 'Off' : fan(step);
+            });
+
+            const end = endTime(ed.steps, start);
+            const day = end.days === 1 ? ' tomorrow' : end.days > 1 ? ` (+${end.days} days)` : '';
+            $('pgEdSummary').innerHTML = `Starts <strong>${formatHM(start)}</strong> · ends <strong>${formatHM(end.minute)}</strong>${day} · ${App.formatDuration(end.total)}`;
+            $('pgEdCurve').innerHTML = curveSVG(ed.steps, start, { height: 130, highlight: ed.open, label: `Night curve from ${formatHM(start)} to ${formatHM(end.minute)}` });
+            $('pgEdStepCount').textContent = `${ed.steps.length}/${Limits.stepsPerProgram}`;
+            const name = C.sanitizeName(ed.name).trim();
+            $('pgEdNameCount').textContent = `${C.sanitizeName(ed.name).length}/${Limits.nameLength}`;
+            $('pgEdName').classList.toggle('invalid', !name);
+
+            const general = errors.filter(e => e.index < 0).map(e => e.message);
+            $('pgEdErrors').innerHTML = general.map(m => `<div class="banner banner-error"><span class="banner-text">${esc(m)}</span></div>`).join('');
+
+            const valid = !errors.length && !!name;
+            const nowProblem = valid && ed.start != null ? stepProblemFor(ed.steps, new Date()) : null;
+            $('pgEdSaveLocal').disabled = !valid;
+            $('pgEdSaveDevice').disabled = !valid;
+            $('pgEdSaveRun').disabled = !valid || !!nowProblem;
+            const note = $('pgEdFootnote');
+            note.classList.toggle('error', !valid);
+            note.textContent = !name ? 'Give the schedule a name to save it.'
+                : errors.length ? `Fix ${errors.length === 1 ? 'the marked step' : `${errors.length} problems`} to save. Changing the start time can help with “until” steps.`
+                    : nowProblem ? `Saves for a ${formatHM(start)} start. It can't run right now: ${nowProblem.message}` : '';
+        }
+
+        function setStep(i, step, { rerender = true } = {}) {
+            ui.ed.steps[i] = step;
+            if (rerender) renderSteps();
+            else refreshDerived();
+        }
+
+        function setMode(i, mode) {
+            const ed = ui.ed;
+            const step = ed.steps[i];
+            if (step.mode === mode) return;
+            const next = { ...step, mode };
+            if (step.clock && !C.clockTimeAllowed(mode)) {
+                // Keep the step's place in the night: "until 06:30" becomes however long that was.
+                const minutes = timeline(ed.steps, edStart()).segments[i].minutes;
+                Object.assign(next, { clock: false, hours: Math.floor(minutes / 60), minutes: minutes % 60 });
+            }
+            setStep(i, coerceStep(next));
+        }
+
+        function setClock(i, on) {
+            const ed = ui.ed;
+            const step = ed.steps[i];
+            if (step.clock === on) return;
+            const start = edStart();
+            const seg = timeline(ed.steps, start).segments[i];
+            const minutes = on ? mod(start + seg.end, DAY) : Math.max(1, seg.minutes);
+            setStep(i, coerceStep({ ...step, clock: on, hours: Math.floor(minutes / 60), minutes: minutes % 60 }));
+        }
+
+        function editStructure(fn) {
+            fn(ui.ed);
+            renderSteps();
+            const open = document.querySelector('#pgSteps .pg-step.open');
+            open?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+
+        $('pgSteps').addEventListener('click', e => {
+            const btn = e.target.closest('[data-ed]');
+            if (!btn || btn.matches('input, select')) return;
+            const i = Number(btn.closest('.pg-step').dataset.index);
+            const ed = ui.ed;
+            const max = Limits.stepsPerProgram;
+            switch (btn.dataset.ed) {
+                case 'toggle': editStructure(d => { d.open = d.open === i ? -1 : i; }); break;
+                case 'mode': setMode(i, Number(btn.dataset.mode)); break;
+                case 'clock': setClock(i, btn.dataset.value === '1'); break;
+                case 'up':
+                case 'down': {
+                    const j = i + (btn.dataset.ed === 'up' ? -1 : 1);
+                    if (j < 0 || j >= ed.steps.length) return;
+                    editStructure(d => { [d.steps[i], d.steps[j]] = [d.steps[j], d.steps[i]]; d.open = j; });
+                    break;
+                }
+                case 'dup': if (ed.steps.length < max) editStructure(d => { d.steps.splice(i + 1, 0, { ...d.steps[i] }); d.open = i + 1; }); break;
+                case 'insert': if (ed.steps.length < max) editStructure(d => { d.steps.splice(i, 0, C.defaultStep()); d.open = i; }); break;
+                case 'delete': if (ed.steps.length > 1) editStructure(d => { d.steps.splice(i, 1); d.open = -1; }); break;
+            }
+        });
+
+        $('pgSteps').addEventListener('input', e => {
+            const el = e.target;
+            const kind = el.dataset.ed;
+            const row = el.closest('.pg-step');
+            if (!kind || !row || !ui.ed) return;
+            const step = ui.ed.steps[Number(row.dataset.index)];
+            const int = v => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
+            if (kind === 'temp') step.temp = Number(el.value);
+            else if (kind === 'fan') step.fan = Number(el.value);
+            else if (kind === 'hours') step.hours = Math.max(0, int(el.value));
+            else if (kind === 'minutes') step.minutes = Math.max(0, int(el.value));
+            else if (kind === 'turbo') Object.assign(step, { hours: 0, minutes: int(el.value) });
+            else if (kind === 'until') {
+                const m = parseHM(el.value);
+                if (m == null) return;
+                Object.assign(step, { hours: Math.floor(m / 60), minutes: m % 60 });
+            } else return;
+            if (el.type === 'range') el.style.setProperty('--value', `${((Number(el.value) - Number(el.min)) / (Number(el.max) - Number(el.min) || 1)) * 100}%`);
+            refreshDerived();
+        });
+
+        // Committed values get the official editor's clamping; only re-render when that changed something.
+        $('pgSteps').addEventListener('change', e => {
+            const row = e.target.closest('.pg-step');
+            if (!e.target.dataset.ed || !row || !ui.ed) return;
+            const i = Number(row.dataset.index);
+            const before = JSON.stringify(ui.ed.steps[i]);
+            const after = coerceStep(ui.ed.steps[i]);
+            setStep(i, after, { rerender: JSON.stringify(after) !== before });
+        });
+
+        $('pgAddStep').addEventListener('click', () => {
+            if (ui.ed.steps.length >= Limits.stepsPerProgram) return;
+            editStructure(d => { d.steps.push(C.defaultStep()); d.open = d.steps.length - 1; });
+        });
+
+        $('pgEdName').addEventListener('input', e => {
+            ui.ed.name = e.target.value;
+            refreshDerived();
+        });
+        $('pgEdName').addEventListener('change', e => {
+            ui.ed.name = C.sanitizeName(e.target.value);
+            e.target.value = ui.ed.name;
+            refreshDerived();
+        });
+        $('pgEdStart').addEventListener('change', e => {
+            const m = parseHM(e.target.value);
+            if (m == null) return;
+            ui.ed.start = formatHM(m);
+            renderStart();
+            refreshDerived();
+        });
+        document.querySelectorAll('[data-pg-start]').forEach(chip => chip.addEventListener('click', () => {
+            const value = chip.dataset.pgStart;
+            ui.ed.start = value === 'now' ? null : value;
+            renderStart();
+            refreshDerived();
+        }));
+        $('pgEdClose').addEventListener('click', () => closeEditor());
+
+        const editorProgram = () => ({ name: C.sanitizeName(ui.ed.name), steps: ui.ed.steps.map(C.normalizeStep), start: ui.ed.start });
+
+        $('pgEdSaveLocal').addEventListener('click', () => {
+            const ed = ui.ed;
+            const program = editorProgram();
+            const existing = ed.origin.kind === 'library' ? ui.library.find(s => s.id === ed.origin.id) : null;
+            if (existing) Object.assign(existing, program);
+            else ui.library.unshift({ id: newId(), ...program });
+            persistLibrary();
+            renderLibrary();
+            closeEditor({ force: true });
+            App.toast(`Saved “${program.name}” to your schedules.`, 'success', 2500);
+        });
+        const pickFromEditor = run => openPicker({
+            program: editorProgram(), run, fromEditor: true,
+            sourceSlot: ui.ed.origin.kind === 'slot' ? ui.ed.origin.slot : null,
+        });
+        $('pgEdSaveDevice').addEventListener('click', () => pickFromEditor(false));
+        $('pgEdSaveRun').addEventListener('click', () => pickFromEditor(true));
+
+        // ---- Slot picker and saving ----
+
+        function openPicker(target) {
+            ui.picker = target;
+            ui.busy = false;
+            $('pgSlotProgress').hidden = true;
+            App.openSheet('pgSlotSheet');
+            renderPicker();
+            if (!currentSlots()) loadSlots();
+        }
+
+        function pickerWhen(p) {
+            return p.run ? new Date() : dateAt(p.program.start != null ? parseHM(p.program.start) : minuteOfDay(new Date()));
+        }
+
+        function renderPicker() {
+            const p = ui.picker;
+            if (!p || !$('pgSlotSheet').classList.contains('active')) return;
+            $('pgSlotTitle').textContent = p.run ? 'Save & run' : 'Save to BedJet';
+            const problem = stepProblemFor(p.program.steps, pickerWhen(p));
+            const ready = App.state.link === 'ready';
+            $('pgSlotIntro').innerHTML = problem
+                ? `<span class="field-error">${esc(problem.message)}</span>`
+                : `Choose a slot for <strong>${esc(p.program.name)}</strong>${p.run ? '. It starts as soon as it is saved.' : '.'}`;
+            const slots = currentSlots();
+            const list = $('pgSlotList');
+            if (!slots) {
+                list.innerHTML = `<div class="list-row muted">${ui.slotsError && !ui.slotsLoading
+                    ? `Couldn't read the slots: ${esc(ui.slotsError.message)}`
+                    : ready ? 'Reading the slots…' : 'Connect your BedJet first.'}</div>`;
+                return;
+            }
+            const rank = slot => (slot === p.sourceSlot ? 0 : slots[slot] ? 2 : 1);
+            const order = [0, 1, 2].sort((a, b) => rank(a) - rank(b) || a - b);
+            list.innerHTML = order.map(slot => {
+                const existing = slots[slot];
+                const badge = slot === p.sourceSlot ? '<span class="badge accent">This program</span>'
+                    : existing ? '<span class="badge error">Replace</span>' : '<span class="badge success">Free</span>';
+                const sub = existing
+                    ? `${stepsLabel(existing.steps.length)} · ${App.formatDuration(endTime(existing.steps, minuteOfDay(new Date())).total)}`
+                    : 'Empty slot';
+                return `<button class="list-row pg-choice" type="button" data-pick="${slot}"${problem || ui.busy || !ready ? ' disabled' : ''}>
+                    <span class="pg-slot-no">${slot + 1}</span>
+                    <span class="grow"><div>${existing ? esc(existing.name || 'Unnamed') : 'Free slot'}</div><div class="small muted">${sub}</div></span>
+                    ${badge}</button>`;
+            }).join('');
+        }
+
+        function progress(fraction, text) {
+            $('pgSlotProgress').hidden = false;
+            $('pgSlotProgressBar').style.width = `${Math.round(fraction * 100)}%`;
+            $('pgSlotProgressText').textContent = text;
+        }
+
+        async function pick(slot) {
+            const p = ui.picker;
+            const existing = currentSlots()?.[slot];
+            if (!p || ui.busy) return;
+            if (existing && slot !== p.sourceSlot) {
+                const answer = await askConfirm({
+                    title: `Replace “${existing.name}”?`,
+                    text: `Slot ${slot + 1} holds “${existing.name}” (${stepsLabel(existing.steps.length)}, ${App.formatDuration(endTime(existing.steps, minuteOfDay(new Date())).total)}). Saving here deletes it from your BedJet.`,
+                    ok: 'Replace',
+                    alt: 'Copy it, then replace',
+                });
+                if (!answer) return;
+                if (answer === 'alt') addToLibrary(existing, { quiet: true });
+            }
+            await writeSlot(slot, p);
+        }
+
+        async function writeSlot(slot, p) {
+            ui.busy = true;
+            renderPicker();
+            const fragments = Math.max(1, Math.ceil(p.program.steps.length / Limits.stepsPerFragment));
+            // Fragments, the name, then a read-back of fragments and names; query retries only push the bar to its cap.
+            const total = 2 * fragments + 2;
+            let sent = 0, written = 0;
+            progress(0, 'Writing steps…');
+            const off = App.link.on('raw', ({ dir, bytes }) => {
+                if (dir !== 'tx' || !bytes?.length) return;
+                sent += 1;
+                if (bytes[0] === 0x40 && bytes[1] >= 7) written += 1;
+                const text = bytes[0] === 0x41 ? 'Checking what the BedJet stored…'
+                    : bytes[0] === 0x40 && bytes[1] < 7 ? 'Writing the name…'
+                        : `Writing steps (${written}/${fragments})…`;
+                progress(Math.min(sent / total, 0.95), text);
+            });
+            App.log(`Store "${p.program.name}" (${p.program.steps.length} steps) in slot ${slot + 1}`, 'info');
+            try {
+                const saved = await App.device.store({ name: p.program.name, steps: p.program.steps }, slot, { now: pickerWhen(p) });
+                off();
+                progress(1, 'Saved.');
+                if (currentSlots()) ui.slots[slot] = saved;
+                if (ui.run?.slot === slot) forgetRun();
+                renderSlots();
+                App.haptic('success');
+                ui.busy = false;
+                App.closeSheet('pgSlotSheet');
+                if (p.fromEditor) closeEditor({ force: true });
+                if (p.run) await runSlot(slot, saved);
+                else App.toast(`Saved “${saved.name}” to slot ${slot + 1}.`, 'success', 2500);
+            } catch (err) {
+                off();
+                App.fail(err);
+                if (err?.code === 'verifyFailed') loadSlots({ force: true });
+                $('pgSlotProgress').hidden = true;
+            } finally {
+                ui.busy = false;
+                renderPicker();
+            }
+        }
+
+        $('pgSlotList').addEventListener('click', e => {
+            const row = e.target.closest('[data-pick]');
+            if (row && !row.disabled) pick(Number(row.dataset.pick));
+        });
+
+        // ---- wiring ----
+
+        App.subscribe((s, changed) => {
+            if ('link' in changed) {
+                if (s.link === 'ready') loadSlots();
+                renderSlots();
+                renderPicker();
+            }
+            if ('status' in changed) onStatus(s.status);
+            if ('unit' in changed) {
+                renderSlots();
+                renderLibrary();
+                if (ui.ed) renderSteps();
+                renderPicker();
+            }
+        });
+
+        // Clock-relative labels ("ends 06:10 if started now") drift; refresh them while nothing is being edited.
+        setInterval(() => {
+            if (document.hidden || App.state.tab !== 'programs') return;
+            if (ui.ed && ui.ed.start == null) {
+                renderStart();
+                refreshDerived();
+            }
+            if (!document.querySelector('.sheet.active')) {
+                renderSlots();
+                renderLibrary();
+            }
+        }, 30000);
+
+        // #remote, #programs or #device opens that tab, so links and bookmarks can point at one.
+        function tabFromHash() {
+            const tab = location.hash.slice(1);
+            if (['remote', 'programs', 'device'].includes(tab)) App.switchTab(tab);
+        }
+        document.addEventListener('DOMContentLoaded', tabFromHash);
+        window.addEventListener('hashchange', tabFromHash);
+
+        ui.library = loadLibrary();
+        ui.run = loadRun();
+        renderLibrary();
+        renderSlots();
+    })();
     </script>
     <script id="app-device">
     (function () {
