@@ -978,3 +978,404 @@ test('backup: device slots are parsed with empty slots kept as null', () => {
     assert.throws(() => P.parseBackup(JSON.stringify({ ...file, deviceSlots: [null, null, null, null] })), /not readable/);
     assert.throws(() => P.parseBackup(JSON.stringify({ ...file, deviceSlots: [null, null, null] })), /holds no schedules/);
 });
+
+// ---- Night log: BedJetNights ----
+// A night is {id: 'YYYY-MM-DD' of the evening, runs: [{slot, name, steps, startedAt, known, end, endedAt, endStep, by}],
+// events: [{t, type: manual|external|stop|program, what, from, to, step, plan, duringProgram, runAt, …}],
+// samples: [{t, mode, target, actual, ambient, fan, step}]}; temperatures in half °C, fan as step 0–19.
+
+function loadNights() {
+    const touched = [];
+    const context = { console, setTimeout, clearTimeout, setInterval, clearInterval };
+    for (const name of ['navigator', 'document', 'window', 'localStorage', 'App']) {
+        Object.defineProperty(context, name, { get() { touched.push(name); return undefined; }, configurable: true });
+    }
+    vm.createContext(context);
+    for (const id of ['bedjet-codec', 'bedjet-sim', 'bedjet-link', 'app-programs']) vm.runInContext(script(id), context, { filename: id });
+    touched.length = 0;
+    vm.runInContext(script('app-nights'), context, { filename: 'app-nights' });
+    assert.deepEqual(touched.filter(n => n !== 'document' && n !== 'App'), [], 'app-nights touched browser globals at load time');
+    return context;
+}
+
+const nctx = loadNights();
+const N = nctx.BedJetNights;
+const NP = nctx.BedJetPrograms;
+const local = (day, h, m = 0, s = 0) => new Date(2026, 9, day, h, m, s).getTime();
+const SEC = 1000, MIN = 60 * SEC;
+const NIGHT_PROGRAM = () => ({
+    slot: 0, name: 'Cool night',
+    steps: [step(Mode.TURBO, 19, 86, 0, 5), step(Mode.WAIT, 19, 80, 0, 10), step(Mode.COOL, 7, 40, 0, 20), step(Mode.COOL, 4, 40, 6, 30)],
+});
+const PLAN = [[Mode.TURBO, 86, 19], [Mode.WAIT, 80, 19], [Mode.COOL, 40, 7], [Mode.COOL, 40, 4]];
+
+function st({ step: programStep = 0, mode, target, fan, remaining = 600, fresh = true, actual = 46 } = {}) {
+    const planned = PLAN[programStep - 1];
+    const m = mode ?? planned?.[0] ?? Mode.COOL;
+    const range = C.TEMP_RANGES[m];
+    return {
+        mode: m, targetTemp: target ?? planned?.[1] ?? 40, fanStep: fan ?? planned?.[2] ?? 7, actualTemp: actual, ambientTemp: 45,
+        remainingSeconds: remaining, minTemp: range.min, maxTemp: range.max,
+        extra: { programStep, notification: 0 }, extraFresh: fresh,
+    };
+}
+
+function recorder({ start = local(21, 22, 0), getRun, storage = memoryStorage(), ...opts } = {}) {
+    const clock = { now: start };
+    const events = [];
+    const rec = new N.NightRecorder({ storage, now: () => clock.now, getRun, onEvent: e => events.push(plain(e)), ...opts });
+    const at = ms => { clock.now += ms; return rec; };
+    return { rec, clock, events, storage, at };
+}
+
+function started({ start = local(21, 22, 0), ...opts } = {}) {
+    const r = recorder({ start, ...opts });
+    r.rec.programStarted({ ...NIGHT_PROGRAM(), startedAt: r.clock.now });
+    r.rec.status(st({ step: 1 }));
+    r.events.length = 0;
+    return r;
+}
+
+test('app-nights defines BedJetNights without touching the DOM', () => {
+    assert.equal(typeof N.NightRecorder, 'function');
+    assert.equal(typeof N.suggestions, 'function');
+});
+
+test('nights: keyed by the evening, 12:00 until 11:59 the next day, across midnight and month ends', () => {
+    assert.equal(N.nightKey(local(21, 12, 0)), '2026-10-21');
+    assert.equal(N.nightKey(local(21, 23, 59)), '2026-10-21');
+    assert.equal(N.nightKey(local(22, 0, 30)), '2026-10-21');
+    assert.equal(N.nightKey(local(22, 11, 59, 59)), '2026-10-21');
+    assert.equal(N.nightKey(local(22, 12, 0)), '2026-10-22');
+    assert.equal(N.nightKey(new Date(2026, 10, 1, 3, 0).getTime()), '2026-10-31');
+    assert.equal(N.nightKey(new Date(2027, 0, 1, 2, 0).getTime()), '2026-12-31');
+});
+
+test('nights: events of a program that runs past noon stay with the night it started', () => {
+    const { rec, at } = started({ start: local(21, 23, 30) });
+    at(13 * 60 * MIN);
+    rec.status(st({ step: 4 }));
+    rec.command(C.setTemperature(44));
+    assert.deepEqual(plain(rec.nights.map(n => [n.id, n.events.length])), [['2026-10-21', 2]]);
+});
+
+test('nights: manual commands are logged with old → new value and duringProgram', () => {
+    const { rec, events, at } = recorder();
+    rec.status(st({ mode: Mode.COOL, target: 40, fan: 7 }));
+    rec.command(C.setTemperature(44));
+    assert.deepEqual(events.at(-1), { t: local(21, 22, 0), type: 'manual', what: 'temp', step: 0, plan: null, duringProgram: false, from: 40, to: 44 });
+
+    rec.programStarted({ ...NIGHT_PROGRAM(), startedAt: local(21, 22, 0) });
+    at(20 * MIN).status(st({ step: 3 }));
+    rec.command(C.setFan(10));
+    assert.deepEqual(events.at(-1), {
+        t: local(21, 22, 20), type: 'manual', what: 'fan', step: 3, plan: { mode: Mode.COOL, temp: 40, fan: 7 },
+        duringProgram: true, runAt: local(21, 22, 0), from: 7, to: 10,
+    });
+    rec.command(C.button(C.Button.TEMP_UP_C));
+    assert.deepEqual([events.at(-1).what, events.at(-1).from, events.at(-1).to], ['temp', 40, 42]);
+    rec.command(C.setRuntime(90));
+    assert.deepEqual([events.at(-1).what, events.at(-1).from, events.at(-1).to], ['runtime', 10, 90]);
+
+    const before = events.length;
+    for (const frame of [C.setClock(22, 20), C.setLED(false), C.query(0x20, 1), C.ack(), C.saveMemory(1), C.nameFrame(1, 'x')]) rec.command(frame);
+    assert.equal(events.length, before, 'frames that change no climate setting are not logged');
+
+    rec.command(C.recallMemory(2));
+    at(SEC).status(st({ step: 0, mode: Mode.HEAT, target: 70, fan: 9 }));
+    const memory = rec.nights[0].events.find(e => e.what === 'memory');
+    assert.deepEqual(plain([memory.memory, memory.to, memory.duringProgram]), [2, { mode: Mode.HEAT, temp: 70, fan: 9 }, true]);
+
+    rec.command(C.button(C.Button.OFF));
+    assert.deepEqual([events.at(-1).what, events.at(-1).from, events.at(-1).to, events.at(-1).duringProgram], ['off', Mode.HEAT, Mode.STANDBY, false]);
+});
+
+test('nights: a change elsewhere during a program is logged once, never within 10 s of an app command', () => {
+    const { rec, events, at } = started();
+    at(20 * MIN).status(st({ step: 3 }));
+    assert.equal(events.length, 0, 'the plan itself is no change');
+    at(SEC).status(st({ step: 3, target: 44 }));
+    for (let i = 0; i < 3; i++) at(SEC).status(st({ step: 3, target: 44 }));
+    assert.deepEqual(events.map(e => [e.type, e.what, e.from, e.to, e.step]), [['external', 'temp', 40, 44, 3]]);
+    assert.deepEqual(events[0].plan, { mode: Mode.COOL, temp: 40, fan: 7 });
+
+    at(MIN).status(st({ step: 3, target: 44, fan: 9 }));
+    assert.deepEqual(events.at(-1).what, 'fan');
+
+    rec.command(C.setTemperature(42));
+    at(SEC).status(st({ step: 3, target: 42, fan: 9 }));
+    at(4 * SEC).status(st({ step: 3, target: 45, fan: 9 }));
+    at(15 * SEC).status(st({ step: 3, target: 45, fan: 9 }));
+    assert.equal(events.filter(e => e.type === 'external').length, 2, 'within 10 s of the app command it is the command');
+    at(15 * SEC).status(st({ step: 3, target: 47, fan: 9 }));
+    assert.deepEqual(events.at(-1).type === 'external' && [events.at(-1).from, events.at(-1).to], [45, 47]);
+
+    at(MIN).status(st({ step: 3, target: 30, fan: 2, fresh: false }));
+    assert.equal(events.at(-1).to, 47, 'a status whose program step may lag is not compared');
+    at(MIN).status(st({ step: 4 }));
+    assert.equal(events.filter(e => e.type === 'external').length, 3, 'a new step starts from its plan');
+});
+
+test('nights: a change made while the app was away is found on the first status after reconnect or reload', () => {
+    const { rec, events, at, storage } = started();
+    at(20 * MIN).status(st({ step: 3 }));
+    rec.command(C.setTemperature(42));
+    at(SEC).status(st({ step: 3, target: 42 }));
+    rec.disconnected();
+    at(30 * MIN).status(st({ step: 3, target: 42 }));
+    assert.equal(events.filter(e => e.type === 'external').length, 0, 'the app\'s own change is still what to expect');
+
+    const again = recorder({ start: local(21, 23, 0), storage });
+    again.rec.status(st({ step: 3, target: 46 }));
+    assert.deepEqual(again.events.map(e => [e.type, e.from, e.to, e.afterReconnect]), [['external', 42, 46, true]]);
+});
+
+test('nights: program started, finished, stopped by you or elsewhere, started on the remote', () => {
+    const { rec, events, at } = started();
+    assert.deepEqual(plain(rec.nights[0].events[0]), { t: local(21, 22, 0), type: 'program', what: 'started', step: 1, runAt: local(21, 22, 0), name: 'Cool night' });
+    at(7 * 60 * MIN).status(st({ step: 4, remaining: 20 }));
+    at(30 * SEC).status(st({ step: 0, mode: Mode.STANDBY, remaining: 0 }));
+    assert.deepEqual(events.map(e => [e.type, e.what, e.step]), [['program', 'finished', 4]]);
+
+    rec.programStarted({ ...NIGHT_PROGRAM(), startedAt: rec.now() });
+    at(SEC).status(st({ step: 3 }));
+    rec.command(C.button(C.Button.OFF));
+    at(SEC).status(st({ step: 0, mode: Mode.STANDBY }));
+    assert.deepEqual([events.at(-1).what, events.at(-1).by, events.at(-1).step], ['stopped', 'you', 3]);
+
+    rec.programStarted({ ...NIGHT_PROGRAM(), startedAt: rec.now() });
+    at(MIN).status(st({ step: 3 }));
+    at(MIN).status(st({ step: 0, mode: Mode.STANDBY }));
+    assert.deepEqual([events.at(-1).what, events.at(-1).by], ['stopped', 'elsewhere']);
+
+    const remote = recorder();
+    remote.rec.status(st({ step: 2 }));
+    assert.equal(remote.rec.activeRun().known, false);
+    remote.at(3 * SEC).programStarted({ ...NIGHT_PROGRAM(), startedAt: remote.clock.now - 4 * SEC });
+    assert.equal(remote.rec.nights[0].runs.length, 1, 'the run seen first is the one the app reports');
+    assert.equal(remote.rec.activeRun().name, 'Cool night');
+
+    const reloaded = recorder({ getRun: () => ({ ...NIGHT_PROGRAM(), startedAt: local(21, 21, 50) }) });
+    reloaded.rec.status(st({ step: 2 }));
+    assert.equal(reloaded.rec.activeRun().startedAt, local(21, 21, 50), 'the stored run record names the program');
+});
+
+test('nights: shutdown-log entries become stop events of the running program', () => {
+    const { rec, events, at } = started();
+    const tracker = new D.ShutdownTracker({ storage: memoryStorage(), now: () => rec.now() });
+    at(20 * MIN);
+    tracker.status(st({ step: 3, remaining: 600 }));
+    rec.status(st({ step: 3, remaining: 600 }));
+    at(SEC);
+    const entry = tracker.status(st({ step: 0, mode: Mode.STANDBY, remaining: 0 }));
+    assert.equal(entry.expected, false);
+    rec.shutdown(plain(entry));
+    rec.status(st({ step: 0, mode: Mode.STANDBY, remaining: 0 }));
+    const stop = events.find(e => e.type === 'stop');
+    assert.deepEqual([stop.expected, stop.step, stop.runAt, stop.remainingSeconds, stop.duringProgram], [false, 3, local(21, 22, 0), 600, true]);
+    assert.deepEqual([events.at(-1).what, events.at(-1).by], ['stopped', 'elsewhere']);
+});
+
+test('nights: one sample every 5 minutes while statuses come in, none while away', () => {
+    const { rec } = recorder();
+    for (let s = 0; s < 12 * 60; s++) { rec.status(st({ target: 40 + (s % 2) })); rec.now = (n => () => n)(rec.now() + SEC); }
+    const samples = rec.nights[0].samples;
+    assert.deepEqual(plain(samples.map(x => (x.t - local(21, 22, 0)) / MIN)), [0, 5, 10]);
+    assert.deepEqual(plain(Object.keys(samples[0])), ['t', 'mode', 'target', 'actual', 'ambient', 'fan', 'step']);
+    rec.disconnected();
+    rec.now = () => local(21, 23, 30);
+    rec.status(st());
+    assert.equal(rec.nights[0].samples.length, 4, 'the first status after a gap is sampled at once');
+});
+
+const sampleNight = (id, count) => ({
+    id, runs: [], events: [{ t: 1, type: 'manual', what: 'temp', from: 40, to: 42 }],
+    samples: Array.from({ length: count }, (_, i) => ({ t: i, mode: 4, target: 40, actual: 46, ambient: 45, fan: 7, step: 3 })),
+});
+const dayId = i => new Date(2026, 0, 1 + i).toISOString().slice(0, 10);
+
+test('nights: storage keeps the last 60 nights and trims the oldest samples first', () => {
+    const all = Array.from({ length: 70 }, (_, i) => sampleNight(dayId(i), 20));
+    const kept = N.trimNights(all, { maxBytes: Infinity });
+    assert.equal(kept.length, 60);
+    assert.equal(kept[0].id, dayId(69));
+    assert.equal(kept.at(-1).id, dayId(10));
+
+    const size = list => JSON.stringify(list).length;
+    const limit = size(N.trimNights(all.slice(0, 10), { maxBytes: Infinity })) - 3 * 20 * 60;
+    const trimmed = N.trimNights(all.slice(0, 10), { maxBytes: limit });
+    assert.ok(size(trimmed) <= limit);
+    assert.equal(trimmed.length, 10, 'samples go before nights');
+    const counts = plain(trimmed.map(n => n.samples.length));
+    const firstEmpty = counts.indexOf(0);
+    assert.ok(firstEmpty > 0 && counts.slice(firstEmpty).every(c => c === 0) && counts.slice(0, firstEmpty).every(c => c === 20), `oldest emptied first: ${counts}`);
+    assert.equal(trimmed[0].samples.length, 20, 'the newest night keeps its samples');
+    assert.equal(all[0].samples.length, 20, 'the input is not changed');
+
+    const tiny = N.trimNights(all.slice(0, 10), { maxBytes: 400 });
+    assert.ok(tiny.length < 10 && tiny.every(n => !n.samples.length));
+    assert.equal(tiny[0].id, dayId(9));
+
+    const storage = memoryStorage();
+    storage.setItem(N.KEY, JSON.stringify([...all.slice(0, 2), { id: 'nope' }, { id: dayId(5), runs: 'x', samples: [{ t: 'a' }] }]));
+    const rec = new N.NightRecorder({ storage });
+    assert.deepEqual(plain(rec.nights.map(n => [n.id, n.runs.length, n.samples.length])), [[dayId(5), 0, 0], [dayId(1), 0, 20], [dayId(0), 0, 20]]);
+});
+
+// Nights with one run of `program`, the given changes during it: {step: n, temp/fan: value set} and an optional stop.
+function historyNight(daysAgo, { changes = [], stoppedAfter = null, by = 'you', program = NIGHT_PROGRAM(), type = 'manual' } = {}) {
+    const startedAt = local(21 - daysAgo, 22, 30);
+    const run = { slot: 0, name: program.name, steps: program.steps, startedAt, known: true, end: 'finished', endedAt: startedAt + 425 * MIN, endStep: 4, by: null };
+    if (stoppedAfter != null) Object.assign(run, { end: 'stopped', endedAt: startedAt + stoppedAfter * MIN, endStep: 4, by });
+    const events = changes.map((c, i) => ({
+        t: startedAt + (40 + i) * MIN, type, what: c.what || 'temp', from: null, to: c.to, step: c.step,
+        plan: null, duringProgram: true, runAt: startedAt,
+    }));
+    return { id: N.nightKey(startedAt), runs: [run], events, samples: [] };
+}
+const warmer = to => ({ changes: [{ step: 3, to }] });
+
+test('suggestions: the same direction in ≥ 2 of the last 5 nights gives the median, rounded to 0.5 °C', () => {
+    const schedule = NIGHT_PROGRAM();
+    const nights = [historyNight(1, warmer(43)), historyNight(2, warmer(42)), historyNight(3, warmer(44)), historyNight(4)];
+    const [s, ...rest] = plain(N.suggestions(nights, schedule));
+    assert.equal(rest.length, 0);
+    assert.deepEqual([s.kind, s.step, s.from, s.to, s.nights, s.of], ['temp', 2, 40, 43, 3, 4]);
+    assert.equal(s.reason, 'You set step 3 (Cool 20°C) warmer in 3 of the last 4 nights it ran, by a median of +1.5°C.');
+    assert.match(N.suggestions(nights, schedule, { unit: 'F' })[0].reason, /\(Cool 68°F\) warmer .* by a median of \+3°F\.$/);
+
+    assert.equal(N.suggestions([historyNight(1, warmer(42)), historyNight(2, warmer(43))], schedule)[0].to, 43, 'median 2.5 half-degrees rounds up');
+    assert.equal(N.suggestions([historyNight(1, warmer(39)), historyNight(2, warmer(38))], schedule)[0].to, 38, 'and down symmetrically');
+    assert.deepEqual(plain(N.suggestions([historyNight(1, warmer(43))], schedule)), [], 'one night is not a pattern');
+    assert.deepEqual(plain(N.suggestions([historyNight(1, warmer(43)), historyNight(2, warmer(36)), historyNight(3, warmer(43))], schedule)), [], 'mixed directions');
+    const back = { changes: [{ step: 3, to: 46 }, { step: 3, to: 40 }] };
+    assert.deepEqual(plain(N.suggestions([historyNight(1, back), historyNight(2, back), historyNight(3, warmer(43))], schedule)), [], 'only where the night left the step counts');
+
+    const old = [1, 2, 3, 4, 5].map(d => historyNight(d)).concat([historyNight(6, warmer(43)), historyNight(7, warmer(43))]);
+    assert.deepEqual(plain(N.suggestions(old, schedule)), [], 'only the last 5 nights that ran it');
+    const other = { ...NIGHT_PROGRAM(), name: 'Other' };
+    assert.deepEqual(plain(N.suggestions([historyNight(1, { ...warmer(43), program: other }), historyNight(2, { ...warmer(43), program: other })], schedule)), []);
+    const external = [historyNight(1, { ...warmer(43), type: 'external' }), historyNight(2, { ...warmer(43), type: 'external' })];
+    assert.equal(N.suggestions(external, schedule)[0].to, 43, 'changes on the remote count too');
+
+    const fan = { changes: [{ step: 4, what: 'fan', to: 6 }] };
+    const f = plain(N.suggestions([historyNight(1, fan), historyNight(2, fan)], schedule))[0];
+    assert.deepEqual([f.kind, f.step, f.from, f.to], ['fan', 3, 4, 6]);
+    assert.equal(f.reason, 'You set the fan of step 4 (Cool 20°C) stronger in 2 of the last 2 nights it ran, by a median of +10 %.');
+});
+
+test('suggestions: clamped to the mode range and to the heat cut-off', () => {
+    const cool = { name: 'Cool top', steps: [step(Mode.COOL, 7, 60, 2, 0)] };
+    const up = { program: cool, changes: [{ step: 1, to: 66 }] };
+    const s = plain(N.suggestions([historyNight(1, up), historyNight(2, up)], cool))[0];
+    assert.deepEqual([s.to, s.wanted, s.limit], [62, 6, 'max']);
+    assert.match(s.reason, /Capped at 31°C, the most Cool allows\.$/);
+
+    // Heat at fan 50 %: 6 h is fine up to 36 °C, 37 °C is cut off after 4 h.
+    const heat = { name: 'Warm', steps: [step(Mode.HEAT, 9, 70, 6, 0)] };
+    const hot = { program: heat, changes: [{ step: 1, to: 74 }] };
+    const h = plain(N.suggestions([historyNight(1, hot), historyNight(2, hot)], heat))[0];
+    assert.deepEqual([h.to, h.limit], [72, 'heat']);
+    assert.match(h.reason, /heat cut-off/);
+    assert.deepEqual(plain(C.validateProgram(N.applySuggestion(heat, h).program.steps, at(22, 0))), []);
+
+    const atTop = { name: 'Top', steps: [step(Mode.COOL, 7, 62, 2, 0)] };
+    const more = { program: atTop, changes: [{ step: 1, to: 64 }] };
+    assert.deepEqual(plain(N.suggestions([historyNight(1, more), historyNight(2, more)], atTop)), [], 'nothing left to change');
+});
+
+test('suggestions: end earlier after ≥ 2 early stops in this app, applied as a copy', () => {
+    const schedule = NIGHT_PROGRAM();
+    const nights = [historyNight(1, { stoppedAfter: 400 }), historyNight(2, { stoppedAfter: 390 }), historyNight(3, { stoppedAfter: 300, by: 'elsewhere' }), historyNight(4, { stoppedAfter: 420 })];
+    const [end] = plain(N.suggestions(nights, schedule));
+    assert.deepEqual([end.kind, end.from, end.to, end.nights, end.step], ['end', 425, 395, 2, 3]);
+    assert.equal(end.reason, 'You stopped this program early in 2 of the last 4 nights it ran, after a median of 6 h 35 min of 7 h 5 min. Ending after 6 h 35 min (around 05:05) drops the rest.');
+    const applied = N.applySuggestion(schedule, end);
+    assert.deepEqual(plain(applied.steps), [3]);
+    assert.deepEqual(plain(applied.program.steps.at(-1)), step(Mode.COOL, 4, 40, 6, 0));
+    assert.equal(applied.program.steps.length, 4);
+    assert.deepEqual(plain(schedule.steps.at(-1)), step(Mode.COOL, 4, 40, 6, 30), 'the schedule itself is untouched');
+
+    const temp = N.applySuggestion(schedule, { kind: 'temp', step: 2, to: 43 });
+    assert.equal(temp.program.steps[2].temp, 43);
+    assert.equal(schedule.steps[2].temp, 40);
+
+    const clocked = { name: 'Until', steps: [step(Mode.COOL, 7, 40, 0, 30), step(Mode.COOL, 4, 40, 6, 30, true)] };
+    const cut = N.cutProgram(clocked.steps, 22 * 60 + 30, 360);
+    assert.deepEqual(plain(cut.steps[1]), step(Mode.COOL, 4, 40, 4, 30, true), 'an until step ends at the new time');
+});
+
+test('backup: round trip with nights; import merges by night id and never overwrites', () => {
+    const nights = [historyNight(1, warmer(43)), historyNight(2, { stoppedAfter: 400 })];
+    const backup = NP.buildBackup(library(), { nights, now: new Date('2026-10-21T21:00:00Z') });
+    assert.equal(backup.format, 1, 'an optional field, no new format');
+    const back = NP.parseBackup(JSON.stringify(backup));
+    assert.deepEqual(plain(back.nights), plain(N.sanitizeNights(nights)));
+    assert.equal('nights' in NP.buildBackup(library(), { nights: [] }), false);
+    assert.deepEqual(plain(NP.parseBackup(JSON.stringify(NP.buildBackup(library()))).nights), []);
+
+    const mine = N.sanitizeNights([historyNight(1)]);
+    const { nights: merged, added } = N.mergeNights(mine, back.nights);
+    assert.equal(added, 1);
+    assert.deepEqual(plain(merged.map(n => [n.id, n.events.length])), [[nights[0].id, 0], [nights[1].id, 0]]);
+    assert.equal(merged[0].runs[0].end, 'finished', 'the night already here is kept as it is');
+    assert.equal(N.mergeNights(merged, back.nights).added, 0);
+
+    const nightsOnly = NP.parseBackup(JSON.stringify({ ...NP.buildBackup([], { nights }), schedules: [] }));
+    assert.equal(nightsOnly.nights.length, 2);
+    assert.throws(() => NP.parseBackup(JSON.stringify({ ...backup, nights: 'x' })), /night log in this backup is not readable/);
+    const junk = NP.parseBackup(JSON.stringify({ ...backup, nights: [null, { id: '2026-10-1' }, { id: '2026-10-19', events: [{ t: 'x' }, { t: 5, type: 'manual' }] }] }));
+    assert.deepEqual(plain(junk.nights), [{ id: '2026-10-19', runs: [], events: [{ t: 5, type: 'manual' }], samples: [] }]);
+});
+
+test('nights: demo seed nights are marked and lead to suggestions', () => {
+    const schedule = NIGHT_PROGRAM();
+    const seeded = N.demoNights(schedule, { now: local(21, 15, 0) });
+    assert.equal(seeded.length, 4);
+    assert.ok(seeded.every(n => n.demo && n.samples.length > 20));
+    assert.deepEqual(plain(N.suggestions(seeded, schedule).map(s => s.kind)), ['temp', 'end']);
+    assert.deepEqual(plain(N.sanitizeNights(seeded)), plain(seeded), 'seed nights have the stored shape');
+});
+
+test('nights end to end: a program on the simulator, a change mid-step through App, one elsewhere', async () => {
+    const context = await loadCore();
+    for (const id of ['app-programs', 'app-device', 'app-nights']) vm.runInContext(script(id), context, { filename: id });
+    const { App, BedJetNights } = context;
+    App.set({ haptics: false });
+    const clock = { now: local(21, 22, 0) };
+    const events = [];
+    const rec = BedJetNights.attach(App, { storage: memoryStorage(), now: () => clock.now, onEvent: e => events.push(plain(e)) });
+    await App.setDemo(true, { persist: false });
+    await waitFor(() => App.state.link === 'ready' && App.state.memoryNames);
+    try {
+        const startedAt = clock.now;
+        await App.device.startProgram(0, { date: new Date(clock.now) });
+        App.emit('program-start', { slot: 0, name: 'Cool night', steps: App.link.slots[0].steps, startedAt });
+        assert.equal(rec.activeRun().name, 'Cool night');
+
+        clock.now += 16 * MIN;
+        App.link.skipAhead(16);
+        assert.equal(App.state.status.extra.programStep, 3);
+        await App.device.setTemperature(43);
+        const manual = events.find(e => e.type === 'manual');
+        assert.deepEqual({ ...manual, t: undefined }, {
+            t: undefined, type: 'manual', what: 'temp', step: 3, plan: { mode: Mode.COOL, temp: 40, fan: 7 },
+            duringProgram: true, runAt: rec.activeRun().startedAt, from: 40, to: 43,
+        });
+
+        clock.now += 20 * SEC;
+        App.link.status.target = 45;
+        App.link.tick();
+        assert.deepEqual(events.filter(e => e.type === 'external').map(e => [e.what, e.from, e.to, e.step]), [['temp', 43, 45, 3]]);
+
+        clock.now += MIN;
+        await App.device.stopProgram();
+        await waitFor(() => events.some(e => e.type === 'program' && e.what === 'stopped'));
+        assert.deepEqual(events.filter(e => e.type === 'program').map(e => [e.what, e.by ?? null]), [['started', null], ['stopped', 'you']]);
+        assert.equal(rec.nights[0].id, '2026-10-21');
+        assert.ok(rec.nights[0].samples.length >= 1);
+    } finally {
+        await App.link.disconnect();
+        rec.detach();
+    }
+});

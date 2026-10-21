@@ -828,6 +828,32 @@
         .pg-confirm-text { color: var(--dim); font-size: 14px; line-height: 1.5; }
         #pgConfirmSheet .sheet-actions { flex-wrap: wrap; }
         #pgConfirmSheet .sheet-actions .btn { flex: 1 1 40%; }
+        .pg-badge-btn { border: none; cursor: pointer; flex-shrink: 0; }
+        .pg-ed-suggestion { margin-top: 12px; }
+        .pg-step.suggested { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+        .pg-step.suggested .pg-step-head { background: var(--accent-soft); }
+
+        .nt-row { display: flex; align-items: center; gap: 10px; text-align: left; }
+        .nt-date { width: 92px; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .nt-sub { font-size: 12px; color: var(--dim); margin-top: 2px; }
+        .nt-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+        .nt-sug { padding: 12px 14px; }
+        .nt-sug + .nt-sug, .nt-sug + .list, .nt-run + .nt-run { margin-top: 12px; }
+        #ntSuggestions:not(:empty) { margin-bottom: 12px; }
+        .nt-sug-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0 0; }
+        .nt-sug-item + .nt-sug-item { border-top: 1px solid var(--border); margin-top: 10px; }
+        .nt-sug-text { font-size: 13px; line-height: 1.45; color: var(--dim); }
+        .nt-sug-text strong { color: var(--text); }
+        .nt-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 11px; color: var(--muted); }
+        .nt-legend i { display: inline-block; width: 10px; height: 3px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+        .nt-legend i.dot { width: 8px; height: 8px; border-radius: 50%; }
+        .nt-events { margin-top: 12px; }
+        .nt-event { align-items: flex-start; font-size: 13px; }
+        .nt-event-time { min-width: 44px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .nt-event.manual { box-shadow: inset 3px 0 0 var(--accent); }
+        .nt-event.external { box-shadow: inset 3px 0 0 #a78bfa; }
+        .nt-event.stop.unexpected { box-shadow: inset 3px 0 0 var(--error); }
+        .nt-note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
         /* ==== END tab:programs ==== */
 
         /* ==== BEGIN tab:device ==== */
@@ -1109,6 +1135,26 @@
             <p class="pg-note">Kept on this phone. Edit them any time, then save one to a BedJet slot.</p>
             <div id="pgLibrary"></div>
 
+            <div class="pg-head">
+                <h2 class="section-title">Nights</h2>
+                <div class="pg-head-btns">
+                    <button class="btn btn-sm btn-ghost" id="ntSeed" type="button" hidden>Add sample nights</button>
+                </div>
+            </div>
+            <p class="pg-note">What happened while a program ran: your changes, changes on the remote, stops. Recorded only while JetCommand is open on this phone: it lets go of the BedJet when hidden, so with the screen off you only see what it finds when you come back.</p>
+            <div id="ntSuggestions"></div>
+            <div id="ntList"></div>
+
+            <div class="sheet" id="ntSheet" aria-hidden="true">
+                <div class="sheet-panel" role="dialog" aria-labelledby="ntTitle">
+                    <div class="sheet-header">
+                        <div class="sheet-title" id="ntTitle">Night</div>
+                        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+                    </div>
+                    <div id="ntBody"></div>
+                </div>
+            </div>
+
             <div class="sheet" id="pgEditorSheet" aria-hidden="true">
                 <div class="sheet-panel" role="dialog" aria-labelledby="pgEdTitle">
                     <div class="pg-ed-header">
@@ -1132,6 +1178,7 @@
                             <button class="chip" type="button" data-pg-start="22:30">22:30</button>
                         </div>
                         <div class="pg-summary" id="pgEdSummary"></div>
+                        <div class="banner banner-info pg-ed-suggestion" id="pgEdSuggestion" hidden></div>
                         <div class="card pg-curve-card" id="pgEdCurve"></div>
                         <div class="pg-errors" id="pgEdErrors"></div>
                         <div class="pg-head">
@@ -2862,7 +2909,7 @@
         const C = globalThis.BedJetCodec;
         const TOOL = 'bedjet-bluetooth-control';
         // No build step: bump by hand on every release, together with CACHE_NAME in the service worker.
-        const VERSION = '2026-10-21 22:41';
+        const VERSION = '2026-10-21 23:05';
         const KEYS = {
             debug: `${TOOL}_debug_logging_enabled`,
             statusLog: `${TOOL}_status_logging_enabled`,
@@ -2903,6 +2950,7 @@
 
         const $ = id => document.getElementById(id);
         const listeners = new Set();
+        const handlers = new Map();
         const beforeClose = new Map();
         let unbindLink = [];
         const pad = (n, w = 2) => String(n).padStart(w, '0');
@@ -2943,6 +2991,18 @@
             refresh() {
                 for (const fn of [...listeners]) {
                     try { fn(App.state, { ...App.state }); } catch (e) { console.error(e); }
+                }
+            },
+
+            /** Events between the tab scripts: 'command' {bytes}, 'program-start' run, 'shutdown' entry. */
+            on(event, fn) {
+                if (!handlers.has(event)) handlers.set(event, new Set());
+                handlers.get(event).add(fn);
+                return () => handlers.get(event).delete(fn);
+            },
+            emit(event, payload) {
+                for (const fn of [...(handlers.get(event) || [])]) {
+                    try { fn(payload); } catch (e) { console.error(e); }
                 }
             },
 
@@ -3203,6 +3263,7 @@
                 }),
                 link.on('log', ({ level, message }) => App.log(message, level)),
                 link.on('raw', ({ dir, char, bytes }) => {
+                    if (dir === 'tx' && char === '2004') App.emit('command', { bytes });
                     if (char === '2000' && !debugLog.status) return;
                     App.log(`${dir === 'tx' ? '►' : '◄'} ${char} ${C.hex(bytes)}`, dir);
                 }),
@@ -3868,14 +3929,16 @@
         const BACKUP_FORMAT = 1;
         const STEP_FIELDS = ['mode', 'fan', 'temp', 'hours', 'minutes'];
 
-        /** The export object; deviceSlots (the three programs read from the unit, null = empty) only when known. */
-        function buildBackup(library, { deviceSlots = null, appVersion = null, now = new Date() } = {}) {
+        /** The export object; deviceSlots (the three programs read from the unit, null = empty) only when known,
+         *  nights (BedJetNights records) only when there are any. */
+        function buildBackup(library, { deviceSlots = null, nights = null, appVersion = null, now = new Date() } = {}) {
             const backup = {
                 app: 'jetcommand', kind: 'schedules', format: BACKUP_FORMAT,
                 exported: now.toISOString(), appVersion,
                 schedules: library.map(s => ({ name: s.name, start: s.start ?? null, steps: s.steps.map(C.normalizeStep) })),
             };
             if (deviceSlots) backup.deviceSlots = deviceSlots.map(p => (p ? { name: p.name, steps: p.steps.map(C.normalizeStep) } : null));
+            if (nights?.length) backup.nights = nights;
             return backup;
         }
 
@@ -3900,7 +3963,7 @@
         }
 
         /**
-         * A backup file or a bare array of schedules → {schedules, deviceSlots, empty, shortened}; throws an Error whose
+         * A backup file or a bare array of schedules → {schedules, deviceSlots, nights, empty, shortened}; throws an Error whose
          * message can be shown as is. Schedules without steps can't live in the library: they are counted in `empty`.
          */
         function parseBackup(text) {
@@ -3910,7 +3973,7 @@
             } catch {
                 throw new Error('This file is not a JetCommand backup (not valid JSON).');
             }
-            let list, slots = null;
+            let list, slots = null, nights = [];
             if (Array.isArray(data)) {
                 list = data;
             } else if (data && typeof data === 'object' && data.app === 'jetcommand') {
@@ -3925,6 +3988,11 @@
                 if (data.deviceSlots != null) {
                     if (!Array.isArray(data.deviceSlots) || data.deviceSlots.length > 3) throw new Error('The BedJet programs in this backup are not readable.');
                     slots = data.deviceSlots;
+                }
+                if (data.nights != null) {
+                    if (!Array.isArray(data.nights)) throw new Error('The night log in this backup is not readable.');
+                    // Optional field of format 1: older apps ignore it, so it needs no new format number.
+                    nights = globalThis.BedJetNights ? globalThis.BedJetNights.sanitizeNights(data.nights) : [];
                 }
             } else {
                 throw new Error('This file is not a JetCommand backup.');
@@ -3942,10 +4010,10 @@
                 const s = readSchedule(raw, `BedJet slot ${i + 1}`, notes);
                 return s.steps.length ? { name: s.name, steps: s.steps } : null;
             });
-            if (!schedules.length && !deviceSlots?.some(Boolean)) {
+            if (!schedules.length && !deviceSlots?.some(Boolean) && !nights.length) {
                 throw new Error(empty ? 'The schedules in this file have no steps.' : 'This file holds no schedules.');
             }
-            return { schedules, deviceSlots, empty, shortened: notes.shortened };
+            return { schedules, deviceSlots, nights, empty, shortened: notes.shortened };
         }
 
         const sameSteps = (a, b) => JSON.stringify(a.map(C.normalizeStep)) === JSON.stringify(b.map(C.normalizeStep));
@@ -4030,7 +4098,7 @@
             for (let m = Math.ceil(startMinute / every) * every; m <= startMinute + total; m += every) {
                 ticks.push({ x: x(m - startMinute), label: formatHM(m) });
             }
-            return { width, height, padX, padTop, base, total, start: startMinute, segments, tempPaths, fanPaths, ticks };
+            return { width, height, padX, padTop, base, plotH, lo, hi, total, start: startMinute, segments, tempPaths, fanPaths, ticks };
         }
 
         function markerPoint(model, elapsed) {
@@ -4138,6 +4206,7 @@
         function remember(run) {
             ui.run = run;
             App.prefs.set(KEYS.run, JSON.stringify(run));
+            App.emit('program-start', run);
             App.set({ runningProgram: run.name });
             renderSlots();
         }
@@ -4376,6 +4445,7 @@
                 <div class="pg-card-top pg-tap" data-lib-act="edit">
                     <div class="grow"><div class="pg-name">${esc(s.name || 'Unnamed')}</div><div class="pg-meta" data-lib-meta>${libraryMeta(s)}</div></div>
                     <span class="badge error" data-lib-invalid${libraryInvalid(s) ? '' : ' hidden'}>Needs a fix</span>
+                    ${suggestionBadge(s)}
                 </div>
                 <div class="pg-curve-box pg-tap" data-lib-act="edit">${curveSVG(s.steps, start, { height: 56, labels: false, label: `${s.name}: night curve` })}</div>
                 <div class="pg-actions">
@@ -4385,6 +4455,11 @@
                     <button class="btn btn-sm btn-ghost pg-danger" type="button" data-lib-act="delete">Delete</button>
                 </div>
             </div>`;
+        }
+
+        function suggestionBadge(s) {
+            const n = App.programs.suggestionCount?.(s) || 0;
+            return n ? `<button class="badge accent pg-badge-btn" type="button" data-lib-act="suggest">${n} suggestion${n === 1 ? '' : 's'}</button>` : '';
         }
 
         function renderLibrary() {
@@ -4402,6 +4477,7 @@
             if (!s) return;
             switch (btn.dataset.libAct) {
                 case 'edit': openEditor(s, { kind: 'library', id: s.id }); break;
+                case 'suggest': App.programs.showSuggestions?.(s); break;
                 case 'device': openPicker({ program: s, run: false, sourceSlot: null, fromEditor: false }); break;
                 case 'dup': {
                     ui.library.splice(index + 1, 0, { ...s, id: newId(), name: C.sanitizeName(`${s.name.slice(0, 10)} copy`), steps: s.steps.map(C.normalizeStep) });
@@ -4431,13 +4507,14 @@
         async function exportLibrary() {
             // The last slots read on this page, even after a disconnect: the file then also backs up the unit.
             const deviceSlots = ui.slots;
-            if (!ui.library.length && !deviceSlots?.some(Boolean)) {
+            const nights = App.nights?.exportable() || [];
+            if (!ui.library.length && !deviceSlots?.some(Boolean) && !nights.length) {
                 App.toast('No schedules to export.', 'info', 2500);
                 return;
             }
             const name = `jetcommand-schedules-${App.fileStamp()}.json`;
-            const text = `${JSON.stringify(buildBackup(ui.library, { deviceSlots, appVersion: App.version }), null, 2)}\n`;
-            const what = `${plural(ui.library.length, 'schedule')}${deviceSlots ? ' and the BedJet’s 3 slots' : ''}`;
+            const text = `${JSON.stringify(buildBackup(ui.library, { deviceSlots, nights, appVersion: App.version }), null, 2)}\n`;
+            const what = `${plural(ui.library.length, 'schedule')}${deviceSlots ? ' and the BedJet’s 3 slots' : ''}${nights.length ? ` and ${plural(nights.length, 'night')} of the night log` : ''}`;
             const download = () => {
                 App.download(name, text, 'application/json');
                 App.toast(`Exported ${what}.`, 'success', 2500);
@@ -4477,7 +4554,10 @@
             const slots = slotSchedules(pendingImport.deviceSlots);
             const incoming = importIncoming();
             const merge = mergeSchedules(ui.library, incoming);
-            $('pgImportText').textContent = `${plural(incoming.length, 'schedule')} found (${merge.added.length} new, ${merge.skipped.length} already in your library).`;
+            const nights = pendingImport.nights || [];
+            const newNights = App.nights?.countNew(nights) ?? 0;
+            $('pgImportText').textContent = `${plural(incoming.length, 'schedule')} found (${merge.added.length} new, ${merge.skipped.length} already in your library).`
+                + (nights.length ? ` ${plural(nights.length, 'night')} of the night log (${newNights} new; nights already here are kept as they are).` : '');
             $('pgImportSlotsRow').hidden = !slots.length;
             $('pgImportSlotsLabel').innerHTML = `Also add the BedJet’s programs<span class="hint">${esc(slots.map(s => s.name).join(', '))}, read from the unit when this backup was made</span>`;
             const notes = [];
@@ -4488,8 +4568,9 @@
             if (pendingImport.shortened) notes.push(`${plural(pendingImport.shortened, 'name')} cut to 15 plain characters, as the BedJet requires.`);
             $('pgImportNotes').textContent = notes.join(' ');
             $('pgImportNotes').hidden = !notes.length;
-            $('pgImportOk').disabled = !merge.added.length;
-            $('pgImportOk').textContent = merge.added.length ? `Import ${merge.added.length}` : 'Nothing new';
+            const total = merge.added.length + newNights;
+            $('pgImportOk').disabled = !total;
+            $('pgImportOk').textContent = total ? `Import ${total}` : 'Nothing new';
         }
 
         $('pgExport').addEventListener('click', exportLibrary);
@@ -4514,12 +4595,14 @@
             const merge = mergeSchedules(ui.library, importIncoming());
             ui.library = merge.library;
             persistLibrary();
+            const addedNights = App.nights?.importNights(pendingImport.nights || []) ?? 0;
             renderLibrary();
             App.closeSheet('pgImportSheet');
             const renamed = merge.renamed.length ? ` (${merge.renamed.length} renamed)` : '';
             const skipped = merge.skipped.length ? `, skipped ${plural(merge.skipped.length, 'duplicate')}` : '';
-            App.log(`Imported ${merge.added.length} schedules, skipped ${merge.skipped.length}`, 'info');
-            App.toast(`Imported ${plural(merge.added.length, 'schedule')}${renamed}${skipped}.`, 'success', 3500);
+            const nightsText = addedNights ? ` and ${plural(addedNights, 'night')}` : '';
+            App.log(`Imported ${merge.added.length} schedules, skipped ${merge.skipped.length}, ${addedNights} nights`, 'info');
+            App.toast(`Imported ${plural(merge.added.length, 'schedule')}${nightsText}${renamed}${skipped}.`, 'success', 3500);
         });
         $('pgImportSheet').addEventListener('sheetclose', () => { pendingImport = null; });
 
@@ -4560,15 +4643,23 @@
         const snapshot = ed => JSON.stringify({ name: C.sanitizeName(ed.name), steps: ed.steps.map(C.normalizeStep), start: ed.start });
         const isDirty = () => !!ui.ed && snapshot(ui.ed) !== ui.ed.initial;
 
-        function openEditor(program, origin) {
+        /** `suggestion` {steps, text, original}: a change already applied to `program`; `original` is what it was, so
+         *  closing without saving asks before dropping it. */
+        function openEditor(program, origin, { suggestion = null } = {}) {
             ui.ed = {
                 origin,
                 name: C.sanitizeName(program.name),
                 steps: program.steps.map(s => ({ ...C.normalizeStep(s) })),
                 start: program.start ?? null,
-                open: -1,
+                open: suggestion?.steps?.[0] ?? -1,
+                suggested: new Set(suggestion?.steps || []),
             };
-            ui.ed.initial = snapshot(ui.ed);
+            ui.ed.initial = snapshot(suggestion?.original
+                ? { name: C.sanitizeName(suggestion.original.name), steps: suggestion.original.steps, start: suggestion.original.start ?? null }
+                : ui.ed);
+            $('pgEdSuggestion').hidden = !suggestion;
+            $('pgEdSuggestion').innerHTML = suggestion
+                ? `<span class="banner-text"><strong>Suggested change applied, highlighted below.</strong> ${esc(suggestion.text)} Nothing is saved until you save.</span>` : '';
             $('pgEdTitle').textContent = origin.kind === 'slot' ? `Slot ${origin.slot + 1} on the BedJet`
                 : origin.kind === 'library' ? 'Edit schedule' : 'New schedule';
             $('pgEdName').value = ui.ed.name;
@@ -4652,7 +4743,7 @@
 
         function renderSteps() {
             const ed = ui.ed;
-            $('pgSteps').innerHTML = ed.steps.map((step, i) => `<div class="pg-step${ed.open === i ? ' open' : ''}" data-index="${i}">
+            $('pgSteps').innerHTML = ed.steps.map((step, i) => `<div class="pg-step${ed.open === i ? ' open' : ''}${ed.suggested.has(i) ? ' suggested' : ''}" data-index="${i}">
                 <button class="pg-step-head" type="button" data-ed="toggle" aria-expanded="${ed.open === i}"></button>
                 <div class="pg-step-error" data-step-error></div>
                 ${ed.open === i ? `<div class="pg-step-body">${stepBody(step)}</div>` : ''}
@@ -4979,6 +5070,15 @@
         });
 
         // ---- wiring ----
+
+        /** For app-nights: suggestionCount(schedule) and showSuggestions(schedule) are set there. */
+        App.programs = {
+            library: () => ui.library,
+            openEditor,
+            renderLibrary,
+            suggestionCount: null,
+            showSuggestions: null,
+        };
 
         App.subscribe((s, changed) => {
             if ('link' in changed) {
@@ -5385,6 +5485,7 @@
         function onStatus(status) {
             const entry = ui.tracker?.status(status);
             if (!entry) return;
+            App.emit('shutdown', entry);
             const what = entry.kind === 'away' ? 'Stopped while the app was away'
                 : entry.expected ? 'Stopped as expected' : 'Unexpected stop';
             App.log(`${what}: from ${App.modeLabel(entry.fromMode)}, ${left(entry.remainingSeconds)} left, reason byte ${entry.shutdownReason}`,
@@ -5814,6 +5915,1034 @@
         });
 
         renderAll();
+    })();
+    </script>
+    <script id="app-nights">
+    (function () {
+        'use strict';
+        const C = globalThis.BedJetCodec;
+        const { Mode, Button } = C;
+        const TOOL = 'bedjet-bluetooth-control';
+        const KEY = `${TOOL}_nights`;
+        const RUN_KEY = `${TOOL}_program_run`;
+
+        // ---- Pure logic, exposed as BedJetNights for the node tests: nothing above the DOM guard touches the page ----
+
+        const MINUTE = 60000;
+        const SAMPLE_MS = 5 * MINUTE;
+        /** A status that leaves the plan this soon after a command from this app is that command's doing. */
+        const APP_WINDOW_MS = 10000;
+        /** A memory recall's values arrive in the statuses after the command. */
+        const SETTLE_MS = 3000;
+        /** As in the shutdown log: an Off or mode press this recent explains a program ending. */
+        const STOP_WINDOW_MS = 15000;
+        /** A program "started elsewhere" this recent is the one this app is about to report starting. */
+        const ADOPT_MS = 2 * MINUTE;
+        const MAX_NIGHTS = 60;
+        const MAX_BYTES = 200000;
+        const RECENT_NIGHTS = 5;
+        const MIN_NIGHTS = 2;
+        /** Stops closer than this to the planned end are not "early". */
+        const EARLY_MINUTES = 15;
+
+        const pad = n => String(n).padStart(2, '0');
+        const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+        const isObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
+        const finite = v => typeof v === 'number' && Number.isFinite(v);
+        const P = () => globalThis.BedJetPrograms;
+        const minuteOfDay = time => { const d = new Date(time); return d.getHours() * 60 + d.getMinutes(); };
+        const formatHM = minute => {
+            const m = ((Math.round(minute) % 1440) + 1440) % 1440;
+            return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+        };
+        const formatDuration = minutes => {
+            const m = Math.round(minutes), h = Math.floor(m / 60);
+            return !h ? `${m % 60} min` : m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+        };
+
+        function median(values) {
+            const v = [...values].sort((a, b) => a - b);
+            const mid = v.length >> 1;
+            return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+        }
+        // Symmetric, so a median of -2.5 rounds to -3 as +2.5 rounds to +3.
+        const roundAway = v => Math.sign(v) * Math.round(Math.abs(v));
+
+        /** 'YYYY-MM-DD' of the evening a time belongs to: 12:00 until 11:59 the next day count as one night. */
+        function nightKey(time) {
+            const d = new Date(time);
+            if (d.getHours() < 12) d.setDate(d.getDate() - 1);
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+
+        const BUTTON_MODE = Object.freeze({
+            [Button.COOL]: Mode.COOL, [Button.HEAT]: Mode.HEAT, [Button.TURBO]: Mode.TURBO,
+            [Button.DRY]: Mode.DRY, [Button.EXT_HEAT]: Mode.EXT_HEAT,
+        });
+        const TEMP_BUTTON = Object.freeze({ [Button.TEMP_UP_C]: 2, [Button.TEMP_DOWN_C]: -2, [Button.TEMP_UP_F]: 1, [Button.TEMP_DOWN_F]: -1 });
+
+        /** The climate change a frame on 2004 asks for, or null for frames that change none (clock, names, LED, queries…). */
+        function decodeCommand(input) {
+            const b = C.toBytes(input);
+            if (b.length < 2) return null;
+            if (b[0] === 0x01) {
+                const code = b[1];
+                if (code === Button.OFF) return { what: 'off' };
+                if (code in BUTTON_MODE) return { what: 'mode', to: BUTTON_MODE[code] };
+                if (code === Button.FAN_UP || code === Button.FAN_DOWN) return { what: 'fan', by: code === Button.FAN_UP ? 1 : -1 };
+                if (code in TEMP_BUTTON) return { what: 'temp', by: TEMP_BUTTON[code] };
+                if (code >= Button.MEMORY_1 && code <= Button.MEMORY_3) return { what: 'memory', memory: code - Button.MEMORY_1 + 1 };
+                return null;
+            }
+            if (b[0] === 0x02 && b.length >= 3) return { what: 'runtime', to: b[1] * 60 + b[2] };
+            if (b[0] === 0x03) return { what: 'temp', to: b[1] };
+            if (b[0] === 0x07) return { what: 'fan', to: b[1] };
+            return null;
+        }
+        const isProgramStart = b => b.length >= 2 && b[0] === 0x01 && b[1] >= Button.START_PROGRAM && b[1] < Button.START_PROGRAM + 3;
+
+        const signature = steps => JSON.stringify((steps || []).map(C.normalizeStep));
+
+        function planOf(run, step) {
+            const s = run?.steps?.[step - 1];
+            return s && step >= 1 ? { mode: s.mode, temp: s.temp, fan: s.fan } : null;
+        }
+
+        function plannedMinutes(run) {
+            if (!run?.steps) return null;
+            return P().timeline(run.steps, minuteOfDay(run.startedAt)).total;
+        }
+
+        // ---- Storage shape ----
+
+        const END = ['finished', 'stopped', 'unknown'];
+
+        function sanitizeRun(r) {
+            if (!isObject(r) || !finite(r.startedAt)) return null;
+            const steps = Array.isArray(r.steps) && r.steps.length ? r.steps.map(C.normalizeStep) : null;
+            return {
+                slot: Number.isInteger(r.slot) ? r.slot : null,
+                name: r.name == null ? null : C.sanitizeName(r.name),
+                steps,
+                startedAt: r.startedAt,
+                known: !!steps && r.known !== false,
+                end: END.includes(r.end) ? r.end : null,
+                endedAt: finite(r.endedAt) ? r.endedAt : null,
+                endStep: finite(r.endStep) ? r.endStep : null,
+                by: typeof r.by === 'string' ? r.by : null,
+            };
+        }
+
+        const SAMPLE_FIELDS = ['t', 'mode', 'target', 'actual', 'ambient', 'fan', 'step'];
+
+        /** Nights from storage or a backup file: unknown shapes are dropped, never guessed at. */
+        function sanitizeNights(list) {
+            if (!Array.isArray(list)) return [];
+            const seen = new Set();
+            const out = [];
+            for (const n of list) {
+                if (!isObject(n) || typeof n.id !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(n.id) || seen.has(n.id)) continue;
+                seen.add(n.id);
+                const night = {
+                    id: n.id,
+                    runs: (Array.isArray(n.runs) ? n.runs : []).map(sanitizeRun).filter(Boolean),
+                    events: (Array.isArray(n.events) ? n.events : [])
+                        .filter(e => isObject(e) && finite(e.t) && typeof e.type === 'string')
+                        .map(e => JSON.parse(JSON.stringify(e))),
+                    samples: (Array.isArray(n.samples) ? n.samples : [])
+                        .filter(s => isObject(s) && SAMPLE_FIELDS.every(k => finite(s[k])))
+                        .map(s => Object.fromEntries(SAMPLE_FIELDS.map(k => [k, s[k]]))),
+                };
+                if (n.demo === true) night.demo = true;
+                out.push(night);
+            }
+            return out;
+        }
+
+        const newestFirst = (a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+
+        /** Keeps the newest `maxNights`; over `maxBytes` of JSON, the oldest night's samples go first, then whole nights. */
+        function trimNights(nights, { maxNights = MAX_NIGHTS, maxBytes = MAX_BYTES } = {}) {
+            const list = [...nights].sort(newestFirst).slice(0, maxNights).map(n => ({ ...n }));
+            let size = JSON.stringify(list).length;
+            while (size > maxBytes && list.length) {
+                const oldest = [...list].reverse().find(n => n.samples.length);
+                if (oldest) oldest.samples = [];
+                else list.pop();
+                size = JSON.stringify(list).length;
+            }
+            return list;
+        }
+
+        /** Adds nights whose id isn't there yet; a night already here is never changed. */
+        function mergeNights(existing, incoming, limits) {
+            const ids = new Set(existing.map(n => n.id));
+            const fresh = sanitizeNights(incoming).filter(n => !ids.has(n.id));
+            const nights = trimNights([...existing, ...fresh], limits);
+            const kept = new Set(nights.map(n => n.id));
+            return { nights, added: fresh.filter(n => kept.has(n.id)).length };
+        }
+
+        // ---- Recorder ----
+
+        /**
+         * Turns sent frames, statuses, program starts and shutdown-log entries into nights.
+         * storage: {getItem, setItem}; getRun(): the app's running-program record ({slot, name, steps, startedAt}) or null;
+         * onEvent(event): after each logged event.
+         */
+        class NightRecorder {
+            constructor({ storage = null, key = KEY, now = () => Date.now(), getRun = () => null, onEvent = () => {},
+                maxNights = MAX_NIGHTS, maxBytes = MAX_BYTES } = {}) {
+                Object.assign(this, { storage, key, now, getRun, onEvent, limits: { maxNights, maxBytes } });
+                let stored = null;
+                try { stored = JSON.parse(storage?.getItem(key) || 'null'); } catch { /* unreadable: start over */ }
+                this.nights = sanitizeNights(stored).sort(newestFirst);
+                this.last = null;
+                this.first = true;
+                this.lastCommandAt = -Infinity;
+                this.lastStopAt = -Infinity;
+                this.pending = null;
+                this.expect = null;
+                this.lastSampleAt = this.nights.flatMap(n => n.samples).reduce((t, s) => Math.max(t, s.t), -Infinity);
+            }
+
+            /** The run of a program that is (as far as this app knows) still going. */
+            activeRun() {
+                for (const night of this.nights.slice(0, 2)) {
+                    const run = [...night.runs].reverse().find(r => r.end == null);
+                    if (run) return run;
+                }
+                return null;
+            }
+
+            /** The run going on at `time`, or that ended at most a few seconds before it. */
+            runAt(time) {
+                for (const night of this.nights.slice(0, 3)) {
+                    const run = night.runs.find(r => r.startedAt <= time && (r.end == null || (r.endedAt ?? r.startedAt) >= time - 5000));
+                    if (run) return run;
+                }
+                return null;
+            }
+
+            command(bytes) {
+                const b = C.toBytes(bytes);
+                const t = this.now();
+                if (isProgramStart(b)) this.lastCommandAt = t;
+                const cmd = decodeCommand(b);
+                if (!cmd) return null;
+                this.lastCommandAt = t;
+                if (cmd.what === 'off' || cmd.what === 'mode' || cmd.what === 'memory') this.lastStopAt = t;
+                const s = this.last;
+                const step = s?.step || 0;
+                const run = step > 0 ? this.activeRun() : null;
+                const event = { t, type: 'manual', what: cmd.what, step, plan: planOf(run, step), duringProgram: step > 0 };
+                if (run) event.runAt = run.startedAt;
+                switch (cmd.what) {
+                    case 'temp':
+                        event.from = s?.target ?? null;
+                        event.to = cmd.to ?? (s ? clamp(s.target + cmd.by, s.min || 0, s.max || 255) : null);
+                        break;
+                    case 'fan':
+                        event.from = s?.fan ?? null;
+                        event.to = cmd.to ?? (s ? clamp(s.fan + cmd.by, 0, 19) : null);
+                        break;
+                    case 'mode':
+                        event.from = s?.mode ?? null;
+                        event.to = cmd.to;
+                        break;
+                    case 'off':
+                        event.from = s?.mode ?? null;
+                        event.to = Mode.STANDBY;
+                        break;
+                    case 'runtime':
+                        event.from = s ? Math.round(s.remaining / 60) : null;
+                        event.to = cmd.to;
+                        break;
+                    case 'memory':
+                        event.memory = cmd.memory;
+                        event.from = s ? { mode: s.mode, temp: s.target, fan: s.fan } : null;
+                        event.to = null;
+                        this.pending = { event, until: t + SETTLE_MS };
+                        break;
+                }
+                if (cmd.by != null && event.to === event.from) return null;
+                if (this.expect && run && ['temp', 'fan', 'mode'].includes(cmd.what)) this.expect[cmd.what] = event.to;
+                return this._add(event, run);
+            }
+
+            programStarted(record) {
+                const rec = sanitizeRun({ ...record, known: true });
+                if (!rec?.known) return null;
+                const t = this.now();
+                const active = this.activeRun();
+                if (active?.known && active.startedAt === rec.startedAt) return active;
+                if (active && !active.known && t - active.startedAt <= ADOPT_MS) {
+                    Object.assign(active, { slot: rec.slot, name: rec.name, steps: rec.steps, known: true });
+                    const started = this._nightOf(active).events.find(e => e.type === 'program' && e.what === 'started' && e.runAt === active.startedAt);
+                    if (started) started.name = rec.name;
+                    this.expect = null;
+                    this._save();
+                    return active;
+                }
+                if (active) this._endRun(active, 'stopped', t, 'you', this.last?.step ?? null);
+                return this._startRun(rec);
+            }
+
+            shutdown(entry) {
+                if (!isObject(entry)) return null;
+                const t = Date.parse(entry.time);
+                if (!Number.isFinite(t)) return null;
+                const step = entry.programStep || 0;
+                const run = step > 0 ? this.runAt(t) : null;
+                const event = {
+                    t, type: 'stop', kind: entry.kind, expected: !!entry.expected, why: entry.why ?? null,
+                    reason: entry.shutdownReason, fromMode: entry.fromMode, step, remainingSeconds: entry.remainingSeconds,
+                    duringProgram: step > 0,
+                };
+                if (run) event.runAt = run.startedAt;
+                return this._add(event, run);
+            }
+
+            status(status) {
+                if (!status) return;
+                const t = this.now();
+                const fresh = !!status.extra && status.extraFresh !== false;
+                const snap = {
+                    mode: status.mode, target: status.targetTemp, fan: status.fanStep, actual: status.actualTemp,
+                    ambient: status.ambientTemp, remaining: status.remainingSeconds, min: status.minTemp, max: status.maxTemp,
+                    step: status.extra ? status.extra.programStep : (this.last?.step ?? 0),
+                };
+                const first = this.first;
+                if (this.pending) {
+                    if (t <= this.pending.until) {
+                        this.pending.event.to = { mode: snap.mode, temp: snap.target, fan: snap.fan };
+                        this._save();
+                    } else {
+                        this.pending = null;
+                    }
+                }
+                if (fresh) {
+                    this.first = false;
+                    this._trackProgram(snap, t, first);
+                    this._detectExternal(snap, t, first);
+                }
+                if (t - this.lastSampleAt >= SAMPLE_MS) {
+                    this.lastSampleAt = t;
+                    const run = snap.step > 0 ? this.activeRun() : null;
+                    this._nightFor(t, run).samples.push({
+                        t, mode: snap.mode, target: snap.target, actual: snap.actual, ambient: snap.ambient, fan: snap.fan, step: snap.step,
+                    });
+                    this._save();
+                }
+                this.last = snap;
+            }
+
+            /** The next status is then the first after a reconnect. */
+            disconnected() {
+                this.first = true;
+                this.last = null;
+                this.pending = null;
+            }
+
+            /** Adds nights from a backup; returns how many were new. */
+            merge(list) {
+                const { nights, added } = mergeNights(this.nights, list, this.limits);
+                this.nights = nights;
+                this._save();
+                return added;
+            }
+
+            _trackProgram(snap, t, first) {
+                let active = this.activeRun();
+                if (snap.step > 0) {
+                    if (active?.known && snap.step > active.steps.length) {
+                        this._endRun(active, 'stopped', t, 'elsewhere', this.last?.step ?? null);
+                        active = null;
+                    }
+                    if (!active) this._startRun(this._plausibleRecord(snap.step, t) || { startedAt: t, known: false });
+                    return;
+                }
+                if (!active) return;
+                const prev = first ? null : this.last;
+                const total = plannedMinutes(active);
+                const plannedEnd = total == null ? null : active.startedAt + total * MINUTE;
+                if (!prev) {
+                    if (plannedEnd != null && t >= plannedEnd - MINUTE) this._endRun(active, 'finished', plannedEnd, null, active.steps.length);
+                    else this._endRun(active, active.known ? 'stopped' : 'unknown', t, 'unknown', null);
+                    return;
+                }
+                const lastStep = active.known && prev.step === active.steps.length && prev.remaining <= 60;
+                if (lastStep) this._endRun(active, 'finished', t, null, prev.step);
+                else this._endRun(active, 'stopped', t, t - this.lastStopAt <= STOP_WINDOW_MS ? 'you' : 'elsewhere', prev.step);
+            }
+
+            _plausibleRecord(step, t) {
+                let rec = null;
+                try { rec = sanitizeRun({ ...this.getRun(), known: true }); } catch { rec = null; }
+                if (!rec?.known || step > rec.steps.length || rec.startedAt > t) return null;
+                if (this.nights.some(n => n.runs.some(r => r.startedAt === rec.startedAt))) return null;
+                return t - rec.startedAt <= (plannedMinutes(rec) + 30) * MINUTE ? rec : null;
+            }
+
+            _detectExternal(snap, t, first) {
+                const run = this.activeRun();
+                const plan = planOf(run, snap.step);
+                if (!plan || !run.known) {
+                    this.expect = null;
+                    return;
+                }
+                if (!this.expect || this.expect.runAt !== run.startedAt || this.expect.step !== snap.step) {
+                    this.expect = { runAt: run.startedAt, step: snap.step, ...plan };
+                    // After a reload or time away, changes already logged for this step are what to expect.
+                    for (const e of this._nightOf(run).events) {
+                        if (e.runAt === run.startedAt && e.step === snap.step && (e.type === 'manual' || e.type === 'external')
+                            && ['temp', 'fan', 'mode'].includes(e.what) && finite(e.to)) this.expect[e.what] = e.to;
+                    }
+                }
+                const ex = this.expect;
+                const changes = [];
+                if (snap.mode !== ex.mode) {
+                    changes.push(['mode', ex.mode, snap.mode]);
+                } else {
+                    if (C.usesTemperature(snap.mode) && snap.target !== ex.temp) changes.push(['temp', ex.temp, snap.target]);
+                    if (snap.mode !== Mode.WAIT && snap.fan !== ex.fan) changes.push(['fan', ex.fan, snap.fan]);
+                }
+                if (!changes.length) return;
+                const ours = !first && t - this.lastCommandAt <= APP_WINDOW_MS;
+                for (const [what, from, to] of changes) {
+                    ex[what] = to;
+                    if (ours) continue;
+                    const event = { t, type: 'external', what, from, to, step: snap.step, plan, duringProgram: true, runAt: run.startedAt };
+                    if (first) event.afterReconnect = true;
+                    this._add(event, run);
+                }
+            }
+
+            _startRun(rec) {
+                const run = sanitizeRun(rec);
+                run.end = null;
+                this._nightOf(run).runs.push(run);
+                this.expect = null;
+                this._add({ t: run.startedAt, type: 'program', what: 'started', step: 1, runAt: run.startedAt, name: run.name }, run);
+                return run;
+            }
+
+            _endRun(run, end, t, by, step) {
+                Object.assign(run, { end, endedAt: t, by, endStep: step });
+                this.expect = null;
+                this._add({ t, type: 'program', what: end, step: step ?? 0, runAt: run.startedAt, name: run.name, by }, run);
+            }
+
+            _night(id) {
+                let night = this.nights.find(n => n.id === id);
+                if (!night) {
+                    night = { id, runs: [], events: [], samples: [] };
+                    this.nights.push(night);
+                    this.nights.sort(newestFirst);
+                }
+                return night;
+            }
+            _nightOf(run) { return this._night(nightKey(run.startedAt)); }
+            // Events and samples of a program that runs past noon stay with the night it started in.
+            _nightFor(t, run) { return run ? this._nightOf(run) : this._night(nightKey(t)); }
+
+            _add(event, run) {
+                const night = this._nightFor(event.t, run);
+                night.events.push(event);
+                night.events.sort((a, b) => a.t - b.t);
+                this._save();
+                try { this.onEvent(event, night); } catch (e) { console.error(e); }
+                return event;
+            }
+
+            _save() {
+                const trimmed = trimNights(this.nights, this.limits);
+                // Trimming copies the nights; keep the live objects (runs referenced elsewhere) where they survived.
+                const kept = new Map(trimmed.map(n => [n.id, n]));
+                this.nights = this.nights.filter(n => kept.has(n.id));
+                for (const n of this.nights) n.samples = kept.get(n.id).samples;
+                try { this.storage?.setItem(this.key, JSON.stringify(this.nights)); } catch { /* storage full or unavailable */ }
+            }
+        }
+
+        // ---- Suggestions ----
+
+        const fits = step => C.stepProblem(step) == null && C.fitsUnitLimits(step);
+
+        /** The value closest to `value` that the unit takes for this step: mode range, then the heat cut-off. */
+        function fitValue(step, field, value) {
+            const range = field === 'temp' ? C.tempRange(step.mode) : { min: 0, max: 19 };
+            let v = clamp(value, range.min, range.max);
+            let limit = v === value ? null : v === range.max ? 'max' : 'min';
+            while (v !== step[field] && !fits({ ...step, [field]: v })) {
+                v -= Math.sign(v - step[field]);
+                limit = 'heat';
+            }
+            return { value: v, limit };
+        }
+
+        /** The last nights (newest first, at most 5) with a run of this schedule: same name and same steps. */
+        function nightsOf(nights, schedule) {
+            const name = C.sanitizeName(schedule.name), sig = signature(schedule.steps);
+            const out = [];
+            for (const night of [...nights].sort(newestFirst)) {
+                const runs = night.runs.filter(r => r.known && r.name === name && signature(r.steps) === sig);
+                if (runs.length) out.push({ night, runs });
+                if (out.length >= RECENT_NIGHTS) break;
+            }
+            return out;
+        }
+
+        /** Where the night left a step's value: the last change during this schedule's runs, as a delta to the plan. */
+        function stepDelta({ night, runs }, index, field, planned) {
+            const at = new Set(runs.map(r => r.startedAt));
+            const last = night.events.filter(e => (e.type === 'manual' || e.type === 'external') && e.duringProgram
+                && at.has(e.runAt) && e.step === index + 1 && e.what === field && finite(e.to)).at(-1);
+            return last ? last.to - planned : 0;
+        }
+
+        function tempDelta(delta, unit) {
+            const sign = delta > 0 ? '+' : '−';
+            const abs = Math.abs(delta);
+            if (unit === 'F') return `${sign}${Math.max(1, Math.round(abs * 0.9))}°F`;
+            return `${sign}${(abs / 2).toFixed(abs % 2 ? 1 : 0)}°C`;
+        }
+
+        function stepLabel(step, index, unit) {
+            const temp = C.usesTemperature(step.mode) ? ` ${C.formatTemp(step.temp, unit)}` : '';
+            return `step ${index + 1} (${C.MODE_LABELS[step.mode]}${temp})`;
+        }
+
+        function earlyEnd(recent, schedule) {
+            const stops = [];
+            for (const { runs } of recent) {
+                const run = runs.find(r => r.end === 'stopped' && r.by === 'you' && finite(r.endedAt));
+                if (!run) continue;
+                const elapsed = (run.endedAt - run.startedAt) / MINUTE;
+                if (plannedMinutes(run) - elapsed >= EARLY_MINUTES) stops.push({ elapsed, start: minuteOfDay(run.startedAt) });
+            }
+            if (stops.length < MIN_NIGHTS) return null;
+            const typical = median(stops.map(s => s.elapsed));
+            const at = Math.max(5, Math.round(typical / 5) * 5);
+            const start = stops[0].start;
+            const total = P().timeline(schedule.steps, start).total;
+            if (total - at < EARLY_MINUTES) return null;
+            const cut = cutProgram(schedule.steps, start, at);
+            if (!cut) return null;
+            return { stops, typical, at, start, total, index: cut.index };
+        }
+
+        /** Steps up to `at` minutes after the start, the last one shortened; null when the result isn't a valid program. */
+        function cutProgram(steps, start, at) {
+            const out = [];
+            let index = -1;
+            for (const seg of P().timeline(steps, start).segments) {
+                if (seg.end <= at) {
+                    out.push({ ...seg.step });
+                    continue;
+                }
+                const left = at - seg.start;
+                if (left >= 1) {
+                    const s = { ...seg.step };
+                    const minutes = s.clock ? (start + at) % 1440 : left;
+                    Object.assign(s, { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
+                    out.push(s);
+                }
+                index = out.length - 1;
+                break;
+            }
+            if (!out.length || index < 0) return null;
+            if (C.validateProgram(out, P().dateAt(start)).length) return null;
+            return { steps: out, index };
+        }
+
+        /**
+         * Changes to `schedule` that the last nights point to: a step's temperature or fan moved the same way in ≥ 2
+         * nights and never the other way (median, 0.5 °C or 5 % steps, kept within what the unit takes), and an earlier
+         * end when the program was stopped early in this app ≥ 2 times.
+         */
+        function suggestions(nights, schedule, { unit = 'C' } = {}) {
+            if (!schedule?.steps?.length) return [];
+            const recent = nightsOf(nights, schedule);
+            if (recent.length < MIN_NIGHTS) return [];
+            const out = [];
+            const of = recent.length;
+            schedule.steps.forEach((raw, index) => {
+                const step = C.normalizeStep(raw);
+                for (const field of ['temp', 'fan']) {
+                    if (field === 'temp' ? !C.usesTemperature(step.mode) : step.mode === Mode.WAIT) continue;
+                    const deltas = recent.map(r => stepDelta(r, index, field, step[field])).filter(d => d !== 0);
+                    const up = deltas.filter(d => d > 0), down = deltas.filter(d => d < 0);
+                    if (up.length && down.length) continue;
+                    const same = up.length ? up : down;
+                    if (same.length < MIN_NIGHTS) continue;
+                    const wanted = roundAway(median(same));
+                    const { value, limit } = fitValue(step, field, step[field] + wanted);
+                    if (value === step[field]) continue;
+                    const label = stepLabel(step, index, unit);
+                    const n = `${same.length} of the last ${of} nights it ran`;
+                    let reason;
+                    if (field === 'temp') {
+                        reason = `You set ${label} ${wanted > 0 ? 'warmer' : 'cooler'} in ${n}, by a median of ${tempDelta(wanted, unit)}.`;
+                        if (limit === 'heat') reason += ` Capped at ${C.formatTemp(value, unit)}: warmer would hit the BedJet's heat cut-off for a step this long.`;
+                        else if (limit) reason += ` Capped at ${C.formatTemp(value, unit)}, the ${limit === 'max' ? 'most' : 'least'} ${C.MODE_LABELS[step.mode]} allows.`;
+                    } else {
+                        reason = `You set the fan of ${label} ${wanted > 0 ? 'stronger' : 'weaker'} in ${n}, by a median of ${wanted > 0 ? '+' : '−'}${Math.abs(wanted) * 5} %.`;
+                        if (limit === 'heat') reason += ` Capped at ${C.fanPercent(value)} %: more fan would hit the heat cut-off for a step this long.`;
+                    }
+                    out.push({ id: `${field}-${index}`, kind: field, step: index, from: step[field], to: value, delta: value - step[field], wanted, limit, nights: same.length, of, reason });
+                }
+            });
+            const early = earlyEnd(recent, schedule);
+            if (early) {
+                out.push({
+                    id: 'end', kind: 'end', step: early.index, from: early.total, to: early.at, start: early.start,
+                    nights: early.stops.length, of,
+                    reason: `You stopped this program early in ${early.stops.length} of the last ${of} nights it ran, after a median of ${formatDuration(early.typical)} of ${formatDuration(early.total)}. Ending after ${formatDuration(early.at)} (around ${formatHM(early.start + early.at)}) drops the rest.`,
+                });
+            }
+            return out;
+        }
+
+        /** {program, steps}: a copy of `schedule` with `suggestion` applied, and the indices of the steps it changed. */
+        function applySuggestion(schedule, suggestion) {
+            const base = { name: C.sanitizeName(schedule.name), start: schedule.start ?? null, steps: schedule.steps.map(s => ({ ...C.normalizeStep(s) })) };
+            if (suggestion.kind === 'end') {
+                const cut = cutProgram(base.steps, suggestion.start, suggestion.to);
+                return cut ? { program: { ...base, steps: cut.steps }, steps: [cut.index] } : null;
+            }
+            base.steps[suggestion.step][suggestion.kind] = suggestion.to;
+            return { program: base, steps: [suggestion.step] };
+        }
+
+        /** Distinct known programs that ran in these nights, newest first: {name, steps}. */
+        function programsIn(nights) {
+            const seen = new Map();
+            for (const night of [...nights].sort(newestFirst)) {
+                for (const run of [...night.runs].reverse()) {
+                    if (!run.known) continue;
+                    const key = `${run.name}\n${signature(run.steps)}`;
+                    if (!seen.has(key)) seen.set(key, { name: run.name, steps: run.steps });
+                }
+            }
+            return [...seen.values()];
+        }
+
+        function summarize(night) {
+            const adjustments = night.events.filter(e => (e.type === 'manual' && e.what !== 'off') || e.type === 'external').length;
+            const stops = night.events.filter(e => e.type === 'stop');
+            return {
+                programs: [...new Set(night.runs.map(r => (r.known ? r.name || 'Unnamed' : 'Started elsewhere')))],
+                adjustments,
+                stops: stops.length,
+                unexpected: stops.filter(e => !e.expected).length,
+            };
+        }
+
+        // ---- Demo data ----
+
+        /** Synthetic nights of `schedule` for demo mode, marked demo: true. Deterministic for a given `now`. */
+        function demoNights(schedule, { now = Date.now(), count = 4, start = 22 * 60 + 30 } = {}) {
+            const steps = schedule.steps.map(C.normalizeStep);
+            const tl = P().timeline(steps, start);
+            const target = tl.segments.filter(s => C.usesTemperature(s.step.mode)).sort((a, b) => b.minutes - a.minutes)[0];
+            const nights = [];
+            const plan = { mode: target?.step.mode, temp: target?.step.temp, fan: target?.step.fan };
+            const script = [
+                { by: 'manual', delta: 3, stopBefore: 40 },
+                { by: 'external', delta: 2 },
+                { cutOut: true },
+                { by: 'manual', delta: 3, stopBefore: 55 },
+            ];
+            for (let k = 1; k <= count; k++) {
+                const day = new Date(now);
+                day.setDate(day.getDate() - k);
+                day.setHours(Math.floor(start / 60), start % 60, 0, 0);
+                const startedAt = day.getTime();
+                const at = minutes => startedAt + Math.round(minutes) * MINUTE;
+                const plot = script[(k - 1) % script.length];
+                const run = { slot: 0, name: C.sanitizeName(schedule.name), steps, startedAt, known: true, end: 'finished', endedAt: at(tl.total), endStep: steps.length, by: null };
+                const events = [{ t: startedAt, type: 'program', what: 'started', step: 1, runAt: startedAt, name: run.name }];
+                const changeAt = target ? target.start + Math.min(40, target.minutes / 3) : null;
+                const temp = target ? fitValue(target.step, 'temp', target.step.temp + (plot.delta || 0)).value : null;
+                if (target && plot.by) {
+                    events.push({
+                        t: at(changeAt), type: plot.by, what: 'temp', from: target.step.temp, to: temp, step: target.index + 1,
+                        plan, duringProgram: true, runAt: startedAt,
+                    });
+                }
+                let end = tl.total;
+                if (plot.stopBefore) {
+                    end = tl.total - plot.stopBefore;
+                    const seg = tl.segments.find(s => end >= s.start && end < s.end) || tl.segments.at(-1);
+                    events.push({ t: at(end), type: 'manual', what: 'off', from: seg.step.mode, to: Mode.STANDBY, step: seg.index + 1, plan: planOf(run, seg.index + 1), duringProgram: true, runAt: startedAt });
+                    Object.assign(run, { end: 'stopped', endedAt: at(end), endStep: seg.index + 1, by: 'you' });
+                } else if (plot.cutOut && target) {
+                    end = target.start + target.minutes / 2;
+                    events.push({ t: at(end), type: 'stop', kind: 'live', expected: false, why: null, reason: 3, fromMode: target.step.mode, step: target.index + 1, remainingSeconds: Math.round((target.minutes / 2) * 60), duringProgram: true, runAt: startedAt });
+                    Object.assign(run, { end: 'stopped', endedAt: at(end), endStep: target.index + 1, by: 'elsewhere' });
+                }
+                events.push({ t: run.endedAt, type: 'program', what: run.end, step: run.endStep, runAt: startedAt, name: run.name, by: run.by });
+                const samples = [];
+                let actual = 44;
+                for (let m = 0; m <= end; m += 5) {
+                    const seg = tl.segments.find(s => m >= s.start && m < s.end) || tl.segments.at(-1);
+                    const adjusted = target && seg.index === target.index && plot.by && m >= changeAt;
+                    const goal = seg.step.mode === Mode.WAIT ? 44 : adjusted ? temp : seg.step.temp;
+                    actual += clamp(goal - actual, -4, 4) + Math.round(Math.sin(m / 17 + k) * 1.2);
+                    samples.push({ t: at(m), mode: seg.step.mode, target: adjusted ? temp : seg.step.temp, actual: clamp(actual, 30, 90), ambient: 44, fan: seg.step.fan, step: seg.index + 1 });
+                }
+                nights.push({ id: nightKey(startedAt), demo: true, runs: [run], events, samples });
+            }
+            return nights;
+        }
+
+        /** Connects a recorder to App: sent frames, statuses, link state, program starts and shutdown entries. */
+        function attach(app, opts = {}) {
+            const recorder = new NightRecorder(opts);
+            const offs = [
+                app.on('command', ({ bytes }) => recorder.command(bytes)),
+                app.on('program-start', run => recorder.programStarted(run)),
+                app.on('shutdown', entry => recorder.shutdown(entry)),
+                app.subscribe((s, changed) => {
+                    if ('link' in changed && s.link !== 'ready') recorder.disconnected();
+                    if ('status' in changed && s.status) recorder.status(s.status);
+                }),
+            ];
+            recorder.detach = () => offs.forEach(off => off());
+            return recorder;
+        }
+
+        globalThis.BedJetNights = Object.freeze({
+            KEY, nightKey, decodeCommand, signature, sanitizeNights, trimNights, mergeNights,
+            NightRecorder, attach, suggestions, applySuggestion, cutProgram, programsIn, summarize, demoNights,
+        });
+
+        if (typeof document === 'undefined' || !globalThis.App) return;
+
+        // ---- UI: the Nights section of the Programs tab ----
+
+        const App = globalThis.App;
+        const Programs = globalThis.BedJetPrograms;
+        const $ = id => document.getElementById(id);
+        const esc = App.esc;
+
+        function memoryStorage() {
+            const map = new Map();
+            return { getItem: k => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, String(v)) };
+        }
+        const realStorage = { getItem: k => App.prefs.get(k, null), setItem: (k, v) => App.prefs.set(k, v) };
+        const readRun = () => { try { return JSON.parse(App.prefs.get(RUN_KEY, 'null')); } catch { return null; } };
+
+        const ui = {
+            recorder: null,
+            demo: null,
+            // Demo nights stay in memory so they never mix with the real unit's log, as in the shutdown log.
+            demoStorage: memoryStorage(),
+            open: null,
+            groups: [],
+            badgeKey: '',
+        };
+
+        function bind() {
+            ui.recorder?.detach();
+            ui.demo = App.state.demo;
+            ui.recorder = attach(App, {
+                storage: ui.demo ? ui.demoStorage : realStorage,
+                getRun: readRun,
+                onEvent,
+            });
+            render();
+        }
+
+        function onEvent(event) {
+            if (event.type === 'manual' && event.duringProgram && event.what !== 'off') {
+                App.toast(`Logged as an adjustment to step ${event.step}`, 'info', 2500);
+            }
+            render();
+        }
+
+        const nights = () => ui.recorder?.nights || [];
+        const library = () => App.programs?.library() || [];
+        const findInLibrary = program => library().find(s => C.sanitizeName(s.name) === program.name && signature(s.steps) === signature(program.steps));
+        const sameProgram = (a, b) => C.sanitizeName(a.name) === C.sanitizeName(b.name) && signature(a.steps) === signature(b.steps);
+
+        function nightDate(id, opts = { weekday: 'short', day: 'numeric', month: 'short' }) {
+            const [y, m, d] = id.split('-').map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString(undefined, opts);
+        }
+        const clock = t => App.timestamp(t).slice(0, 5);
+        const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+        function valueText(what, v) {
+            if (v == null) return '--';
+            if (what === 'temp') return App.formatTemp(v);
+            if (what === 'fan') return `fan ${C.fanPercent(v)} %`;
+            if (what === 'mode') return App.modeLabel(v);
+            return String(v);
+        }
+
+        function planText(plan) {
+            if (!plan) return '';
+            return ` ${App.modeLabel(plan.mode)}${C.usesTemperature(plan.mode) ? ` ${App.formatTemp(plan.temp)}` : ''}`;
+        }
+
+        function eventText(e) {
+            const at = e.step ? `Step ${e.step}${planText(e.plan)}` : '';
+            const left = s => (s >= 60 ? App.formatDuration(Math.round(s / 60)) : `${s} s`);
+            switch (e.type) {
+                case 'manual': {
+                    if (e.what === 'off') return e.duringProgram ? `You turned it off during step ${e.step}` : 'You turned it off';
+                    const lead = at ? `${at} → ` : '';
+                    if (e.what === 'runtime') return `${lead}you set the timer to ${App.formatDuration(e.to)}`;
+                    if (e.what === 'memory') {
+                        const got = e.to ? ` (${App.modeLabel(e.to.mode)}${C.usesTemperature(e.to.mode) ? ` ${App.formatTemp(e.to.temp)}` : ''}, fan ${C.fanPercent(e.to.fan)} %)` : '';
+                        return `${lead}you recalled M${e.memory}${got}`;
+                    }
+                    const verb = e.what === 'mode' ? 'you switched to' : 'you set';
+                    return at ? `${at} → ${verb} ${valueText(e.what, e.to)}` : `${valueText(e.what, e.from)} → ${verb} ${valueText(e.what, e.to)}`;
+                }
+                case 'external':
+                    return `${at} → ${valueText(e.what, e.to)} on the remote or the unit${e.afterReconnect ? ' (found on reconnect)' : ''}`;
+                case 'stop': {
+                    const what = e.kind === 'away' ? 'Stopped while the app was away'
+                        : e.expected ? (e.why === 'timer' ? 'Stopped: the timer ran out' : 'Stopped: Off in this app')
+                            : `Unexpected stop (reason ${e.reason})`;
+                    return `${what}${e.step ? ` during step ${e.step}` : ''}, ${left(e.remainingSeconds || 0)} left`;
+                }
+                case 'program': {
+                    const name = e.name ? `“${e.name}”` : 'A program from the remote or another phone';
+                    if (e.what === 'started') return `${e.name ? `Started ${name}` : `${name} started`}`;
+                    if (e.what === 'finished') return `${name} finished`;
+                    const by = e.by === 'you' ? ' (by you)' : e.by === 'elsewhere' ? ' (remote, unit or another phone)' : '';
+                    return e.what === 'unknown' ? `${name} ended while the app was away` : `${name} stopped${e.step ? ` during step ${e.step}` : ''}${by}`;
+                }
+                default: return e.type;
+            }
+        }
+
+        // ---- Night curve with what happened on top ----
+
+        const EVENT_COLORS = { manual: '#f97316', external: '#a78bfa', stop: '#ef4444' };
+
+        function runSVG(run, night) {
+            const start = minuteOfDay(run.startedAt);
+            const width = 340, height = 140;
+            const base = Programs.curveSVG(run.steps, start, { width, height, label: `${run.name}: planned curve with the night's changes` });
+            const m = Programs.curveModel(run.steps, start, { width, height, padTop: 8, padBottom: 18 });
+            const x = minutes => Math.round((m.padX + (clamp(minutes, 0, m.total) / m.total) * (width - 2 * m.padX)) * 10) / 10;
+            const y = temp => Math.round(clamp(m.padTop + (1 - (temp - m.lo) / (m.hi - m.lo)) * m.plotH, m.padTop, m.base) * 10) / 10;
+            const elapsed = t => (t - run.startedAt) / MINUTE;
+            const until = run.endedAt ?? run.startedAt + m.total * MINUTE;
+            const samples = night.samples.filter(s => s.t >= run.startedAt && s.t <= until + SAMPLE_MS);
+            const out = [];
+            const line = (points, attrs) => points.length > 1 && out.push(`<polyline points="${points.join(' ')}" fill="none" ${attrs}/>`);
+            line(samples.map(s => `${x(elapsed(s.t))},${y(s.actual)}`), 'stroke="#e5e7eb" stroke-width="1.2" opacity="0.8"');
+            line(samples.filter(s => C.usesTemperature(s.mode)).map(s => `${x(elapsed(s.t))},${y(s.target)}`), 'stroke="#fdba74" stroke-width="1.2" stroke-dasharray="3 2"');
+            for (const e of night.events) {
+                if (e.runAt !== run.startedAt) continue;
+                // The step is certain, the clock less so (a unit's step can run long or short): keep the mark in its step.
+                const seg = e.step ? m.segments[e.step - 1] : null;
+                const ex = x(seg ? clamp(elapsed(e.t), seg.start, seg.end) : elapsed(e.t));
+                if (e.type === 'program') {
+                    if (e.what !== 'started') out.push(`<line x1="${ex}" y1="${m.padTop}" x2="${ex}" y2="${m.base}" stroke="#888" stroke-dasharray="2 2"/>`);
+                    continue;
+                }
+                if (e.type === 'stop' && e.expected) continue;
+                const color = EVENT_COLORS[e.type];
+                if (!color) continue;
+                const ey = e.what === 'temp' && finite(e.to) ? y(e.to) : m.base - 6;
+                out.push(`<circle cx="${ex}" cy="${ey}" r="4.5" fill="${color}" stroke="#111" stroke-width="1.5"><title>${esc(`${clock(e.t)} · ${eventText(e)}`)}</title></circle>`);
+            }
+            return base.replace(/<\/svg>$/, `${out.join('')}</svg>`);
+        }
+
+        const LEGEND = `<div class="nt-legend"><span><i style="background:#fdba74"></i>Set temperature</span><span><i style="background:#e5e7eb"></i>Air temperature</span>
+            <span><i class="dot" style="background:${EVENT_COLORS.manual}"></i>Your change</span><span><i class="dot" style="background:${EVENT_COLORS.external}"></i>Remote or unit</span>
+            <span><i class="dot" style="background:${EVENT_COLORS.stop}"></i>Unexpected stop</span></div>`;
+
+        // ---- Suggestions ----
+
+        function suggestionGroups() {
+            const unit = App.state.unit;
+            return programsIn(nights()).map(program => {
+                const saved = findInLibrary(program);
+                const schedule = saved || { name: program.name, steps: program.steps, start: null };
+                return { program, saved, schedule, list: suggestions(nights(), schedule, { unit }) };
+            }).filter(g => g.list.length);
+        }
+
+        function suggestionTitle(s) {
+            if (s.kind === 'temp') return `Step ${s.step + 1}: ${App.formatTemp(s.from)} → ${App.formatTemp(s.to)}`;
+            if (s.kind === 'fan') return `Step ${s.step + 1} fan: ${C.fanPercent(s.from)} % → ${C.fanPercent(s.to)} %`;
+            return `End after ${App.formatDuration(s.to)} instead of ${App.formatDuration(s.from)}`;
+        }
+
+        function groupCard(g, gi) {
+            const where = g.saved ? 'From the nights it ran' : 'Not in your schedules: saving makes it a new one';
+            return `<div class="card nt-sug" data-nt-sug="${gi}">
+                <div class="pg-card-top"><div class="grow"><div class="pg-name">${esc(g.program.name || 'Unnamed')}</div><div class="pg-meta">${where}</div></div>
+                    <span class="badge accent">${plural(g.list.length, 'suggestion')}</span></div>
+                ${g.list.map(s => `<div class="nt-sug-item">
+                    <div class="grow nt-sug-text"><strong>${esc(suggestionTitle(s))}</strong><br>${esc(s.reason)}</div>
+                    <button class="btn btn-sm btn-outline" type="button" data-nt-apply="${gi}:${esc(s.id)}">Apply in editor</button>
+                </div>`).join('')}
+            </div>`;
+        }
+
+        function applyFrom(gi, id) {
+            const g = ui.groups[gi];
+            const s = g?.list.find(x => x.id === id);
+            if (!s) return;
+            const result = applySuggestion(g.schedule, s);
+            if (!result) return App.toast("This change doesn't fit the program any more.", 'error');
+            App.closeSheet('ntSheet');
+            App.programs.openEditor(result.program, g.saved ? { kind: 'library', id: g.saved.id } : { kind: 'new' }, {
+                suggestion: { steps: result.steps, text: s.reason, original: g.schedule },
+            });
+        }
+
+        // ---- Rendering ----
+
+        function setHTML(el, html) {
+            if (el._html === html) return;
+            el._html = html;
+            el.innerHTML = html;
+        }
+
+        function nightRow(night) {
+            const sum = summarize(night);
+            const parts = [sum.adjustments ? plural(sum.adjustments, 'adjustment') : 'No adjustments'];
+            if (sum.stops > sum.unexpected) parts.push(plural(sum.stops - sum.unexpected, 'expected stop'));
+            const badges = [
+                sum.unexpected ? `<span class="badge error">${plural(sum.unexpected, 'unexpected stop')}</span>` : '',
+                night.demo ? '<span class="badge">Sample</span>' : '',
+            ].join('');
+            return `<button class="list-row nt-row" type="button" data-nt-night="${esc(night.id)}">
+                <span class="nt-date">${esc(nightDate(night.id))}</span>
+                <span class="grow"><div>${esc(sum.programs.join(', ') || 'No program')}</div><div class="nt-sub">${esc(parts.join(' · '))}</div></span>
+                <span class="nt-badges">${badges}</span><span class="dim">›</span>
+            </button>`;
+        }
+
+        function renderList() {
+            ui.groups = suggestionGroups();
+            setHTML($('ntSuggestions'), ui.groups.map(groupCard).join(''));
+            const list = nights().filter(n => n.runs.length || n.events.length);
+            setHTML($('ntList'), list.length
+                ? `<div class="list">${list.map(nightRow).join('')}</div>`
+                : '<div class="card empty"><span class="empty-icon">🛌</span>No nights yet. Start a program and keep JetCommand open: what you change while it runs shows up here the next day.</div>');
+            $('ntSeed').hidden = !App.state.demo;
+        }
+
+        function runBlock(run, night) {
+            const ended = run.end === 'finished' ? `finished ${clock(run.endedAt)}`
+                : run.end === 'stopped' ? `stopped ${clock(run.endedAt)}${run.endStep ? ` in step ${run.endStep}` : ''}${run.by === 'you' ? ' by you' : run.by === 'elsewhere' ? ' elsewhere' : ''}`
+                    : run.end === 'unknown' ? 'end not seen' : 'running';
+            const head = `<div class="pg-name">${esc(run.known ? run.name || 'Unnamed' : 'A program started elsewhere')}</div>
+                <div class="pg-meta">Started ${clock(run.startedAt)} · ${esc(ended)}${run.slot != null ? ` · slot ${run.slot + 1}` : ''}</div>`;
+            if (!run.known) return `<div class="nt-run">${head}<p class="nt-note">Its steps are unknown here: it was started on the remote or another phone.</p></div>`;
+            const until = run.endedAt ?? Infinity;
+            const n = night.samples.filter(s => s.t >= run.startedAt && s.t <= until).length;
+            const note = n ? `${plural(n, 'sample')}, one every 5 minutes while the app was open.`
+                : 'No samples: JetCommand was closed or in the background during this run.';
+            return `<div class="nt-run">${head}<div class="card pg-curve-card">${runSVG(run, night)}${LEGEND}</div><p class="nt-note">${note}</p></div>`;
+        }
+
+        function renderSheet() {
+            if (!ui.open || !$('ntSheet').classList.contains('active')) return;
+            const night = nights().find(n => n.id === ui.open);
+            if (!night) return App.closeSheet('ntSheet');
+            $('ntTitle').textContent = `Night of ${nightDate(night.id, { weekday: 'long', day: 'numeric', month: 'long' })}${night.demo ? ' (sample)' : ''}`;
+            const groups = ui.groups.map((g, gi) => ({ g, gi })).filter(({ g }) => night.runs.some(r => r.known && sameProgram(r, g.program)));
+            const events = night.events.map(e => {
+                const kind = `${e.type}${e.type === 'stop' && !e.expected ? ' unexpected' : ''}`;
+                return `<div class="list-row nt-event ${kind}"><span class="nt-event-time">${clock(e.t)}</span><span class="grow">${esc(eventText(e))}</span></div>`;
+            }).join('');
+            setHTML($('ntBody'), `${night.runs.map(r => runBlock(r, night)).join('')}
+                ${groups.length ? `<h3 class="section-title">Suggestions</h3>${groups.map(({ g, gi }) => groupCard(g, gi)).join('')}` : ''}
+                <h3 class="section-title">What happened</h3>
+                ${events ? `<div class="list nt-events">${events}</div>` : '<p class="nt-note">Nothing was logged this night.</p>'}`);
+        }
+
+        function renderBadges() {
+            const key = library().map(s => `${s.id}:${App.programs.suggestionCount(s)}`).join();
+            if (key === ui.badgeKey) return;
+            ui.badgeKey = key;
+            App.programs.renderLibrary();
+        }
+
+        function render() {
+            if (!App.programs) return;
+            renderList();
+            renderSheet();
+            renderBadges();
+        }
+
+        App.programs.suggestionCount = s => suggestions(nights(), s, { unit: App.state.unit }).length;
+        App.programs.showSuggestions = s => {
+            const gi = ui.groups.findIndex(g => g.saved?.id === s.id);
+            const card = document.querySelector(`#ntSuggestions [data-nt-sug="${gi}"]`);
+            card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        App.nights = {
+            /** The real unit's nights, also while the demo runs; sample nights are never exported. */
+            exportable() {
+                let stored = null;
+                try { stored = JSON.parse(App.prefs.get(KEY, 'null')); } catch { /* unreadable */ }
+                return sanitizeNights(stored).filter(n => !n.demo);
+            },
+            countNew(list) {
+                const ids = new Set(App.nights.exportable().map(n => n.id));
+                return sanitizeNights(list).filter(n => !ids.has(n.id)).length;
+            },
+            importNights(list) {
+                if (!list?.length) return 0;
+                if (!ui.demo) {
+                    const added = ui.recorder.merge(list);
+                    render();
+                    return added;
+                }
+                const real = new NightRecorder({ storage: realStorage });
+                return real.merge(list);
+            },
+        };
+
+        $('ntList').addEventListener('click', e => {
+            const row = e.target.closest('[data-nt-night]');
+            if (!row) return;
+            ui.open = row.dataset.ntNight;
+            App.openSheet('ntSheet');
+            renderSheet();
+        });
+        const onApply = e => {
+            const btn = e.target.closest('[data-nt-apply]');
+            if (!btn) return;
+            const [gi, id] = btn.dataset.ntApply.split(':');
+            applyFrom(Number(gi), id);
+        };
+        $('ntSuggestions').addEventListener('click', onApply);
+        $('ntBody').addEventListener('click', onApply);
+        $('ntSheet').addEventListener('sheetclose', () => { ui.open = null; });
+        $('ntSeed').addEventListener('click', () => {
+            const schedule = library()[0] || App.link?.slots?.find(Boolean);
+            if (!schedule) return App.toast('Add a schedule first.', 'info', 2500);
+            const added = ui.recorder.merge(demoNights(schedule));
+            render();
+            App.toast(added ? `Added ${plural(added, 'sample night')} for “${schedule.name}” (demo only, not saved).` : 'The sample nights are already there.', 'info', 3500);
+        });
+
+        App.subscribe((s, changed) => {
+            if ('demo' in changed && s.demo !== ui.demo) bind();
+            else if ('unit' in changed || 'demo' in changed) render();
+            else if ('status' in changed && ui.recorder.lastSampleAt !== ui.sampleAt) {
+                ui.sampleAt = ui.recorder.lastSampleAt;
+                render();
+            }
+        });
+
+        bind();
     })();
     </script>
 </body>
