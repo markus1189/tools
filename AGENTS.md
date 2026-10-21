@@ -110,6 +110,18 @@ All tools are registered in `tools.json`:
 Some tools have complex state management or architecture requiring detailed docs:
 
 - **routine-builder.html**: See `docs/routine-builder.md` for state machine, audio system, sets/pyramid progression logic
+- **bedjet-bluetooth-control.html**: See `docs/BEDJET_PROTOCOL.md` for the BLE protocol; the official app's decompiled code wins over other sources
+
+## Tests
+
+Node's built-in runner, no dependencies. `node` is in the devShell (`nix develop`), or run one-off:
+
+```bash
+nix shell nixpkgs#nodejs --command node --test bedjet-bluetooth-control.test.mjs
+```
+
+Test files extract `<script id="…">` blocks from the tool's HTML and run them in `vm`, so keep testable logic in
+id'd scripts that touch no DOM at load time.
 
 **When to read tool docs:**
 - Before modifying the tool
