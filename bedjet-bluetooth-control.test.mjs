@@ -357,15 +357,15 @@ test('web link: falls back to 2006 and remembers it', async () => {
     assert.equal(writes.length, 1);
 });
 
-test('web link: 2005 is read before 2006 on every query, also after 2006 answered', async () => {
+test('web link: 2006 is read before 2005 on every query, also after 2005 answered', async () => {
     const reads = [];
     const { link } = fakeLink({
-        reply: () => { reads.push('2005'); return [0x00, 0x00]; },
-        replyAlt: w => { reads.push('2006'); const [, id, tag] = w.at(-1).split(' ').map(h => parseInt(h, 16)); return [id, tag, 0]; },
+        replyAlt: () => { reads.push('2006'); return [0x00, 0x00]; },
+        reply: w => { reads.push('2005'); const [, id, tag] = w.at(-1).split(' ').map(h => parseInt(h, 16)); return [id, tag, 0]; },
     });
     await link.query(0x00);
     await link.query(0x20);
-    assert.deepEqual(reads, ['2005', '2006', '2005', '2006']);
+    assert.deepEqual(reads, ['2006', '2005', '2006', '2005']);
 });
 
 test('web link: readReplies reads both characteristics in the queue, null when missing', async () => {
@@ -852,4 +852,18 @@ test('core: memory names live in App.state, follow a rename and are cleared on d
     assert.equal(App.state.firmware, null);
     assert.equal(App.state.replySource, null);
     assert.equal(App.state.deviceName, null);
+});
+
+// Captured on a BedJet 3, firmware V1.20, Chrome 155 on Android (probe 2026-10-21): 2005 stops at 22 bytes.
+test('web link: real unit, truncated 2005 vs full 2006 reply', async () => {
+    const full2006 = C.fromHex('20 25 56 31 2e 32 30 20 28 31 34 30 29 00 00 00 00 00 56 31 2e 32 30 20 28 34 31 32 29 00 00 00 00 00 56 31 2e 32 30 20 28 31 38 32 29 00 00 00 00 00');
+    const cut = bytes => Array.from(bytes).slice(0, 22);
+    const { link } = fakeLink({
+        reply: w => { const [, , tag] = w.at(-1).split(' ').map(h => parseInt(h, 16)); return cut([0x20, tag, ...full2006.slice(2)]); },
+        replyAlt: w => { const [, , tag] = w.at(-1).split(' ').map(h => parseInt(h, 16)); return [0x20, tag, ...full2006.slice(2)]; },
+    });
+    assert.equal(await new BedJetDevice(link).firmware(), 'V1.20 (140) · V1.20 (412) · V1.20 (182)');
+    assert.equal(link.replySource, '2006');
+    const fragment2005 = C.fromHex('05 01 09 4c 00 05 01 07 3c 00 14 05 04 36 01 00 03 04 32 84');
+    assert.equal(C.parseFragment(fragment2005, 0), null, '5 steps cannot fit in a 22-byte read');
 });

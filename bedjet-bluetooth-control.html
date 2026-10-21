@@ -1210,7 +1210,7 @@
                     <dt>Status flags (byte 27)</dt><dd class="mono" id="devFlags">--</dd>
                     <dt>Clock last set by this app</dt><dd id="devClockSynced">never</dd>
                 </dl>
-                <p class="dev-hint">Whether the unit answers bio queries on <strong>2005</strong> (official app) or <strong>2006</strong> (Lull) is still open. The probe below records which one did.</p>
+                <p class="dev-hint">Replies are read from <strong>2006</strong>: on Android a <strong>2005</strong> read is cut off at 22 bytes. 2005 is only the fallback.</p>
                 <button class="btn btn-outline btn-block requires-link" id="devSyncClock" type="button">Set clock now</button>
             </div>
 
@@ -1241,7 +1241,7 @@
 
             <h2 class="section-title">Protocol probe</h2>
             <div class="card">
-                <p class="dev-hint first">Read-only: sends only bio queries (<span class="mono">41 id tag</span>) and records which characteristic answers and what this firmware returns, to settle 2005 vs 2006 and spot firmware differences.</p>
+                <p class="dev-hint first">Read-only: sends only bio queries (<span class="mono">41 id tag</span>) and records which characteristic answers and what this firmware returns, to compare 2005 and 2006 and spot firmware differences.</p>
                 <div class="dev-actions first">
                     <button class="btn btn-primary requires-link" id="devProbeRun" type="button">Run probe</button>
                     <button class="btn btn-outline" id="devProbeDownload" type="button" disabled>💾 JSON</button>
@@ -1360,6 +1360,7 @@
             </div>
             <div class="settings-group">
                 <button class="btn btn-primary btn-block" id="installBtn" type="button" hidden>Install app</button>
+                <div class="dim small" id="appVersion"></div>
             </div>
         </div>
     </div>
@@ -2579,9 +2580,10 @@
                 return bytes;
             }
 
-            // Always 2005 first (the official app's), then 2006, even once 2006 has answered: which one the unit uses is open.
+            // 2006 first: on Chrome/Android a 2005 read stops at 22 bytes (ATT MTU 23, no long read), while 2006 returns
+            // the whole reply (probe on firmware V1.20, 2026-10-21). 2005 stays as fallback for units without 2006.
             _replyChars() {
-                return [['2005', this._chars?.reply], ['2006', this._chars?.replyAlt]];
+                return [['2006', this._chars?.replyAlt], ['2005', this._chars?.reply]];
             }
 
             _noteReplySource(label) {
@@ -2708,7 +2710,13 @@
             rename(param, name) { return this.send(C.nameFrame(param, name)); }
 
             async deviceName() { return C.parseText(await this.link.query(Query.DEVICE_NAME)); }
-            async firmware() { return C.parseText(await this.link.query(Query.FIRMWARE)); }
+            // Three NUL-padded 16-byte version strings; only the first fits a 22-byte 2005 read.
+            async firmware() {
+                const b = C.toBytes(await this.link.query(Query.FIRMWARE));
+                const parts = [];
+                for (let o = 0; o < b.length; o += 16) parts.push(C.parseText(b.slice(o, o + 16)));
+                return parts.filter(Boolean).join(' · ');
+            }
             async memoryNames() { return C.parseNames(await this.link.query(Query.MEMORY_NAMES)).slice(0, 3); }
             async programNames() { return C.parseNames(await this.link.query(Query.PROGRAM_NAMES)).slice(0, Limits.slots); }
 
@@ -2830,6 +2838,8 @@
         'use strict';
         const C = globalThis.BedJetCodec;
         const TOOL = 'bedjet-bluetooth-control';
+        // No build step: bump by hand on every release, together with CACHE_NAME in the service worker.
+        const VERSION = '2026-10-21 22:20';
         const KEYS = {
             debug: `${TOOL}_debug_logging_enabled`,
             statusLog: `${TOOL}_status_logging_enabled`,
@@ -3133,6 +3143,7 @@
             meta() {
                 const s = App.state;
                 return [
+                    `version: ${VERSION}`,
                     `link: ${s.demo ? 'simulator' : 'Web Bluetooth'} (${s.link})`,
                     s.deviceName && `device: ${s.deviceName}`,
                     s.firmware && `firmware: ${s.firmware}`,
@@ -3268,6 +3279,7 @@
                 url: 'On because of ?demo=1',
             }[s.demoReason] || 'Use a simulated BedJet';
             $('debugMeta').textContent = debugLog.meta();
+            $('appVersion').textContent = `Version ${VERSION}`;
             renderShell.done = true;
         }
 
@@ -5136,7 +5148,7 @@
 
         // ---- device card and settings ----
 
-        const REPLY_SOURCE = { '2005': '2005 (official app)', '2006': '2006 (Lull)', sim: 'Simulator' };
+        const REPLY_SOURCE = { '2005': '2005 (fallback, truncated on Android)', '2006': '2006', sim: 'Simulator' };
         const yesNo = value => (value == null ? '--' : value ? 'Yes' : 'No');
 
         function renderDevice() {

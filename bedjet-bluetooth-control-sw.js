@@ -1,7 +1,6 @@
 // BedJet Bluetooth Control - Service Worker
-// Version: 3.0.0
 
-const CACHE_NAME = 'jetcommand-v3';
+const CACHE_NAME = 'jetcommand-v4';
 const urlsToCache = [
   './bedjet-bluetooth-control.html',
   './bedjet-bluetooth-control.manifest.json'
@@ -35,43 +34,19 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Network first, so a deploy shows on the next load; the cache only serves offline.
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
-  if (!event.request.url.startsWith('http')) {
-    return;
-  }
-
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        if (response) {
-          console.log('[ServiceWorker] Found in cache:', event.request.url);
-          return response;
+        if (response && response.status === 200 && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         }
-
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then(response => {
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-
-          return response;
-        }).catch(error => {
-          console.log('[ServiceWorker] Fetch failed:', error);
-          throw error;
-        });
+        return response;
       })
+      .catch(() => caches.match(event.request).then(cached => cached || Promise.reject(new Error('offline'))))
   );
 });
 

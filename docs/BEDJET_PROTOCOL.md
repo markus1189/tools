@@ -21,8 +21,10 @@ Base `0000XXXX-bed0-0080-aa55-4265644a6574`, service `1000`.
 | `2005` | Bio reply (read). OFF reads replies here (`MainActivity.java:107,294`) |
 | `2006` | Bio reply (read). LULL reads replies here (`BLELink.swift`) |
 
-**Open:** which of `2005`/`2006` answers, or both. JetCommand reads `2005` first, falls back to `2006` when request+tag
-don't match, and logs which one answered.
+**Settled on hardware** (BedJet 3, firmware V1.20 (140)/(412)/(182), Chrome 155 on Android, probe 2026-10-21): both
+hold the same reply, but a `2005` read stops at 22 bytes (ATT MTU 23 without long read) while `2006` returns all of it
+(e.g. 50 bytes for `0x20`). Fragments (up to 43 bytes) and names (50 bytes) need `2006`. JetCommand reads `2006` first
+and falls back to `2005`. OFF reading `2005` presumably works because Android's own stack does long reads (unchecked).
 
 Write with response (`writeValueWithResponse`). 43-byte frames need a long write; Android/Chrome do it
 automatically for writes with response. Never use write-without-response for `0x40` frames.
@@ -105,7 +107,7 @@ JetCommand gives up after 8 attempts.
 | `0x00` | Device name, NUL-terminated |
 | `0x01` | Memory names, 3 × 16 bytes |
 | `0x04` | Biorhythm names, 3 × 16 bytes; slot whose first byte is `0x01` = never saved |
-| `0x20` | Firmware version, NUL-terminated |
+| `0x20` | Firmware versions: three NUL-padded 16-byte strings, e.g. `V1.20 (140)`, `V1.20 (412)`, `V1.20 (182)` |
 | `7 + 4·slot + i` | Fragment `i` (0–3) of slot 0–2 |
 
 Fragment payload: `count` (total steps in the program, 0–32), then up to 8 steps × 5 bytes. Read fragments until
