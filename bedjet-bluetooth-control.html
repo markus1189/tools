@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Control your BedJet V3 over Bluetooth LE: modes, temperature, fan, timer, memories and on-device programs">
     <meta name="theme-color" content="#111111">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="JetCommand">
@@ -85,6 +86,9 @@
             white-space: nowrap;
         }
         .back-link:hover { color: var(--accent); }
+        /* #888 disappears on the bright left end of a mode gradient. */
+        body:not([data-mode="none"]):not([data-mode="standby"]) .back-link { color: rgba(255, 255, 255, 0.85); }
+        body:not([data-mode="none"]):not([data-mode="standby"]) .back-link:hover { color: #fff; }
 
         .app-title { flex: 1; min-width: 0; }
         .app-title h1 { font-size: 17px; font-weight: 700; color: #fff; }
@@ -1797,6 +1801,9 @@
             return withUnit ? `${value}°${unit === 'F' ? 'F' : 'C'}` : value;
         }
 
+        const ESCAPES = Object.freeze({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' });
+        const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ESCAPES[ch]);
+
         globalThis.BedJetCodec = Object.freeze({
             UUID, Mode, MODE_KEYS, MODE_LABELS, Button, Notification, NOTIFICATION_TEXT, Query, NameParam, Limits,
             TEMP_RANGES, HEAT_TABLE, ERROR_TEXT, BedJetError, Emitter,
@@ -1806,7 +1813,7 @@
             isStatusStart, parseStatus, parseFragment, parseNames, parseText,
             heatHours, longestStepMinutes, stepMinutes, fitsUnitLimits, clockTimeAllowed, usesTemperature, tempRange,
             normalizeStep, stepProblem, validateProgram, defaultStep,
-            fanPercent, fanStepFromPercent, toCelsius, toFahrenheit, fromCelsius, fromFahrenheit, formatTemp,
+            fanPercent, fanStepFromPercent, toCelsius, toFahrenheit, fromCelsius, fromFahrenheit, formatTemp, escapeHtml,
         });
     })();
     </script>
@@ -1843,6 +1850,7 @@
                     led: true, muted: false, step: 0, notification: 0,
                 };
                 this._pending = {};
+                this._lastReply = null;
                 this._run = null;
                 this._timer = null;
                 this._tag = 0;
@@ -1900,9 +1908,24 @@
                 this._tag = this._tag >= 255 ? 1 : this._tag + 1;
                 this._emit('raw', { dir: 'tx', char: '2004', bytes: C.query(id, this._tag) });
                 const payload = this._answer(id);
-                this._emit('raw', { dir: 'rx', char: 'sim', bytes: Uint8Array.from([id, this._tag, ...payload]) });
+                this._lastReply = Uint8Array.from([id, this._tag, ...payload]);
+                this._emit('raw', { dir: 'rx', char: 'sim', bytes: this._lastReply });
                 await Promise.resolve();
                 return payload;
+            }
+
+            /** Same shape as BedJetWebLink.readReplies; the simulated unit answers on 2005, as the official app expects. */
+            async readReplies() {
+                this._requireReady();
+                await Promise.resolve();
+                return { '2005': this._lastReply && this._lastReply.slice(), '2006': null };
+            }
+
+            /** What the real unit does when it cuts out: standby with a reason byte (status byte 18), no command sent. */
+            cutOut(reason) {
+                this._run = null;
+                Object.assign(this.status, { step: 0, mode: Mode.STANDBY, remainingSeconds: 0, maxRuntime: 0, shutdown: reason & 0xff });
+                if (this.state === 'ready') this._emitStatus();
             }
 
             /** One second of simulated time. Called by the internal timer, or by tests directly. */
@@ -2224,6 +2247,13 @@
                 return typeof navigator !== 'undefined' && !!navigator.bluetooth;
             }
 
+            /** False when Web Bluetooth exists but the system reports no adapter; true when it can't tell. */
+            static async hasAdapter() {
+                if (!BedJetWebLink.isSupported()) return false;
+                if (typeof navigator.bluetooth.getAvailability !== 'function') return true;
+                try { return await navigator.bluetooth.getAvailability(); } catch { return true; }
+            }
+
             get savedDevice() {
                 const storage = this._storage();
                 if (!storage) return null;
@@ -2290,7 +2320,8 @@
                     // only an echo of this request id and tag counts. Same tag on every retry, as the official app does.
                     for (let attempt = 1; attempt <= this.opts.queryAttempts; attempt++) {
                         await this._write(request);
-                        for (const [label, ch] of this._replyOrder()) {
+                        for (const [label, ch] of this._replyChars()) {
+                            if (!ch) continue;
                             const reply = await this._read(ch, label);
                             if (reply.length >= 2 && reply[0] === id && reply[1] === tag) {
                                 this._noteReplySource(label);
@@ -2301,6 +2332,24 @@
                     }
                     this._log('warn', `No reply to query 0x${id.toString(16)} tag ${tag} after ${this.opts.queryAttempts} attempts`);
                     throw new BedJetError('badResponse');
+                });
+            }
+
+            /** Reads 2005 and 2006 as they are, without a query; null for a missing or unreadable characteristic. */
+            readReplies() {
+                if (this.state !== 'ready') return Promise.reject(new BedJetError('notConnected'));
+                return this._serial(async () => {
+                    const out = {};
+                    for (const [label, ch] of this._replyChars()) {
+                        out[label] = null;
+                        if (!ch) continue;
+                        try {
+                            out[label] = await this._read(ch, label);
+                        } catch (err) {
+                            this._log('warn', `Reading ${label} failed: ${err.message}`);
+                        }
+                    }
+                    return out;
                 });
             }
 
@@ -2530,9 +2579,9 @@
                 return bytes;
             }
 
-            _replyOrder() {
-                const order = [['2005', this._chars?.reply], ['2006', this._chars?.replyAlt]].filter(([, ch]) => ch);
-                return this.replySource === '2006' ? order.reverse() : order;
+            // Always 2005 first (the official app's), then 2006, even once 2006 has answered: which one the unit uses is open.
+            _replyChars() {
+                return [['2005', this._chars?.reply], ['2006', this._chars?.replyAlt]];
             }
 
             _noteReplySource(label) {
@@ -2810,14 +2859,20 @@
                     return fallback;
                 }
             },
+            /** null or undefined removes the key. */
             set(key, value) {
-                try { localStorage.setItem(key, String(value)); } catch { /* private mode */ }
+                try {
+                    if (value == null) localStorage.removeItem(key);
+                    else localStorage.setItem(key, String(value));
+                } catch { /* private mode */ }
             },
         };
 
         const $ = id => document.getElementById(id);
         const listeners = new Set();
+        const beforeClose = new Map();
         let unbindLink = [];
+        const pad = (n, w = 2) => String(n).padStart(w, '0');
 
         const App = globalThis.App = {
             codec: C,
@@ -2831,6 +2886,8 @@
                 deviceName: null,
                 firmware: null,
                 replySource: null,
+                /** M1–M3 names as read from the unit; null until read on this connection. */
+                memoryNames: null,
                 reconnectAttempt: 0,
                 savedDevice: null,
                 unit: 'C',
@@ -2882,8 +2939,41 @@
             },
             formatClock(seconds) {
                 const h = Math.floor(seconds / 3600), m = Math.floor(seconds / 60) % 60, s = seconds % 60;
-                return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                return `${h}:${pad(m)}:${pad(s)}`;
             },
+            /** HH:mm:ss.SSS, as in the debug log. */
+            timestamp(time = Date.now()) {
+                const d = new Date(time);
+                return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+            },
+            esc: C.escapeHtml,
+
+            // ---- files and clipboard ----
+            async copyText(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                } catch {
+                    const area = document.createElement('textarea');
+                    area.value = text;
+                    area.style.position = 'fixed';
+                    area.style.left = '-9999px';
+                    document.body.append(area);
+                    area.select();
+                    document.execCommand('copy');
+                    area.remove();
+                }
+            },
+            download(name, text, mime = 'text/plain') {
+                const url = URL.createObjectURL(new Blob([text], { type: mime }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                document.body.append(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            },
+            fileStamp: () => new Date().toISOString().slice(0, 19).replace(/:/g, '-'),
 
             // ---- feedback ----
             haptic(kind) {
@@ -2926,17 +3016,51 @@
                 sheet.classList.add('active');
                 sheet.setAttribute('aria-hidden', 'false');
             },
+            /** Closes unconditionally, for the app's own flows; user dismissals go through requestCloseSheet. */
             closeSheet(id) {
                 const sheet = $(id);
+                if (!sheet.classList.contains('active')) return;
                 sheet.classList.remove('active');
                 sheet.setAttribute('aria-hidden', 'true');
                 sheet.dispatchEvent(new CustomEvent('sheetclose'));
             },
+            /** fn() → boolean or Promise<boolean>; false keeps the sheet open. */
+            setBeforeClose(id, fn) {
+                if (fn) beforeClose.set(id, fn);
+                else beforeClose.delete(id);
+            },
+            async requestCloseSheet(id) {
+                const hook = beforeClose.get(id);
+                if (hook && !(await hook())) return false;
+                App.closeSheet(id);
+                return true;
+            },
 
+            /** '#programs' → 'programs'; anything else → null. */
+            tabFromHash(hash) {
+                const tab = String(hash ?? '').replace(/^#/, '');
+                return TABS.includes(tab) ? tab : null;
+            },
             switchTab(tab) {
                 if (!TABS.includes(tab)) return;
                 prefs.set(KEYS.tab, tab);
                 App.set({ tab });
+                if (typeof location !== 'undefined' && location.hash !== `#${tab}`) {
+                    history.replaceState(null, '', `#${tab}`);
+                }
+            },
+
+            /** Reads M1–M3 names into App.state.memoryNames; resolves to them, or null when the read failed. */
+            async reloadMemoryNames() {
+                const link = App.link;
+                try {
+                    const names = await App.device.memoryNames();
+                    if (link === App.link && link.state === 'ready') App.set({ memoryNames: names });
+                    return names;
+                } catch (err) {
+                    App.log(`Could not read memory names: ${err.message}`, 'warn');
+                    return null;
+                }
             },
 
             // ---- connection ----
@@ -2979,15 +3103,10 @@
             status: prefs.get(KEYS.statusLog, 'false') === 'true',
             text: '',
             lines: 0,
-            stamp() {
-                const d = new Date();
-                const p = (n, w = 2) => String(n).padStart(w, '0');
-                return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
-            },
             add(message, level) {
                 console.debug(`[JetCommand] ${message}`);
                 if (!this.enabled) return;
-                const time = this.stamp();
+                const time = App.timestamp();
                 this.text += `[${time}] ${message}\n`;
                 const el = $('debugLog');
                 if (!el) return;
@@ -3022,21 +3141,6 @@
             },
         };
 
-        async function copyText(text) {
-            try {
-                await navigator.clipboard.writeText(text);
-            } catch {
-                const area = document.createElement('textarea');
-                area.value = text;
-                area.style.position = 'fixed';
-                area.style.left = '-9999px';
-                document.body.append(area);
-                area.select();
-                document.execCommand('copy');
-                area.remove();
-            }
-        }
-
         // ---- link wiring ----
         async function useLink(demo) {
             unbindLink.forEach(off => off());
@@ -3051,7 +3155,7 @@
             App.link = link;
             App.device = device;
             App.set({
-                link: link.state, status: null, deviceName: null, firmware: null, replySource: null,
+                link: link.state, status: null, ...DEVICE_INFO_CLEARED,
                 savedDevice: demo ? null : link.savedDevice,
             });
 
@@ -3082,10 +3186,13 @@
             }
         }
 
+        // "Reconnect to …" uses savedDevice.name, so deviceName is cleared with the rest.
+        const DEVICE_INFO_CLEARED = Object.freeze({ deviceName: null, firmware: null, replySource: null, memoryNames: null });
+
         async function onLinkState(link, state) {
             if (link !== App.link) return;
             const patch = { link: state, reconnectAttempt: link.reconnectAttempt || 0 };
-            if (state === 'disconnected') patch.status = null;
+            if (state === 'disconnected') Object.assign(patch, { status: null, ...DEVICE_INFO_CLEARED });
             if (state === 'ready') patch.deviceName = link.deviceName;
             App.set(patch);
             if (state !== 'ready') return;
@@ -3093,11 +3200,12 @@
             if (!App.state.demo) App.set({ savedDevice: link.savedDevice });
             try {
                 const firmware = await App.device.firmware();
-                App.set({ firmware, replySource: link.replySource });
+                if (link === App.link && link.state === 'ready') App.set({ firmware, replySource: link.replySource });
                 App.log(`Firmware ${firmware}`, 'info');
             } catch (err) {
                 App.log(`Could not read firmware: ${err.message}`, 'warn');
             }
+            if (link === App.link && link.state === 'ready') await App.reloadMemoryNames();
         }
 
         // ---- shell rendering ----
@@ -3120,8 +3228,8 @@
 
             $('connectCard').hidden = ready;
             const saved = s.savedDevice;
-            $('reconnectBtn').hidden = !saved || s.demo || connecting;
-            $('reconnectBtn').textContent = saved ? `Reconnect to ${saved.name}` : 'Reconnect';
+            $('reconnectBtn').hidden = connecting || (!saved && !s.demo);
+            $('reconnectBtn').textContent = s.demo ? 'Reconnect the demo BedJet' : saved ? `Reconnect to ${saved.name}` : 'Reconnect';
             $('connectBtn').hidden = s.demo || connecting;
             $('connectBtn').textContent = saved ? 'Choose another BedJet' : 'Connect BedJet';
             $('connectBtn').className = `btn btn-block ${saved ? 'btn-outline' : 'btn-primary'}`;
@@ -3129,12 +3237,14 @@
             $('connectTitle').textContent = connecting ? 'Connecting…' : s.demo ? 'Demo BedJet' : 'Welcome to JetCommand';
             $('connectText').textContent = connecting
                 ? (s.reconnectAttempt ? `Connection lost. Reconnect attempt ${s.reconnectAttempt}…` : 'Looking for your BedJet. It accepts one phone at a time.')
-                : 'Connect to your BedJet to control your sleep climate.';
+                : s.demo ? 'The simulated BedJet is disconnected.' : 'Connect to your BedJet to control your sleep climate.';
 
             $('demoBanner').hidden = !s.demo;
-            $('demoReason').textContent = s.demoReason === 'unsupported'
-                ? "This browser has no Web Bluetooth (use Chrome or Edge)."
-                : s.demoReason === 'url' ? 'Opened with ?demo=1.' : 'Turn it off in settings.';
+            $('demoReason').textContent = {
+                unsupported: 'This browser has no Web Bluetooth. Use Chrome or Edge on Android, Windows or macOS.',
+                noAdapter: 'No Bluetooth adapter found. Turn Bluetooth on, then switch the demo off in settings.',
+                url: 'Opened with ?demo=1.',
+            }[s.demoReason] || 'Turn it off in settings.';
 
             const step = s.status?.extra?.programStep || 0;
             $('programBanner').hidden = !ready || step === 0;
@@ -3144,7 +3254,7 @@
             $('settingsConnInfo').textContent = ready
                 ? `Connected to ${s.deviceName || 'BedJet'}${s.firmware ? ` · firmware ${s.firmware}` : ''}`
                 : saved && !s.demo ? `Saved: ${saved.name}` : s.demo ? 'Demo mode' : 'Not connected';
-            $('settingsConnect').hidden = ready || s.demo;
+            $('settingsConnect').hidden = ready;
             $('settingsDisconnect').hidden = !ready;
             $('settingsForget').hidden = s.demo || !saved;
             $('prefFahrenheit').checked = s.unit === 'F';
@@ -3152,18 +3262,25 @@
             $('prefShowAll').checked = s.showAll;
             $('prefDemo').checked = s.demo;
             $('prefDemo').disabled = s.demoReason === 'unsupported' || s.demoReason === 'url';
-            $('demoHint').textContent = s.demoReason === 'unsupported' ? 'Required: no Web Bluetooth here'
-                : s.demoReason === 'url' ? 'On because of ?demo=1' : 'Use a simulated BedJet';
+            $('demoHint').textContent = {
+                unsupported: 'Required: no Web Bluetooth here',
+                noAdapter: 'On because no Bluetooth adapter was found',
+                url: 'On because of ?demo=1',
+            }[s.demoReason] || 'Use a simulated BedJet';
             $('debugMeta').textContent = debugLog.meta();
             renderShell.done = true;
         }
 
         function bindShell() {
             document.querySelectorAll('#tabBar [data-tab]').forEach(b => b.addEventListener('click', () => App.switchTab(b.dataset.tab)));
+            window.addEventListener('hashchange', () => {
+                const tab = App.tabFromHash(location.hash);
+                if (tab) App.switchTab(tab);
+            });
             document.addEventListener('click', e => {
                 const closer = e.target.closest('[data-close-sheet]');
-                if (closer) App.closeSheet(closer.closest('.sheet').id);
-                else if (e.target.classList?.contains('sheet')) App.closeSheet(e.target.id);
+                if (closer) App.requestCloseSheet(closer.closest('.sheet').id);
+                else if (e.target.classList?.contains('sheet')) App.requestCloseSheet(e.target.id);
             });
 
             $('connPill').addEventListener('click', () => App.openSheet('settingsSheet'));
@@ -3207,19 +3324,12 @@
             $('debugClear').addEventListener('click', () => debugLog.clear());
             $('debugCopy').addEventListener('click', async () => {
                 if (!debugLog.text) return App.toast('No logs to copy.', 'info', 2000);
-                await copyText(`${debugLog.meta()}\n${debugLog.text}`);
+                await App.copyText(`${debugLog.meta()}\n${debugLog.text}`);
                 App.toast('Debug log copied.', 'success', 2000);
             });
             $('debugDownload').addEventListener('click', () => {
                 if (!debugLog.text) return App.toast('No logs to download.', 'info', 2000);
-                const url = URL.createObjectURL(new Blob([`${debugLog.meta()}\n${debugLog.text}`], { type: 'text/plain' }));
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `jetcommand-debug-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
-                document.body.append(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
+                App.download(`jetcommand-debug-${App.fileStamp()}.txt`, `${debugLog.meta()}\n${debugLog.text}`);
             });
 
             let deferredPrompt = null;
@@ -3252,14 +3362,20 @@
             }
         }
 
+        // The node tests load App without a page; it never boots there.
+        if (typeof document === 'undefined') return;
+
         // Tab scripts load after this one and subscribe first; boot once all of them have run.
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             App.subscribe(renderShell);
             bindShell();
             const supported = BedJetWebLink.isSupported();
             const urlDemo = new URLSearchParams(location.search).get('demo') === '1';
-            const demoReason = !supported ? 'unsupported' : urlDemo ? 'url' : prefs.get(KEYS.demo, '0') === '1' ? 'setting' : null;
-            const tab = prefs.get(KEYS.tab, 'remote');
+            const demoReason = !supported ? 'unsupported' : urlDemo ? 'url'
+                : !(await BedJetWebLink.hasAdapter()) ? 'noAdapter'
+                    : prefs.get(KEYS.demo, '0') === '1' ? 'setting' : null;
+            const hashTab = App.tabFromHash(location.hash);
+            const tab = hashTab || prefs.get(KEYS.tab, 'remote');
             App.set({
                 unit: prefs.get(KEYS.unit, 'C') === 'F' ? 'F' : 'C',
                 haptics: prefs.get(KEYS.haptics, 'true') === 'true',
@@ -3269,7 +3385,8 @@
                 tab: TABS.includes(tab) ? tab : 'remote',
             });
             App.refresh();
-            App.log(`JetCommand starting (${supported ? 'Web Bluetooth available' : 'no Web Bluetooth'})`, 'info');
+            if (!hashTab) history.replaceState(null, '', `#${App.state.tab}`);
+            App.log(`JetCommand starting (${!supported ? 'no Web Bluetooth' : demoReason === 'noAdapter' ? 'no Bluetooth adapter' : 'Web Bluetooth available'})`, 'info');
             useLink(!!demoReason);
         });
     })();
@@ -3287,7 +3404,6 @@
             temp: { dirty: false, pending: null, hold: null },
             fan: { dirty: false, pending: null, hold: null },
             timer: { pending: 0, mode: 'duration', clamped: false },
-            memoryLink: null,
         };
 
         const maxMinutes = status => (!status ? 0
@@ -3370,28 +3486,18 @@
             if ($('timerSheet').classList.contains('active')) refreshTimerLimits();
         }
 
-        async function loadMemoryNames() {
-            const link = App.link;
-            if (ui.memoryLink === link) return;
-            ui.memoryLink = link;
-            try {
-                const names = await App.device.memoryNames();
-                names.forEach((name, i) => {
-                    const el = document.querySelector(`[data-memory-name="${i + 1}"]`);
-                    if (el) el.textContent = name || '';
-                });
-            } catch (err) {
-                ui.memoryLink = null;
-                App.log(`Could not read memory names: ${err.message}`, 'warn');
-            }
+        function renderMemoryNames(names) {
+            document.querySelectorAll('[data-memory-name]').forEach(el => {
+                el.textContent = names?.[Number(el.dataset.memoryName) - 1] || '';
+            });
         }
 
         App.subscribe((s, changed) => {
-            if ('link' in changed && s.link === 'ready') loadMemoryNames();
             if ('link' in changed && s.link !== 'ready') {
                 ui.temp.dirty = ui.fan.dirty = false;
             }
             if ('status' in changed || 'unit' in changed || 'link' in changed) render();
+            if ('memoryNames' in changed) renderMemoryNames(s.memoryNames);
         });
 
         // ---- modes, temperature, fan, memories ----
@@ -3535,7 +3641,7 @@
     (function () {
         'use strict';
         const C = globalThis.BedJetCodec;
-        const { Mode, Limits } = C;
+        const { Mode, Limits, stepMinutes } = C;
         const TOOL = 'bedjet-bluetooth-control';
         const DAY = 1440;
 
@@ -3775,7 +3881,7 @@
             return { x, y: seg?.y ?? model.base };
         }
 
-        const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        const esc = C.escapeHtml;
 
         function curveSVG(steps, startMinute, { width = 340, height = 120, labels = true, highlight = -1, marker = null, label = '' } = {}) {
             const m = curveModel(steps, startMinute, { width, height, padBottom: labels ? 18 : 4, padTop: labels ? 8 : 5 });
@@ -3843,26 +3949,15 @@
 
         const stepsLabel = n => `${n} ${n === 1 ? 'step' : 'steps'}`;
         const fan = step => `${C.fanPercent(step.fan)} %`;
-        const stepMinutes = step => step.hours * 60 + step.minutes;
-
-        function readStorage(key) {
-            try { return localStorage.getItem(key); } catch { return null; }
-        }
-        function writeStorage(key, value) {
-            try {
-                if (value == null) localStorage.removeItem(key);
-                else localStorage.setItem(key, value);
-            } catch { /* private mode */ }
-        }
 
         function loadLibrary() {
-            const text = readStorage(KEYS.library);
+            const text = App.prefs.get(KEYS.library, null);
             const parsed = parseLibrary(text);
             if (parsed) return parsed;
             App.log('Saved schedules could not be read; showing the built-in ones', 'warn');
             return seedLibrary();
         }
-        const persistLibrary = () => writeStorage(KEYS.library, JSON.stringify(ui.library));
+        const persistLibrary = () => App.prefs.set(KEYS.library, JSON.stringify(ui.library));
 
         function addToLibrary(program, { quiet = false } = {}) {
             const entry = { id: newId(), name: C.sanitizeName(program.name) || 'From BedJet', steps: program.steps.map(C.normalizeStep), start: program.start ?? null };
@@ -3875,7 +3970,7 @@
 
         function loadRun() {
             try {
-                const run = JSON.parse(readStorage(KEYS.run) || 'null');
+                const run = JSON.parse(App.prefs.get(KEYS.run, 'null'));
                 return run && Number.isInteger(run.slot) && Array.isArray(run.steps) ? run : null;
             } catch {
                 return null;
@@ -3883,13 +3978,13 @@
         }
         function remember(run) {
             ui.run = run;
-            writeStorage(KEYS.run, JSON.stringify(run));
+            App.prefs.set(KEYS.run, JSON.stringify(run));
             App.set({ runningProgram: run.name });
             renderSlots();
         }
         function forgetRun() {
             ui.run = null;
-            writeStorage(KEYS.run, null);
+            App.prefs.set(KEYS.run, null);
         }
 
         const currentSlots = () => (ui.slotsLink === App.link ? ui.slots : null);
@@ -3957,16 +4052,22 @@
             return `<div class="card pg-card empty-slot"><span class="grow">${text}</span>${extra}</div>`;
         }
 
+        const slotStart = slot => (runningSlot() === slot ? minuteOfDay(new Date(ui.run.startedAt)) : minuteOfDay(new Date()));
+
+        function slotMeta(program, slot) {
+            const end = endTime(program.steps, slotStart(slot));
+            const ifNow = runningSlot() === slot ? '' : ' if started now';
+            return `${stepsLabel(program.steps.length)} · ${App.formatDuration(end.total)} · ends ${formatHM(end.minute)}${ifNow}`;
+        }
+
         function slotCard(program, slot) {
             const running = runningSlot() === slot;
-            const start = running ? minuteOfDay(new Date(ui.run.startedAt)) : minuteOfDay(new Date());
-            const end = endTime(program.steps, start);
+            const start = slotStart(slot);
             const name = program.name || 'Unnamed';
-            const meta = `${stepsLabel(program.steps.length)} · ${App.formatDuration(end.total)} · ends ${formatHM(end.minute)}${running ? '' : ' if started now'}`;
             return `<div class="card pg-card${running ? ' running' : ''}">
                 <div class="pg-card-top">
                     <span class="pg-slot-no">${slot + 1}</span>
-                    <div class="grow"><div class="pg-name">${esc(name)}</div><div class="pg-meta">${meta}</div></div>
+                    <div class="grow"><div class="pg-name">${esc(name)}</div><div class="pg-meta" data-slot-meta="${slot}">${slotMeta(program, slot)}</div></div>
                     ${running ? '<span class="badge success">Running</span>' : ''}
                 </div>
                 <div class="pg-curve-box" data-slot-curve="${slot}">${curveSVG(program.steps, start, { height: 56, labels: false, label: `${name}: night curve` })}</div>
@@ -4102,15 +4203,20 @@
 
         // ---- Schedules library ----
 
+        const libraryStart = s => (s.start != null ? parseHM(s.start) : minuteOfDay(new Date()));
+        const libraryInvalid = s => C.validateProgram(s.steps, dateAt(libraryStart(s))).length > 0;
+
+        function libraryMeta(s) {
+            const end = endTime(s.steps, libraryStart(s));
+            return `${stepsLabel(s.steps.length)} · ${App.formatDuration(end.total)} · ${s.start ?? 'now'} → ${formatHM(end.minute)}`;
+        }
+
         function libraryCard(s) {
-            const start = s.start != null ? parseHM(s.start) : minuteOfDay(new Date());
-            const end = endTime(s.steps, start);
-            const invalid = C.validateProgram(s.steps, dateAt(start)).length > 0;
-            const meta = `${stepsLabel(s.steps.length)} · ${App.formatDuration(end.total)} · ${s.start ?? 'now'} → ${formatHM(end.minute)}`;
+            const start = libraryStart(s);
             return `<div class="card pg-card" data-lib="${esc(s.id)}">
                 <div class="pg-card-top pg-tap" data-lib-act="edit">
-                    <div class="grow"><div class="pg-name">${esc(s.name || 'Unnamed')}</div><div class="pg-meta">${meta}</div></div>
-                    ${invalid ? '<span class="badge error">Needs a fix</span>' : ''}
+                    <div class="grow"><div class="pg-name">${esc(s.name || 'Unnamed')}</div><div class="pg-meta" data-lib-meta>${libraryMeta(s)}</div></div>
+                    <span class="badge error" data-lib-invalid${libraryInvalid(s) ? '' : ' hidden'}>Needs a fix</span>
                 </div>
                 <div class="pg-curve-box pg-tap" data-lib-act="edit">${curveSVG(s.steps, start, { height: 56, labels: false, label: `${s.name}: night curve` })}</div>
                 <div class="pg-actions">
@@ -4214,15 +4320,12 @@
             $('pgEdBody').scrollTop = 0;
         }
 
-        async function closeEditor({ force = false } = {}) {
-            if (!ui.ed) return;
-            if (!force && isDirty()) {
-                const answer = await askConfirm({ title: 'Discard changes?', text: 'Your changes to this schedule are not saved anywhere yet.', ok: 'Discard' });
-                if (!answer) return;
-            }
-            ui.ed = null;
-            App.closeSheet('pgEditorSheet');
+        async function confirmDiscard() {
+            if (!isDirty()) return true;
+            return !!(await askConfirm({ title: 'Discard changes?', text: 'Your changes to this schedule are not saved anywhere yet.', ok: 'Discard' }));
         }
+        App.setBeforeClose('pgEditorSheet', confirmDiscard);
+        $('pgEditorSheet').addEventListener('sheetclose', () => { ui.ed = null; });
 
         function renderStart() {
             const ed = ui.ed;
@@ -4313,7 +4416,7 @@
             document.querySelectorAll('#pgSteps .pg-step').forEach(el => {
                 const i = Number(el.dataset.index);
                 const step = ed.steps[i];
-                el.querySelector('.pg-step-head').innerHTML = stepHead(step, i, tl.segments[i], start);
+                setHTML(el.querySelector('.pg-step-head'), stepHead(step, i, tl.segments[i], start));
                 el.querySelector('[data-step-error]').textContent = byIndex.get(i) || '';
                 el.classList.toggle('invalid', byIndex.has(i));
                 const hint = el.querySelector('[data-step-hint]');
@@ -4332,7 +4435,7 @@
             const end = endTime(ed.steps, start);
             const day = end.days === 1 ? ' tomorrow' : end.days > 1 ? ` (+${end.days} days)` : '';
             $('pgEdSummary').innerHTML = `Starts <strong>${formatHM(start)}</strong> · ends <strong>${formatHM(end.minute)}</strong>${day} · ${App.formatDuration(end.total)}`;
-            $('pgEdCurve').innerHTML = curveSVG(ed.steps, start, { height: 130, highlight: ed.open, label: `Night curve from ${formatHM(start)} to ${formatHM(end.minute)}` });
+            setHTML($('pgEdCurve'), curveSVG(ed.steps, start, { height: 130, highlight: ed.open, label: `Night curve from ${formatHM(start)} to ${formatHM(end.minute)}` }));
             $('pgEdStepCount').textContent = `${ed.steps.length}/${Limits.stepsPerProgram}`;
             const name = C.sanitizeName(ed.name).trim();
             $('pgEdNameCount').textContent = `${C.sanitizeName(ed.name).length}/${Limits.nameLength}`;
@@ -4351,6 +4454,13 @@
             note.textContent = !name ? 'Give the schedule a name to save it.'
                 : errors.length ? `Fix ${errors.length === 1 ? 'the marked step' : `${errors.length} problems`} to save. Changing the start time can help with “until” steps.`
                     : nowProblem ? `Saves for a ${formatHM(start)} start. It can't run right now: ${nowProblem.message}` : '';
+        }
+
+        // Rewriting identical markup under a finger can swallow the tap; most refreshes change nothing.
+        function setHTML(el, html) {
+            if (el._html === html) return;
+            el._html = html;
+            el.innerHTML = html;
         }
 
         function setStep(i, step, { rerender = true } = {}) {
@@ -4470,7 +4580,7 @@
             renderStart();
             refreshDerived();
         }));
-        $('pgEdClose').addEventListener('click', () => closeEditor());
+        $('pgEdClose').addEventListener('click', () => App.requestCloseSheet('pgEditorSheet'));
 
         const editorProgram = () => ({ name: C.sanitizeName(ui.ed.name), steps: ui.ed.steps.map(C.normalizeStep), start: ui.ed.start });
 
@@ -4482,7 +4592,7 @@
             else ui.library.unshift({ id: newId(), ...program });
             persistLibrary();
             renderLibrary();
-            closeEditor({ force: true });
+            App.closeSheet('pgEditorSheet');
             App.toast(`Saved “${program.name}” to your schedules.`, 'success', 2500);
         });
         const pickFromEditor = run => openPicker({
@@ -4591,7 +4701,7 @@
                 App.haptic('success');
                 ui.busy = false;
                 App.closeSheet('pgSlotSheet');
-                if (p.fromEditor) closeEditor({ force: true });
+                if (p.fromEditor) App.closeSheet('pgEditorSheet');
                 if (p.run) await runSlot(slot, saved);
                 else App.toast(`Saved “${saved.name}” to slot ${slot + 1}.`, 'success', 2500);
             } catch (err) {
@@ -4627,26 +4737,30 @@
             }
         });
 
-        // Clock-relative labels ("ends 06:10 if started now") drift; refresh them while nothing is being edited.
+        // Clock-relative labels ("ends 06:10 if started now") drift. Only their text is updated: rebuilding the cards
+        // every 30 s could swallow a tap that lands mid-rebuild.
+        function refreshClockText() {
+            const slots = currentSlots();
+            document.querySelectorAll('#pgSlots [data-slot-meta]').forEach(el => {
+                const slot = Number(el.dataset.slotMeta);
+                if (slots?.[slot]) el.textContent = slotMeta(slots[slot], slot);
+            });
+            document.querySelectorAll('#pgLibrary [data-lib]').forEach(card => {
+                const s = ui.library.find(x => x.id === card.dataset.lib);
+                if (!s || s.start != null) return;
+                card.querySelector('[data-lib-meta]').textContent = libraryMeta(s);
+                card.querySelector('[data-lib-invalid]').hidden = !libraryInvalid(s);
+            });
+        }
+
         setInterval(() => {
             if (document.hidden || App.state.tab !== 'programs') return;
             if (ui.ed && ui.ed.start == null) {
                 renderStart();
                 refreshDerived();
             }
-            if (!document.querySelector('.sheet.active')) {
-                renderSlots();
-                renderLibrary();
-            }
+            refreshClockText();
         }, 30000);
-
-        // #remote, #programs or #device opens that tab, so links and bookmarks can point at one.
-        function tabFromHash() {
-            const tab = location.hash.slice(1);
-            if (['remote', 'programs', 'device'].includes(tab)) App.switchTab(tab);
-        }
-        document.addEventListener('DOMContentLoaded', tabFromHash);
-        window.addEventListener('hashchange', tabFromHash);
 
         ui.library = loadLibrary();
         ui.run = loadRun();
@@ -4760,6 +4874,8 @@
                 const entry = this.prev
                     ? detectStop(this.prev, status, { time, offAt: this.offAt })
                     : detectAwayStop(this.last, status, { time });
+                // One Off press explains one stop, not a cut-out shortly after the unit was switched on again.
+                if (entry?.why === 'off') this.offAt = null;
                 this.prev = this.last = snapshot(status, time, this.offAt);
                 this._write(this.lastKey, this.last);
                 if (entry) {
@@ -4804,27 +4920,6 @@
             return fragment ? { totalSteps: fragment.total, stepsInFragment: fragment.steps.length } : 'unparseable';
         }
 
-        // BedJetWebLink has no public read of 2005/2006 outside a query. Going through its queue and _read keeps
-        // the reads serialised with other GATT work and logged as raw packets. Null for the simulator.
-        function replyReader(link) {
-            if (!link?._chars || typeof link._read !== 'function' || typeof link._serial !== 'function') return null;
-            return () => link._serial(async () => {
-                const out = {};
-                for (const [label, ch] of [['2005', link._chars?.reply], ['2006', link._chars?.replyAlt]]) {
-                    if (!ch) {
-                        out[label] = { missing: true };
-                        continue;
-                    }
-                    try {
-                        out[label] = { bytes: Array.from(await link._read(ch, label)) };
-                    } catch (err) {
-                        out[label] = { error: err.message };
-                    }
-                }
-                return out;
-            });
-        }
-
         function summarizeProbe({ results = [], compare = null } = {}) {
             const sources = {};
             let answered = 0, failed = 0, retried = 0, maxAttempts = 0;
@@ -4858,7 +4953,7 @@
         }
 
         /** Runs the read-only probe over any link. Writes nothing but `41 id tag` (through link.query). */
-        async function probe(link, { readReplies = replyReader(link), onProgress = () => {}, now = () => Date.now() } = {}) {
+        async function probe(link, { readReplies = link.readReplies ? () => link.readReplies() : null, onProgress = () => {}, now = () => Date.now() } = {}) {
             const packets = [];
             const off = link.on('raw', ({ dir, char, bytes }) => packets.push({ dir, char, bytes: Array.from(C.toBytes(bytes)) }));
             const startedAt = now();
@@ -4913,17 +5008,17 @@
                 }
                 onProgress(steps - 1, steps);
                 if (!readReplies) {
-                    compare = { skipped: 'No 2005/2006 characteristics on this link (simulator).' };
+                    compare = { skipped: 'This link cannot read 2005/2006 directly.' };
                 } else if (lost) {
                     compare = { skipped: 'Connection lost.' };
                 } else {
                     const r = await ask(Query.FIRMWARE);
                     const reads = await readReplies();
                     const chars = {};
-                    for (const [label, read] of Object.entries(reads)) {
-                        chars[label] = read.bytes
-                            ? { hex: C.hex(read.bytes), matches: read.bytes[0] === Query.FIRMWARE && read.bytes[1] === r.tag }
-                            : { ...read, matches: false };
+                    for (const [label, bytes] of Object.entries(reads)) {
+                        chars[label] = bytes
+                            ? { hex: C.hex(bytes), matches: bytes[0] === Query.FIRMWARE && bytes[1] === r.tag }
+                            : { missing: true, matches: false };
                     }
                     compare = { id: Query.FIRMWARE, idHex: idHex(Query.FIRMWARE), tag: r.tag, answeredBy: r.source, chars };
                 }
@@ -4944,7 +5039,7 @@
         const D = globalThis.BedJetDiagnostics = Object.freeze({
             EXPECTED_REMAINING_S, OFF_WINDOW_MS, SHUTDOWN_CAP, PROBE_QUERIES,
             isRunningMode, isOffPress, isClockSet, snapshot, detectStop, detectAwayStop, addEntry, reasonCounts,
-            ShutdownTracker, decodeReply, replyReader, summarizeProbe, probe,
+            ShutdownTracker, decodeReply, summarizeProbe, probe,
         });
 
         if (typeof document === 'undefined') return;
@@ -4956,7 +5051,7 @@
         const PACKETS_SHOWN = 150;
         const PROBE_PACKETS = 200;
         const $ = id => document.getElementById(id);
-        const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        const esc = App.esc;
 
         function memoryStorage() {
             const map = new Map();
@@ -4975,8 +5070,6 @@
             filter: 'all',
             packetTimer: null,
             hold: { led: null, beeps: null },
-            memoryNames: null,
-            memoryLink: null,
             probe: null,
             probeLink: null,
             probing: null,
@@ -4984,8 +5077,7 @@
 
         const storage = () => (App.state.demo ? ui.demoStorage : realStorage);
 
-        const pad = (n, w = 2) => String(n).padStart(w, '0');
-        const clockText = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const clockText = d => App.timestamp(d).slice(0, 5);
         function whenText(time) {
             const d = new Date(time);
             if (Number.isNaN(d.getTime())) return '--';
@@ -4998,41 +5090,12 @@
         }
         const left = seconds => (seconds >= 60 ? App.formatDuration(Math.round(seconds / 60)) : `${seconds} s`);
 
-        function download(name, text, type = 'application/json') {
-            const url = URL.createObjectURL(new Blob([text], { type }));
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = name;
-            document.body.append(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-        }
-        const stamp = () => new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-
-        async function copyText(text) {
-            try {
-                await navigator.clipboard.writeText(text);
-            } catch {
-                const area = document.createElement('textarea');
-                area.value = text;
-                area.style.position = 'fixed';
-                area.style.left = '-9999px';
-                document.body.append(area);
-                area.select();
-                document.execCommand('copy');
-                area.remove();
-            }
-        }
-
         // ---- link binding ----
 
         function bindLink(link) {
             ui.unbind.forEach(off => off());
             ui.unbind = [];
             ui.link = link;
-            ui.memoryLink = null;
-            ui.memoryNames = null;
             ui.hold.led = ui.hold.beeps = null;
             ui.tracker = new D.ShutdownTracker({ storage: storage() });
             if (link) {
@@ -5086,7 +5149,7 @@
             badge.textContent = ready ? 'Connected' : s.link === 'connecting' ? 'Connecting…' : 'Not connected';
             badge.className = `badge ${ready ? 'success' : s.link === 'connecting' ? 'accent' : ''}`;
             $('devFirmware').textContent = s.firmware || (ready ? 'reading…' : '--');
-            const source = App.link?.replySource ?? s.replySource;
+            const source = ready ? (App.link?.replySource ?? s.replySource) : null;
             $('devReplySource').textContent = REPLY_SOURCE[source] || source || (ready ? 'not yet seen' : '--');
             $('devDualZone').textContent = yesNo(st?.dualZone);
             $('devUnitsSetUp').textContent = yesNo(extra?.unitsSetUp);
@@ -5135,20 +5198,6 @@
 
         // ---- memories and names ----
 
-        async function loadMemoryNames(force = false) {
-            const link = App.link;
-            if (!link || (!force && ui.memoryLink === link)) return;
-            ui.memoryLink = link;
-            try {
-                const names = await App.device.memoryNames();
-                if (link === App.link) ui.memoryNames = names;
-            } catch (err) {
-                ui.memoryLink = null;
-                App.log(`Could not read memory names: ${err.message}`, 'warn');
-            }
-            renderMemories();
-        }
-
         const canSave = () => !!App.state.status && App.state.status.mode !== Mode.STANDBY;
 
         function renderSaveState() {
@@ -5160,10 +5209,10 @@
         }
 
         function renderMemories() {
-            const names = ui.memoryNames;
+            const names = App.state.memoryNames;
             $('devMemories').innerHTML = [1, 2, 3].map(n => {
                 const name = names?.[n - 1];
-                const label = names == null ? '<span class="muted">…</span>'
+                const label = names == null ? `<span class="muted">${App.state.link === 'ready' ? '…' : '--'}</span>`
                     : name ? esc(name) : '<span class="muted">No name</span>';
                 return `<div class="list-row">
                     <span class="dev-mem-slot">M${n}</span>
@@ -5194,7 +5243,7 @@
 
         async function saveMemory(n) {
             const st = App.state.status;
-            const name = ui.memoryNames?.[n - 1];
+            const name = App.state.memoryNames?.[n - 1];
             const ok = await confirmSheet({
                 title: `Save to M${n}?`,
                 text: `M${n}${name ? ` (“${name}”)` : ''} will be overwritten with ${describeCurrent(st)}.`,
@@ -5209,7 +5258,7 @@
         function openRename(param) {
             renaming = param;
             const isDevice = param === C.NameParam.DEVICE;
-            const current = isDevice ? App.state.deviceName : ui.memoryNames?.[param - 1];
+            const current = isDevice ? App.state.deviceName : App.state.memoryNames?.[param - 1];
             $('devRenameTitle').textContent = isDevice ? 'Rename this BedJet' : `Rename M${param}`;
             $('devRenameWarning').hidden = !isDevice;
             $('devRenameOk').textContent = isDevice ? 'Rename BedJet' : 'Rename';
@@ -5240,12 +5289,11 @@
                 await App.device.rename(param, name);
                 if (isDevice) return App.device.deviceName();
                 const names = await App.device.memoryNames();
-                ui.memoryNames = names;
+                App.set({ memoryNames: names });
                 return names[param - 1];
             });
             if (stored === undefined) return;
             if (isDevice && stored) App.set({ deviceName: stored });
-            renderMemories();
             if (stored === name) App.toast(`${what} renamed to “${name}”.`, 'success', 2500);
             else App.toast(`Sent, but the unit still reports “${stored ?? ''}”.`, 'info');
         }
@@ -5296,7 +5344,7 @@
                 reasonCounts: D.reasonCounts(entries),
                 entries,
             };
-            download(`jetcommand-shutdowns-${stamp()}.json`, JSON.stringify(data, null, 2));
+            App.download(`jetcommand-shutdowns-${App.fileStamp()}.json`, JSON.stringify(data, null, 2), 'application/json');
         }
 
         async function clearStops() {
@@ -5306,15 +5354,13 @@
             renderStops();
         }
 
-        // The simulator never stops on its own early; this fakes the unit cutting out with a reason byte.
+        // The simulator never stops early on its own. Reason codes are undocumented; 3 and 7 are arbitrary.
         async function simulateStop() {
             const sim = App.link;
             if (!(sim instanceof BedJetSim) || sim.state !== 'ready') return;
             if (sim.status.mode === Mode.STANDBY) await App.run(() => App.device.setMode(Mode.HEAT));
             sim.skipAhead(7);
-            sim._run = null;
-            Object.assign(sim.status, { step: 0, mode: Mode.STANDBY, remainingSeconds: 0, maxRuntime: 0, shutdown: ui.tracker.entries.filter(e => !e.expected).length % 2 ? 7 : 3 });
-            sim.skipAhead(0);
+            sim.cutOut(ui.tracker.entries.filter(e => !e.expected).length % 2 ? 7 : 3);
         }
 
         // ---- probe ----
@@ -5398,15 +5444,12 @@
                 userAgent: navigator.userAgent,
                 packets: (ui.probePackets || []).map(p => ({ time: new Date(p.t).toISOString(), dir: p.dir, char: p.char, hex: p.hex })),
             };
-            download(`jetcommand-probe-${stamp()}.json`, JSON.stringify(data, null, 2));
+            App.download(`jetcommand-probe-${App.fileStamp()}.json`, JSON.stringify(data, null, 2), 'application/json');
         }
 
         // ---- packets ----
 
-        const packetTime = t => {
-            const d = new Date(t);
-            return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
-        };
+        const packetTime = App.timestamp;
         const packetLine = p => `${packetTime(p.t)} ${p.dir === 'tx' ? '►' : '◄'} ${p.char} ${p.hex}`;
         const visiblePackets = () => (ui.frozen || ui.packets).filter(p => ui.filter === 'all' || p.char === ui.filter);
 
@@ -5443,10 +5486,8 @@
 
         App.subscribe((s, changed) => {
             if (App.link !== ui.link) bindLink(App.link);
-            if ('link' in changed) {
-                if (s.link === 'ready') loadMemoryNames();
-                else ui.hold.led = ui.hold.beeps = null;
-            }
+            if ('link' in changed && s.link !== 'ready') ui.hold.led = ui.hold.beeps = null;
+            if ('memoryNames' in changed || 'link' in changed) renderMemories();
             if ('status' in changed || 'link' in changed || 'deviceName' in changed || 'firmware' in changed
                 || 'replySource' in changed || 'savedDevice' in changed || 'demo' in changed) renderDevice();
             if ('unit' in changed || 'demo' in changed) renderStops();
@@ -5500,13 +5541,13 @@
         $('devPacketsCopy').addEventListener('click', async () => {
             const lines = visiblePackets().map(packetLine);
             if (!lines.length) return App.toast('No packets to copy.', 'info', 2000);
-            await copyText(lines.join('\n'));
+            await App.copyText(lines.join('\n'));
             App.toast(`${lines.length} packets copied.`, 'success', 2000);
         });
         $('devPacketsDownload').addEventListener('click', () => {
             const lines = visiblePackets().map(packetLine);
             if (!lines.length) return App.toast('No packets to download.', 'info', 2000);
-            download(`jetcommand-packets-${stamp()}.txt`, `${lines.join('\n')}\n`, 'text/plain');
+            App.download(`jetcommand-packets-${App.fileStamp()}.txt`, `${lines.join('\n')}\n`);
         });
         $('devOpenDebug').addEventListener('click', e => {
             e.preventDefault();
@@ -5514,10 +5555,6 @@
             $('debugSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
-        // Deep link: bedjet-bluetooth-control.html#device opens this tab.
-        const followHash = () => { if (location.hash === '#device') App.switchTab('device'); };
-        window.addEventListener('hashchange', followHash);
-        document.addEventListener('DOMContentLoaded', followHash);
         renderAll();
     })();
     </script>

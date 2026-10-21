@@ -357,6 +357,61 @@ test('web link: falls back to 2006 and remembers it', async () => {
     assert.equal(writes.length, 1);
 });
 
+test('web link: 2005 is read before 2006 on every query, also after 2006 answered', async () => {
+    const reads = [];
+    const { link } = fakeLink({
+        reply: () => { reads.push('2005'); return [0x00, 0x00]; },
+        replyAlt: w => { reads.push('2006'); const [, id, tag] = w.at(-1).split(' ').map(h => parseInt(h, 16)); return [id, tag, 0]; },
+    });
+    await link.query(0x00);
+    await link.query(0x20);
+    assert.deepEqual(reads, ['2005', '2006', '2005', '2006']);
+});
+
+test('web link: readReplies reads both characteristics in the queue, null when missing', async () => {
+    const order = [];
+    let release;
+    const gate = new Promise(r => { release = r; });
+    const link = new BedJetWebLink({ releaseWhenHidden: false, storage: null, queryRetryMs: 1 });
+    link.attach({
+        command: { async writeValueWithResponse() { order.push('write'); await gate; } },
+        reply: { readValue: async () => { order.push('read 2005'); return view([0x20, 0x01, 0x56]); } },
+    });
+    const pending = link.query(0x20);
+    const replies = link.readReplies();
+    await settle();
+    assert.deepEqual(order, ['write'], 'readReplies waits for the running query');
+    release();
+    await pending;
+    const r = await replies;
+    assert.deepEqual(arr(r['2005']), [0x20, 0x01, 0x56]);
+    assert.equal(r['2006'], null);
+    assert.deepEqual(order, ['write', 'read 2005', 'read 2005']);
+    await assert.rejects(new BedJetWebLink({ releaseWhenHidden: false, storage: null }).readReplies(), err => err.code === 'notConnected');
+});
+
+test('sim: readReplies holds the last answer on 2005; cutOut stops with a reason byte', async () => {
+    const sim = new BedJetSim({ autoTick: false, slots: [{ name: 'Night', steps: [step(Mode.COOL, 5, 44, 2, 0)] }, null, null], clock: 3600 });
+    await assert.rejects(sim.readReplies(), err => err.code === 'notConnected');
+    await sim.connect();
+    assert.deepEqual(plain(await sim.readReplies()), { '2005': null, '2006': null });
+    await sim.query(C.Query.FIRMWARE);
+    const r = await sim.readReplies();
+    assert.deepEqual(arr(r['2005']).slice(0, 2), [0x20, 1]);
+    assert.equal(C.parseText(r['2005'].slice(2)), 'V1.20 (demo)');
+    const device = new BedJetDevice(sim, { autoAck: false });
+    await device.startProgram(0);
+    const seen = [];
+    sim.on('status', s => seen.push(s));
+    sim.cutOut(7);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].mode, Mode.STANDBY);
+    assert.equal(seen[0].shutdownReason, 7);
+    assert.equal(seen[0].extra.programStep, 0);
+    sim.skipAhead(10);
+    assert.equal(sim.status.mode, Mode.STANDBY, 'the program does not resume');
+});
+
 test('web link: gives up after 8 attempts', async () => {
     const { link, writes } = fakeLink({ reply: () => [0x00, 0x00] });
     await assert.rejects(link.query(0x20), err => err.code === 'badResponse');
@@ -423,11 +478,7 @@ async function trackedSim({ storage = memoryStorage(), clock = { now: Date.UTC(2
     return { sim, tracker, device: new BedJetDevice(sim, { autoAck: false }), entries, storage, clock };
 }
 
-// What the real unit does when it cuts out: standby with a reason byte, no command from anyone.
-function cutOut(sim, reason) {
-    Object.assign(sim.status, { mode: Mode.STANDBY, remainingSeconds: 0, maxRuntime: 0, shutdown: reason });
-    sim.skipAhead(0);
-}
+const cutOut = (sim, reason) => sim.cutOut(reason);
 
 test('app-device defines BedJetDiagnostics without touching the DOM', () => {
     assert.equal(typeof D.probe, 'function');
@@ -476,6 +527,19 @@ test('shutdown log: a stop with time left is unexpected, timer end and Off are e
         { code: 3, total: 1, unexpected: 1 },
         { code: 7, total: 3, unexpected: 1 },
     ]);
+});
+
+test('shutdown log: one Off explains one stop, not a cut-out right after switching on again', async () => {
+    const { sim, device, entries, clock } = await trackedSim();
+    await device.setMode(Mode.HEAT);
+    clock.now += 1000;
+    await device.setMode(Mode.STANDBY);
+    assert.equal(entries[0].why, 'off');
+    await device.setMode(Mode.HEAT);
+    clock.now += 2000;
+    cutOut(sim, 7);
+    assert.equal(entries.length, 2);
+    assert.equal(entries[1].expected, false);
 });
 
 test('shutdown log: a program cut short records its step; staying in standby records nothing', async () => {
@@ -600,12 +664,13 @@ test('probe over the simulator never calls send and only queries', async () => {
     sim.send = bytes => { sendCalls += 1; return send(bytes); };
     const result = plain(await D.probe(sim));
     assert.equal(sendCalls, 0);
-    assert.equal(sent.length, D.PROBE_QUERIES.length);
+    assert.equal(sent.length, D.PROBE_QUERIES.length + 1, 'plus one firmware query for the 2005/2006 compare');
     assert.ok(sent.every(w => w.startsWith('41 ')), sent.join(' | '));
     assert.ok(result.results.every(r => r.source === 'sim' && r.attempts === 1));
     assert.deepEqual(result.results.find(r => r.id === 7).value, { totalSteps: 1, stepsInFragment: 1 });
-    assert.ok(result.compare.skipped);
-    assert.equal(result.summary.verdict, 'Every answered query came from sim.');
+    assert.equal(result.compare.chars['2005'].matches, true);
+    assert.deepEqual(result.compare.chars['2006'], { missing: true, matches: false });
+    assert.equal(result.summary.verdict, 'Every answered query came from sim. Read after one query, only 2005 held the reply.');
 });
 
 test('probe summary of an empty or failed run', () => {
@@ -737,4 +802,54 @@ test('programs: curve points', () => {
     assert.match(svg, /^<svg class="pg-curve"/);
     assert.match(svg, /aria-label="&lt;x&gt;"/);
     assert.match(svg, /<circle/);
+});
+
+// ---- app-core without a page: shared state, hash routing ----
+
+async function loadCore() {
+    const context = { console, setTimeout, clearTimeout, setInterval, clearInterval };
+    vm.createContext(context);
+    for (const id of ['bedjet-codec', 'bedjet-sim', 'bedjet-link', 'app-core']) vm.runInContext(script(id), context, { filename: id });
+    return context;
+}
+
+const waitFor = async (predicate, ms = 3000) => {
+    const end = Date.now() + ms;
+    while (!predicate()) {
+        if (Date.now() > end) throw new Error('timed out');
+        await new Promise(r => setTimeout(r, 20));
+    }
+};
+
+test('core: tabFromHash accepts only the three tabs', async () => {
+    const { App } = await loadCore();
+    assert.equal(App.tabFromHash('#programs'), 'programs');
+    assert.equal(App.tabFromHash('device'), 'device');
+    assert.equal(App.tabFromHash('#remote'), 'remote');
+    assert.equal(App.tabFromHash(''), null);
+    assert.equal(App.tabFromHash('#settings'), null);
+    assert.equal(App.tabFromHash(undefined), null);
+});
+
+test('core: memory names live in App.state, follow a rename and are cleared on disconnect', async () => {
+    const { App } = await loadCore();
+    App.set({ haptics: false });
+    await App.setDemo(true, { persist: false });
+    await waitFor(() => App.state.memoryNames);
+    assert.deepEqual(plain(App.state.memoryNames), ['Cool down', 'Warm up', 'Dry sheets']);
+    assert.equal(App.state.firmware, 'V1.20 (demo)');
+    assert.equal(App.state.replySource, 'sim');
+
+    await App.device.rename(C.NameParam.memory(2), 'Toasty');
+    const changes = [];
+    App.subscribe((s, changed) => { if ('memoryNames' in changed) changes.push(plain(s.memoryNames)); });
+    await App.reloadMemoryNames();
+    assert.deepEqual(changes, [['Cool down', 'Toasty', 'Dry sheets']]);
+
+    await App.link.disconnect();
+    assert.equal(App.state.link, 'disconnected');
+    assert.equal(App.state.memoryNames, null);
+    assert.equal(App.state.firmware, null);
+    assert.equal(App.state.replySource, null);
+    assert.equal(App.state.deviceName, null);
 });
