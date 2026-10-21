@@ -1104,7 +1104,7 @@
                     <button class="btn btn-sm btn-ghost" id="pgImport" type="button">Import</button>
                     <button class="btn btn-sm btn-outline" id="pgNew" type="button">+ New</button>
                 </div>
-                <input type="file" id="pgImportFile" accept="application/json,.json" hidden>
+                <input type="file" id="pgImportFile" accept="application/json,.json,text/plain,.txt" hidden>
             </div>
             <p class="pg-note">Kept on this phone. Edit them any time, then save one to a BedJet slot.</p>
             <div id="pgLibrary"></div>
@@ -2862,7 +2862,7 @@
         const C = globalThis.BedJetCodec;
         const TOOL = 'bedjet-bluetooth-control';
         // No build step: bump by hand on every release, together with CACHE_NAME in the service worker.
-        const VERSION = '2026-10-21 22:27';
+        const VERSION = '2026-10-21 22:41';
         const KEYS = {
             debug: `${TOOL}_debug_logging_enabled`,
             statusLog: `${TOOL}_status_logging_enabled`,
@@ -4442,7 +4442,9 @@
                 App.download(name, text, 'application/json');
                 App.toast(`Exported ${what}.`, 'success', 2500);
             };
-            const file = new File([text], name, { type: 'application/json' });
+            // Chrome on Android refuses to share .json files (NotAllowedError "Permission denied", seen on a real phone)
+            // while canShare() still says yes; plain text is on its allow list, and import reads either.
+            const file = new File([text], name.replace(/\.json$/, '.txt'), { type: 'text/plain' });
             let canShare = false;
             try { canShare = !!navigator.canShare?.({ files: [file] }); } catch { /* treated as no file sharing */ }
             if (!canShare) return download();
@@ -4457,8 +4459,8 @@
                 await navigator.share({ files: [file], title: name });
             } catch (err) {
                 if (err.name === 'AbortError') return;
-                App.log(`Share failed: ${err.message}`, 'warn');
-                App.toast(`Couldn't share the file (${err.message}). Use Download instead.`, 'error');
+                App.log(`Share failed (${err.name}: ${err.message}), downloading instead`, 'warn');
+                download();
             }
         }
 
