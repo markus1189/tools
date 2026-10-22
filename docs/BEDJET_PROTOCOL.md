@@ -92,8 +92,9 @@ Fixture (LULL `CodecTests.swift`, full packet after merge):
 The first 20 bytes alone must still parse (without bytes 27–29).
 
 Fallback temperature ranges when bytes 13/14 are not available (OFF `Utils.getMinMaxTemp`, read from bytecode):
-heat 45–80, turbo 86, ext. heat 38–67, cool 38–62, dry 40–62, standby/wait 80. (`bedjet-re/docs/temperature-ranges.md`
-and LULL say dry 40–80; the editor code says 62.)
+heat 45–80, turbo 86, ext. heat 38–67, cool 38–62, dry 40–62, standby/wait 80. LULL says dry 40–80; the editor code
+says 62. These are the editor's limits, not the unit's: live bytes 13/14 on a real unit (V1.20) reported cool 38–52
+and standby 20–80 (`bedjet-re/captures/2026-10-21-bedjet3-v1.20.md`).
 
 ## Bio queries (`41 id tag`)
 
@@ -105,7 +106,7 @@ JetCommand gives up after 8 attempts.
 | `id` | Payload |
 |---|---|
 | `0x00` | Device name, NUL-terminated |
-| `0x01` | Memory names, 3 × 16 bytes |
+| `0x01` | Memory names, 3 × 16 bytes (on a V1.20 unit identical to the `0x04` names; the official app shows the same; cause open) |
 | `0x04` | Biorhythm names, 3 × 16 bytes; slot whose first byte is `0x01` = never saved |
 | `0x20` | Firmware versions: three NUL-padded 16-byte strings, e.g. `V1.20 (140)`, `V1.20 (412)`, `V1.20 (182)` |
 | `7 + 4·slot + i` | Fragment `i` (0–3) of slot 0–2 |
@@ -127,10 +128,14 @@ Fixtures (LULL, full replies including `id tag`):
   that wall-clock time; otherwise the value is a duration. Example: cool, fan 14, temp 36, until 06:30 = `04 0e 24 86 1e`.
 - Name frame, 19 bytes: `40, param, 0x10, ≤15 ASCII bytes, zero padded`. `param`: 0 device name, 1–3 memory names,
   4–6 biorhythm names (OFF `RenameType.java`, `MainActivity.setBedJetParam`). `0x10` is constant in OFF.
-- Limits: 3 slots, 32 steps, step < 12 h (OFF `MAX_DURATION_IN_MINUTES = 720`).
+- Limits: 3 slots, 32 steps. Step length: the OFF editor allows exactly 12 h 00 (`BiorhythmAdapter.java:228-233`;
+  `MAX_DURATION_IN_MINUTES = 720` is declared but unused); LULL says the unit refuses ≥ 12 h (unverified). JetCommand
+  caps at 11 h 59 until a device test settles it.
 - JetCommand order: fragments → name → read back and compare (LULL; OFF doesn't verify).
 
-**Open:** whether the unit commits after the last fragment or after the name; wait-step (mode 6) and clock-time
+**Open:** whether the unit commits after the last fragment or after the name (OFF starts an unsaved program with
+`01 80+slot` right after the last fragment ack, before the name is entered, `BiorhythmFragment.java:959-985`, which
+suggests the fragments commit it); wait-step (mode 6) and clock-time
 edge cases (midnight, first step).
 
 ## Program editor rules (OFF `BiorhythmAdapter.java`, `Utils.java`)
@@ -138,8 +143,10 @@ edge cases (midnight, first step).
 - **Clock-time** ("Run until") is offered only for wait, ext. heat and cool (`hasTimeMode`, BA:447); any position,
   including step 1. Hours 0–23. Choosing another mode clears the flag.
 - **End time**: the app starts at the current phone time; duration steps add h:m, a clock-time step jumps to its
-  HH:MM, which must be < 12 h after the previous end (wraps midnight) (`checkStepTime`, U:303). The device enforces
-  this at start (notification 5). JetCommand rejects these steps before saving.
+  HH:MM (wraps midnight). `checkStepTime` (U:303) tests "< 12 h after the previous end", but OFF only blanks the
+  "Ends at" label when it fails: nothing reads the result, so OFF saves and starts such programs anyway and the unit
+  refuses them at start (notification 5). Quirk: a target a few minutes earlier in the same hour passes the test.
+  JetCommand enforces the rule itself and rejects these steps before saving (`bedjet-re/docs/OFFICIAL_APP.md`).
 - **Wait**: temperature forced to 80; fan stored but disabled in the UI; shown as "----".
 - **Turbo**: 1–10 min, temp 86.
 - **Fan**: 5–100 % for all modes. Max step duration 12 h, except heat per the cut-off table.
